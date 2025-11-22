@@ -553,14 +553,14 @@ void HealthMeter_Draw(PlayState* play) {
             if ((ddHeartCountMinusOne < 0) || (i > ddHeartCountMinusOne)) {
                 if (curCombineModeSet != 1) {
                     curCombineModeSet = 1;
-                    Gfx_SetupDL_39Overlay(gfxCtx);
+                    Gfx_SetupDL_OverlayUIDepth(gfxCtx);
                     gDPSetCombineLERP(OVERLAY_DISP++, PRIMITIVE, ENVIRONMENT, TEXEL0, ENVIRONMENT, TEXEL0, 0, PRIMITIVE,
                                       0, PRIMITIVE, ENVIRONMENT, TEXEL0, ENVIRONMENT, TEXEL0, 0, PRIMITIVE, 0);
                 }
             } else {
                 if (curCombineModeSet != 3) {
                     curCombineModeSet = 3;
-                    Gfx_SetupDL_39Overlay(gfxCtx);
+                    Gfx_SetupDL_OverlayUIDepth(gfxCtx);
                     gDPSetCombineLERP(OVERLAY_DISP++, ENVIRONMENT, PRIMITIVE, TEXEL0, PRIMITIVE, TEXEL0, 0, PRIMITIVE,
                                       0, ENVIRONMENT, PRIMITIVE, TEXEL0, PRIMITIVE, TEXEL0, 0, PRIMITIVE, 0);
                 }

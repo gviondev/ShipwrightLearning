@@ -286,7 +286,8 @@ typedef enum {
     /* 68 */ SETUPDL_68,
     /* 69 */ SETUPDL_69,
     /* 70 */ SETUPDL_70,
-    /* 71 */ SETUPDL_MAX
+    /* 71 */ SETUPDL_71,
+    /* 72 */ SETUPDL_MAX
 } SetupDL;
 
 typedef struct {

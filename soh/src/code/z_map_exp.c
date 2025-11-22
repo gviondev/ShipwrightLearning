@@ -805,7 +805,7 @@ void Minimap_Draw(PlayState* play) {
             case SCENE_BOTTOM_OF_THE_WELL:
             case SCENE_ICE_CAVERN:
                 if (!R_MINIMAP_DISABLED && CVarGetInteger(CVAR_COSMETIC("HUD.Minimap.PosType"), 0) != HIDDEN) {
-                    Gfx_SetupDL_39Overlay(play->state.gfxCtx);
+                    Gfx_SetupDL_OverlayUIDepth(play->state.gfxCtx);
                     gDPSetCombineLERP(OVERLAY_DISP++, 1, 0, PRIMITIVE, 0, TEXEL0, 0, PRIMITIVE, 0, 1, 0, PRIMITIVE, 0,
                                       TEXEL0, 0, PRIMITIVE, 0);
 
@@ -856,7 +856,7 @@ void Minimap_Draw(PlayState* play) {
 
                     if (CHECK_DUNGEON_ITEM(DUNGEON_COMPASS, mapIndex)) {
                         Minimap_DrawCompassIcons(play); // Draw icons for the player spawn and current position
-                        Gfx_SetupDL_39Overlay(play->state.gfxCtx);
+                        Gfx_SetupDL_OverlayUIDepth(play->state.gfxCtx);
                         MapMark_Draw(play);
                     }
                 }
@@ -895,7 +895,7 @@ void Minimap_Draw(PlayState* play) {
             case SCENE_LON_LON_RANCH:
             case SCENE_OUTSIDE_GANONS_CASTLE:
                 if (!R_MINIMAP_DISABLED && CVarGetInteger(CVAR_COSMETIC("HUD.Minimap.PosType"), 0) != 4) { // Not Hidden
-                    Gfx_SetupDL_39Overlay(play->state.gfxCtx);
+                    Gfx_SetupDL_OverlayUIDepth(play->state.gfxCtx);
 
                     gDPSetCombineMode(OVERLAY_DISP++, G_CC_MODULATEIA_PRIM, G_CC_MODULATEIA_PRIM);
                     gDPSetPrimColor(OVERLAY_DISP++, 0, 0, minimapColor.r, minimapColor.g, minimapColor.b,
