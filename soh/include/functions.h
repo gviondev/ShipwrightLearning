@@ -1203,6 +1203,7 @@ void Gfx_SetupDL_37Opa(GraphicsContext* gfxCtx);
 Gfx* Gfx_SetupDL_39(Gfx* gfx);
 void Gfx_SetupDL_39Opa(GraphicsContext* gfxCtx);
 void Gfx_SetupDL_39Overlay(GraphicsContext* gfxCtx);
+u16 Gfx_GetUIDepthValue(void);
 void Gfx_SetupDL_OverlayUIDepth(GraphicsContext* gfxCtx);
 void Gfx_SetupDL_39Ptr(Gfx** gfxp);
 void Gfx_SetupDL_40Opa(GraphicsContext* gfxCtx);

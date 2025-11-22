@@ -3790,14 +3790,29 @@ void func_80088B34(s16 arg0) {
     }
 }
 
-void Interface_DrawActionLabel(GraphicsContext* gfxCtx, void* texture) {
+void Interface_DrawActionLabel(GraphicsContext* gfxCtx, void* texture, bool applyUIDepth) {
     OPEN_DISPS(gfxCtx);
+
+    s32 uiDepthEnabled = applyUIDepth && CVarGetInteger(CVAR_ENHANCEMENT("UIDepth.Enabled"), 0);
+    u16 primDepth = 0;
+
+    if (uiDepthEnabled) {
+        primDepth = Gfx_GetUIDepthValue();
+
+        // Nudge the label closer to the camera than the button quad so depth writes never bury the text
+        u16 foregroundDepth = primDepth > 0x10 ? primDepth - 0x10 : 0;
+        gDPSetPrimDepth(OVERLAY_DISP++, foregroundDepth, 0);
+    }
 
     gDPLoadTextureBlock_4b(OVERLAY_DISP++, texture, G_IM_FMT_IA, DO_ACTION_TEX_WIDTH(), DO_ACTION_TEX_HEIGHT(), 0,
                            G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD,
                            G_TX_NOLOD);
 
     gSP1Quadrangle(OVERLAY_DISP++, 0, 2, 3, 1, 0);
+
+    if (uiDepthEnabled) {
+        gDPSetPrimDepth(OVERLAY_DISP++, primDepth, 0);
+    }
 
     CLOSE_DISPS(gfxCtx);
 }
@@ -3808,6 +3823,7 @@ void Interface_DrawItemButtons(PlayState* play) {
     InterfaceContext* interfaceCtx = &play->interfaceCtx;
     Player* player = GET_PLAYER(play);
     PauseContext* pauseCtx = &play->pauseCtx;
+    bool uiDepthEnabled = CVarGetInteger(CVAR_ENHANCEMENT("UIDepth.Enabled"), 0);
     s16 temp; // Used as both an alpha value and a button index
     s16 dxdy;
     s16 width;
@@ -4201,7 +4217,7 @@ void Interface_DrawItemButtons(PlayState* play) {
                          Start_BTN_Scale + (Start_BTN_Scale / 3), MTXMODE_APPLY);
             gSPMatrix(OVERLAY_DISP++, MATRIX_NEWMTX(play->state.gfxCtx), G_MTX_MODELVIEW | G_MTX_LOAD);
             gSPVertex(OVERLAY_DISP++, &interfaceCtx->actionVtx[4], 4, 0);
-            Interface_DrawActionLabel(play->state.gfxCtx, interfaceCtx->doActionSegment[2]);
+            Interface_DrawActionLabel(play->state.gfxCtx, interfaceCtx->doActionSegment[2], uiDepthEnabled);
             gDPPipeSync(OVERLAY_DISP++);
         }
     }
@@ -5133,6 +5149,7 @@ void Interface_Draw(PlayState* play) {
     s16 svar5;
     s16 svar6;
     bool fullUi = !CVarGetInteger(CVAR_ENHANCEMENT("MinimalUI"), 0) || !R_MINIMAP_DISABLED || play->pauseCtx.state != 0;
+    bool uiDepthEnabled = CVarGetInteger(CVAR_ENHANCEMENT("UIDepth.Enabled"), 0);
     // #region SOH [NTSC]
     s32 languageOffset = gSaveContext.language;
 
@@ -5500,6 +5517,32 @@ void Interface_Draw(PlayState* play) {
                 BbtnPosX = OTRGetRectDimensionFromRightEdge(R_B_LABEL_X(languageOffset) + X_Margins_BtnB_label);
                 BbtnPosY = R_B_LABEL_Y(languageOffset) + Y_Margins_BtnB_label;
             }
+            if (uiDepthEnabled) {
+                Gfx_SetupDL_OverlayUIDepth(play->state.gfxCtx);
+
+                u16 primDepth = Gfx_GetUIDepthValue();
+                u16 foregroundDepth = primDepth > 0x10 ? primDepth - 0x10 : 0;
+                gDPSetPrimDepth(OVERLAY_DISP++, foregroundDepth, 0);
+
+                gDPPipeSync(OVERLAY_DISP++);
+                gDPSetCombineLERP(OVERLAY_DISP++, PRIMITIVE, ENVIRONMENT, TEXEL0, ENVIRONMENT, TEXEL0, 0, PRIMITIVE, 0,
+                                  PRIMITIVE, ENVIRONMENT, TEXEL0, ENVIRONMENT, TEXEL0, 0, PRIMITIVE, 0);
+                gDPSetPrimColor(OVERLAY_DISP++, 0, 0, 255, 255, 255, interfaceCtx->bAlpha);
+
+                gDPLoadTextureBlock_4b(OVERLAY_DISP++, interfaceCtx->doActionSegment[1], G_IM_FMT_IA,
+                                       DO_ACTION_TEX_WIDTH(), DO_ACTION_TEX_HEIGHT(), 0, G_TX_NOMIRROR | G_TX_WRAP,
+                                       G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+
+                R_B_LABEL_DD = (1 << 10) / (WREG(37 + languageOffset) / 100.0f);
+                gSPWideTextureRectangle(OVERLAY_DISP++, BbtnPosX << 2, BbtnPosY << 2,
+                                        (BbtnPosX + DO_ACTION_TEX_WIDTH()) << 2,
+                                        (BbtnPosY + DO_ACTION_TEX_HEIGHT()) << 2, G_TX_RENDERTILE, 0, 0, R_B_LABEL_DD,
+                                        R_B_LABEL_DD);
+
+                gDPSetPrimDepth(OVERLAY_DISP++, primDepth, 0);
+                Gfx_SetupDL_42Overlay(play->state.gfxCtx);
+            }
+
             gDPPipeSync(OVERLAY_DISP++);
             gDPSetCombineLERP(OVERLAY_DISP++, PRIMITIVE, ENVIRONMENT, TEXEL0, ENVIRONMENT, TEXEL0, 0, PRIMITIVE, 0,
                               PRIMITIVE, ENVIRONMENT, TEXEL0, ENVIRONMENT, TEXEL0, 0, PRIMITIVE, 0);
@@ -5513,6 +5556,10 @@ void Interface_Draw(PlayState* play) {
             gSPWideTextureRectangle(OVERLAY_DISP++, BbtnPosX << 2, BbtnPosY << 2,
                                     (BbtnPosX + DO_ACTION_TEX_WIDTH()) << 2, (BbtnPosY + DO_ACTION_TEX_HEIGHT()) << 2,
                                     G_TX_RENDERTILE, 0, 0, R_B_LABEL_DD, R_B_LABEL_DD);
+
+            if (uiDepthEnabled) {
+                Gfx_SetupDL_OverlayUIDepth(play->state.gfxCtx);
+            }
         }
 
         gDPPipeSync(OVERLAY_DISP++);
@@ -5655,7 +5702,7 @@ void Interface_Draw(PlayState* play) {
         }
 
         // A Button
-        if (CVarGetInteger(CVAR_ENHANCEMENT("UIDepth.Enabled"), 0)) {
+        if (uiDepthEnabled) {
             Gfx_SetupDL_OverlayUIDepth(play->state.gfxCtx);
         } else {
             Gfx_SetupDL_42Overlay(play->state.gfxCtx);
@@ -5715,6 +5762,10 @@ void Interface_Draw(PlayState* play) {
         if (fullUi) {
             Interface_DrawActionButton(play, PosX_BtnA, PosY_BtnA);
         }
+        if (uiDepthEnabled) {
+            Gfx_SetupDL_42Overlay(play->state.gfxCtx);
+        }
+
         gDPPipeSync(OVERLAY_DISP++);
         gSPSetGeometryMode(OVERLAY_DISP++, G_CULL_BACK);
         gDPSetCombineLERP(OVERLAY_DISP++, PRIMITIVE, ENVIRONMENT, TEXEL0, ENVIRONMENT, TEXEL0, 0, PRIMITIVE, 0,
@@ -5727,10 +5778,20 @@ void Interface_Draw(PlayState* play) {
         gSPMatrix(OVERLAY_DISP++, MATRIX_NEWMTX(play->state.gfxCtx), G_MTX_MODELVIEW | G_MTX_LOAD);
         gSPVertex(OVERLAY_DISP++, &interfaceCtx->actionVtx[4], 4, 0);
 
-        if ((interfaceCtx->unk_1EC < 2) || (interfaceCtx->unk_1EC == 3)) {
-            Interface_DrawActionLabel(play->state.gfxCtx, interfaceCtx->doActionSegment[0]);
-        } else {
-            Interface_DrawActionLabel(play->state.gfxCtx, interfaceCtx->doActionSegment[1]);
+        void* actionLabelTexture = (interfaceCtx->unk_1EC < 2) || (interfaceCtx->unk_1EC == 3)
+                                       ? interfaceCtx->doActionSegment[0]
+                                       : interfaceCtx->doActionSegment[1];
+
+        if (uiDepthEnabled) {
+            Gfx_SetupDL_OverlayUIDepth(play->state.gfxCtx);
+            Interface_DrawActionLabel(play->state.gfxCtx, actionLabelTexture, true);
+            Gfx_SetupDL_42Overlay(play->state.gfxCtx);
+        }
+
+        Interface_DrawActionLabel(play->state.gfxCtx, actionLabelTexture, false);
+
+        if (uiDepthEnabled) {
+            Gfx_SetupDL_OverlayUIDepth(play->state.gfxCtx);
         }
 
         gDPPipeSync(OVERLAY_DISP++);

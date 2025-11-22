@@ -1208,6 +1208,10 @@ void Gfx_SetupDL_39Overlay(GraphicsContext* gfxCtx) {
     CLOSE_DISPS(gfxCtx);
 }
 
+u16 Gfx_GetUIDepthValue(void) {
+    return (u16)CLAMP(CVarGetInteger(CVAR_ENHANCEMENT("UIDepth.Value"), SOH_DEFAULT_UI_PRIM_DEPTH), 0, 0xFFFF);
+}
+
 void Gfx_SetupDL_OverlayUIDepth(GraphicsContext* gfxCtx) {
     if (!CVarGetInteger(CVAR_ENHANCEMENT("UIDepth.Enabled"), 0)) {
         Gfx_SetupDL_39Overlay(gfxCtx);
@@ -1216,8 +1220,7 @@ void Gfx_SetupDL_OverlayUIDepth(GraphicsContext* gfxCtx) {
 
     OPEN_DISPS(gfxCtx);
 
-    u16 primDepth = (u16)CLAMP(CVarGetInteger(CVAR_ENHANCEMENT("UIDepth.Value"), SOH_DEFAULT_UI_PRIM_DEPTH), 0,
-                               0xFFFF);
+    u16 primDepth = Gfx_GetUIDepthValue();
 
     gSPDisplayList(OVERLAY_DISP++, sSetupDL[SETUPDL_71]);
     gDPSetDepthSource(OVERLAY_DISP++, G_ZS_PRIM);
