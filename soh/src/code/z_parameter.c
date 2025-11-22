@@ -5655,7 +5655,11 @@ void Interface_Draw(PlayState* play) {
         }
 
         // A Button
-        Gfx_SetupDL_42Overlay(play->state.gfxCtx);
+        if (CVarGetInteger(CVAR_ENHANCEMENT("UIDepth.Enabled"), 0)) {
+            Gfx_SetupDL_OverlayUIDepth(play->state.gfxCtx);
+        } else {
+            Gfx_SetupDL_42Overlay(play->state.gfxCtx);
+        }
         s16 X_Margins_BtnA;
         s16 Y_Margins_BtnA;
         if (CVarGetInteger(CVAR_COSMETIC("HUD.AButton.UseMargins"), 0) != 0) {
