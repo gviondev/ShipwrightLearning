@@ -392,7 +392,6 @@ void HealthMeter_Draw(PlayState* play) {
     f32 temp4;
     InterfaceContext* interfaceCtx = &play->interfaceCtx;
     GraphicsContext* gfxCtx = play->state.gfxCtx;
-    Vtx* sp154 = interfaceCtx->beatingHeartVtx;
     s32 curHeartFraction = gSaveContext.health % 0x10;
     s16 totalHeartCount = gSaveContext.healthCapacity / 0x10;
     s16 fullHeartCount = gSaveContext.health / 0x10;
@@ -409,6 +408,9 @@ void HealthMeter_Draw(PlayState* play) {
     epoch++;
 
     OPEN_DISPS(gfxCtx);
+
+    // Refresh the UI depth setup each frame so live slider tweaks immediately affect the HUD and hearts consistently
+    Gfx_SetupDL_OverlayUIDepth(gfxCtx);
 
     if (!(gSaveContext.health % 0x10)) {
         fullHeartCount--;
@@ -553,81 +555,62 @@ void HealthMeter_Draw(PlayState* play) {
             if ((ddHeartCountMinusOne < 0) || (i > ddHeartCountMinusOne)) {
                 if (curCombineModeSet != 1) {
                     curCombineModeSet = 1;
-                    Gfx_SetupDL_39Overlay(gfxCtx);
+                    Gfx_SetupDL_OverlayUIDepth(gfxCtx);
                     gDPSetCombineLERP(OVERLAY_DISP++, PRIMITIVE, ENVIRONMENT, TEXEL0, ENVIRONMENT, TEXEL0, 0, PRIMITIVE,
                                       0, PRIMITIVE, ENVIRONMENT, TEXEL0, ENVIRONMENT, TEXEL0, 0, PRIMITIVE, 0);
                 }
             } else {
                 if (curCombineModeSet != 3) {
                     curCombineModeSet = 3;
-                    Gfx_SetupDL_39Overlay(gfxCtx);
+                    Gfx_SetupDL_OverlayUIDepth(gfxCtx);
                     gDPSetCombineLERP(OVERLAY_DISP++, ENVIRONMENT, PRIMITIVE, TEXEL0, PRIMITIVE, TEXEL0, 0, PRIMITIVE,
                                       0, ENVIRONMENT, PRIMITIVE, TEXEL0, PRIMITIVE, TEXEL0, 0, PRIMITIVE, 0);
                 }
             }
 
+            f32 heartScale = HeartsScale;
+
             temp3 = offsetY;
             temp2 = offsetX;
-            temp4 = 1.0f;   // Heart texture size
-            temp4 /= 0.68f; // Hearts Scaled size
-            temp4 *= 1 << 10;
-            temp1 = 8.0f;
-            temp1 *= 0.68f;
-            /*gSPWideTextureRectangle(OVERLAY_DISP++, (s32)((temp2 - temp1) * 4), (s32)((temp3 - temp1) * 4),
-                                (s32)((temp2 + temp1) * 4), (s32)((temp3 + temp1) * 4), G_TX_RENDERTILE, 0, 0,
-                                (s32)temp4, (s32)temp4);*/
-            Mtx* matrix = Graph_Alloc(gfxCtx, sizeof(Mtx));
-            Matrix_SetTranslateScaleMtx2(matrix,
-                                         HeartsScale,          // Scale X
-                                         HeartsScale,          // Scale Y
-                                         HeartsScale,          // Scale Z
-                                         -130 + offsetX,       // Pos X
-                                         (-94 + offsetY) * -1, // Pos Y
-                                         0.0f);                // Pos Z
-            gSPMatrix(OVERLAY_DISP++, matrix, G_MTX_MODELVIEW | G_MTX_LOAD);
-            gSPVertex(OVERLAY_DISP++, sp154, 4, 0);
-            gSP1Quadrangle(OVERLAY_DISP++, 0, 2, 3, 1, 0);
+            temp4 = 1.0f;      // Heart texture size
+            temp4 /= heartScale;
+            temp4 *= 1 << 10;  // Convert to fixed point for dsdx/dtdy
+            temp1 = (16.0f * heartScale) * 0.5f;
+            gSPWideTextureRectangle(OVERLAY_DISP++, (s32)((temp2 - temp1) * 4), (s32)((temp3 - temp1) * 4),
+                                    (s32)((temp2 + temp1) * 4), (s32)((temp3 + temp1) * 4), G_TX_RENDERTILE, 0, 0,
+                                    (s32)temp4, (s32)temp4);
         } else {
             if ((ddHeartCountMinusOne < 0) || (i > ddHeartCountMinusOne)) {
                 if (curCombineModeSet != 2) {
                     curCombineModeSet = 2;
-                    Gfx_SetupDL_42Overlay(gfxCtx);
+                    Gfx_SetupDL_OverlayUIDepth(gfxCtx);
                     gDPSetCombineLERP(OVERLAY_DISP++, PRIMITIVE, ENVIRONMENT, TEXEL0, ENVIRONMENT, TEXEL0, 0, PRIMITIVE,
                                       0, PRIMITIVE, ENVIRONMENT, TEXEL0, ENVIRONMENT, TEXEL0, 0, PRIMITIVE, 0);
                 }
             } else {
                 if (curCombineModeSet != 4) {
                     curCombineModeSet = 4;
-                    Gfx_SetupDL_42Overlay(gfxCtx);
+                    Gfx_SetupDL_OverlayUIDepth(gfxCtx);
                     gDPSetCombineLERP(OVERLAY_DISP++, ENVIRONMENT, PRIMITIVE, TEXEL0, PRIMITIVE, TEXEL0, 0, PRIMITIVE,
                                       0, ENVIRONMENT, PRIMITIVE, TEXEL0, PRIMITIVE, TEXEL0, 0, PRIMITIVE, 0);
                 }
             }
 
-            {
-                Mtx* matrix = Graph_Alloc(gfxCtx, sizeof(Mtx));
+            f32 heartScale = HeartsScale;
 
-                if (CVarGetInteger(CVAR_ENHANCEMENT("NoHUDHeartAnimation"), 0)) {
-                    Matrix_SetTranslateScaleMtx2(matrix,
-                                                 HeartsScale,          // Scale X
-                                                 HeartsScale,          // Scale Y
-                                                 HeartsScale,          // Scale Z
-                                                 -130 + offsetX,       // Pos X
-                                                 (-94 + offsetY) * -1, // Pos Y
-                                                 0.0f);
-                } else {
-                    Matrix_SetTranslateScaleMtx2(matrix, HeartsScale + (HeartsScale / 3) - ((HeartsScale / 3) * sp144),
-                                                 HeartsScale + (HeartsScale / 3) - ((HeartsScale / 3) * sp144),
-                                                 HeartsScale + (HeartsScale / 3) - ((HeartsScale / 3) * sp144),
-                                                 -130 + offsetX,       // Pos X
-                                                 (-94 + offsetY) * -1, // Pos Y
-                                                 0.0f);
-                }
-
-                gSPMatrix(OVERLAY_DISP++, matrix, G_MTX_MODELVIEW | G_MTX_LOAD);
-                gSPVertex(OVERLAY_DISP++, sp154, 4, 0);
-                gSP1Quadrangle(OVERLAY_DISP++, 0, 2, 3, 1, 0);
+            if (!CVarGetInteger(CVAR_ENHANCEMENT("NoHUDHeartAnimation"), 0)) {
+                heartScale = HeartsScale + (HeartsScale / 3) - ((HeartsScale / 3) * sp144);
             }
+
+            temp3 = offsetY;
+            temp2 = offsetX;
+            temp4 = 1.0f;
+            temp4 /= heartScale;
+            temp4 *= 1 << 10;
+            temp1 = (16.0f * heartScale) * 0.5f;
+            gSPWideTextureRectangle(OVERLAY_DISP++, (s32)((temp2 - temp1) * 4), (s32)((temp3 - temp1) * 4),
+                                    (s32)((temp2 + temp1) * 4), (s32)((temp3 + temp1) * 4), G_TX_RENDERTILE, 0, 0,
+                                    (s32)temp4, (s32)temp4);
         }
 
         offsetX += 10.0f;

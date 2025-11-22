@@ -3405,7 +3405,7 @@ void Interface_DrawLineupTick(PlayState* play) {
 
     OPEN_DISPS(play->state.gfxCtx);
 
-    Gfx_SetupDL_39Overlay(play->state.gfxCtx);
+    Gfx_SetupDL_OverlayUIDepth(play->state.gfxCtx);
 
     gDPSetEnvColor(OVERLAY_DISP++, 255, 255, 255, 255);
     gDPSetPrimColor(OVERLAY_DISP++, 0, 0, 255, 255, 255, 255);
@@ -3529,7 +3529,7 @@ void Interface_DrawMagicBar(PlayState* play) {
             rMagicFillX = rMagicFillX_original;
         }
 
-        Gfx_SetupDL_39Overlay(play->state.gfxCtx);
+        Gfx_SetupDL_OverlayUIDepth(play->state.gfxCtx);
 
         gDPSetPrimColor(OVERLAY_DISP++, 0, 0, sMagicBorder.r, sMagicBorder.g, sMagicBorder.b, interfaceCtx->magicAlpha);
         gDPSetEnvColor(OVERLAY_DISP++, 100, 50, 50, 255);
@@ -3693,7 +3693,7 @@ void Interface_DrawEnemyHealthBar(TargetContext* targetCtx, PlayState* play) {
             }
 
             // Setup DL for overlay disp
-            Gfx_SetupDL_39Overlay(play->state.gfxCtx);
+            Gfx_SetupDL_OverlayUIDepth(play->state.gfxCtx);
 
             Matrix_Translate(projTargetCenter.x, projTargetCenter.y - slideInOffsetY, 0, MTXMODE_NEW);
             Matrix_Scale(1.0f, scaleY, 1.0f, MTXMODE_APPLY);
@@ -5159,7 +5159,7 @@ void Interface_Draw(PlayState* play) {
             HealthMeter_Draw(play);
         }
 
-        Gfx_SetupDL_39Overlay(play->state.gfxCtx);
+        Gfx_SetupDL_OverlayUIDepth(play->state.gfxCtx);
 
         if (fullUi) {
             s16 PosX_RC;
@@ -5419,7 +5419,7 @@ void Interface_Draw(PlayState* play) {
             }
         }
 
-        Gfx_SetupDL_39Overlay(play->state.gfxCtx);
+        Gfx_SetupDL_OverlayUIDepth(play->state.gfxCtx);
 
         if (fullUi) {
             Interface_DrawItemButtons(play);
@@ -5783,7 +5783,7 @@ void Interface_Draw(PlayState* play) {
             gSP1Quadrangle(OVERLAY_DISP++, 0, 2, 3, 1, 0);
         }
 
-        Gfx_SetupDL_39Overlay(play->state.gfxCtx);
+        Gfx_SetupDL_OverlayUIDepth(play->state.gfxCtx);
 
         if ((play->pauseCtx.state == 0) && (play->pauseCtx.debugState == 0)) {
             if (gSaveContext.minigameState != 1) {

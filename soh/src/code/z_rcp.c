@@ -2,6 +2,9 @@
 #include <assert.h>
 #include "soh/OTRGlobals.h"
 
+#define SOH_DEFAULT_UI_PRIM_DEPTH 0xFFFF
+#define SOH_DEFAULT_UI_DEPTH_OFFSET 0xFFFF
+
 Gfx sSetupDL[SETUPDL_MAX][6] = {
     {
         /* SETUPDL_0 */
@@ -808,6 +811,17 @@ Gfx sSetupDL[SETUPDL_MAX][6] = {
         gsSPLoadGeometryMode(G_ZBUFFER | G_SHADE | G_FOG | G_SHADING_SMOOTH),
         gsSPEndDisplayList(),
     },
+    {
+        /* SETUPDL_71 */
+        gsDPPipeSync(),
+        gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
+        gsDPSetCombineMode(G_CC_MODULATEIA_PRIM, G_CC_MODULATEIA_PRIM),
+        gsDPSetOtherMode(G_AD_DISABLE | G_CD_MAGICSQ | G_CK_NONE | G_TC_FILT | G_TF_BILERP | G_TT_NONE | G_TL_TILE |
+                             G_TD_CLAMP | G_TP_NONE | G_CYC_1CYCLE | G_PM_NPRIMITIVE,
+                         G_AC_THRESHOLD | G_ZS_PRIM | Z_UPD | G_RM_ZB_XLU_SURF | G_RM_ZB_XLU_SURF2),
+        gsSPLoadGeometryMode(G_ZBUFFER | G_SHADE | G_SHADING_SMOOTH),
+        gsSPEndDisplayList(),
+    },
 };
 
 Gfx sFillSetupDL[] = {
@@ -1191,6 +1205,37 @@ void Gfx_SetupDL_39Overlay(GraphicsContext* gfxCtx) {
     OPEN_DISPS(gfxCtx);
 
     OVERLAY_DISP = Gfx_SetupDL_39(OVERLAY_DISP);
+
+    CLOSE_DISPS(gfxCtx);
+}
+
+void Gfx_SetupDL_OverlayUIDepth(GraphicsContext* gfxCtx) {
+    if (!CVarGetInteger(CVAR_ENHANCEMENT("UIDepth.Enabled"), 0)) {
+        Gfx_SetupDL_39Overlay(gfxCtx);
+        return;
+    }
+
+    OPEN_DISPS(gfxCtx);
+
+    s32 configuredDepth = CVarGetInteger(CVAR_ENHANCEMENT("UIDepth.Value"), SOH_DEFAULT_UI_PRIM_DEPTH);
+    s32 configuredOffset = CVarGetInteger(CVAR_ENHANCEMENT("UIDepth.Offset"), SOH_DEFAULT_UI_DEPTH_OFFSET);
+    u16 primDepth = (u16)CLAMP(configuredDepth, 0, 0xFFFF);
+    u16 primDepthOffset = (u16)CLAMP(configuredOffset, 0, 0xFFFF);
+
+    if (primDepth > primDepthOffset) {
+        primDepth -= primDepthOffset;
+    } else {
+        primDepth = 0;
+    }
+
+    // Start from the stock overlay setup so icon rendering keeps the expected blend/texture state, then layer depth
+    // writes on top so UI elements like the heart meter don't get occluded by nearby world geometry.
+    OVERLAY_DISP = Gfx_SetupDL_39(OVERLAY_DISP);
+
+    gSPSetGeometryMode(OVERLAY_DISP++, G_ZBUFFER);
+    gDPSetRenderMode(OVERLAY_DISP++, G_RM_ZB_XLU_SURF, G_RM_ZB_XLU_SURF2);
+    gDPSetDepthSource(OVERLAY_DISP++, G_ZS_PRIM);
+    gDPSetPrimDepth(OVERLAY_DISP++, primDepth, 0);
 
     CLOSE_DISPS(gfxCtx);
 }

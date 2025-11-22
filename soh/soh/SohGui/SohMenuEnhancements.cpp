@@ -136,6 +136,9 @@ static const std::unordered_map<int32_t, const char*> mirroredWorldModes = {
     { MIRRORED_WORLD_DUNGEONS_RANDOM_SEEDED, "Dungeons Random (Seeded)" },
 };
 
+static constexpr int32_t kDefaultUIDepth = 0xFFFF;
+static constexpr int32_t kDefaultUIDepthOffset = 0xFFFF;
+
 static const std::unordered_map<int32_t, const char*> enemyRandomizerModes = {
     { ENEMY_RANDOMIZER_OFF, "Disabled" },
     { ENEMY_RANDOMIZER_RANDOM, "Random" },
@@ -643,6 +646,34 @@ void SohMenu::AddMenuEnhancements() {
         .Options(CheckboxOptions().Tooltip(
             "Disables Black Bar Letterboxes during cutscenes and Z-Targeting. NOTE: There may be minor visual "
             "glitches that were covered up by the black bars. Please disable this setting before reporting a bug."));
+    AddWidget(path, "UI Depth Override (ReShade)", WIDGET_CVAR_CHECKBOX)
+        .CVar(CVAR_ENHANCEMENT("UIDepth.Enabled"))
+        .RaceDisable(false)
+        .Options(CheckboxOptions().Tooltip(
+            "Writes all in-game UI to a configurable depth value so depth-based post-processing tools (like ReShade) "
+            "can ignore it."));
+    AddWidget(path, "UI Depth Value", WIDGET_CVAR_SLIDER_INT)
+        .CVar(CVAR_ENHANCEMENT("UIDepth.Value"))
+        .RaceDisable(false)
+        .PreFunc([](WidgetInfo& info) { info.options->disabled = !CVarGetInteger(CVAR_ENHANCEMENT("UIDepth.Enabled"), 0); })
+        .Options(IntSliderOptions()
+                    .Min(0)
+                    .Max(0xFFFF)
+                    .DefaultValue(kDefaultUIDepth)
+                    .Format("0x%04X")
+                    .Tooltip("Depth value stamped into the UI when the override is enabled."
+                             " Default is 0xFFFF."));
+    AddWidget(path, "UI Depth Offset", WIDGET_CVAR_SLIDER_INT)
+        .CVar(CVAR_ENHANCEMENT("UIDepth.Offset"))
+        .RaceDisable(false)
+        .PreFunc([](WidgetInfo& info) { info.options->disabled = !CVarGetInteger(CVAR_ENHANCEMENT("UIDepth.Enabled"), 0); })
+        .Options(IntSliderOptions()
+                    .Min(0)
+                    .Max(0xFFFF)
+                    .DefaultValue(kDefaultUIDepthOffset)
+                    .Format("0x%04X")
+                    .Tooltip("Subtract this amount from the UI depth value to push the HUD closer to the camera and"
+                             " avoid clipping into nearby geometry."));
     AddWidget(path, "Dynamic Wallet Icon", WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR_ENHANCEMENT("DynamicWalletIcon"))
         .RaceDisable(false)

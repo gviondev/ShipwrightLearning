@@ -71,6 +71,15 @@ Congratulations, you are now sailing with the Ship of Harkinian! Have fun!
 | Tab | Toggle Alternate assets |
 | Ctrl+R | Reset |
 
+### UI depth override for ReShade
+
+If you use depth-based post-processing (such as depth of field or ambient occlusion in ReShade), enable the "UI Depth Override (ReShade)" option in the **Enhancements → UI** menu. When toggled on, all HUD and pause UI write a constant depth value (default `0xFFFF`) with a matching offset (`0xFFFF` by default) applied to pull the stamped depth all the way to the near plane so nearby walls do not occlude it. Adjust the depth value and offset to tune how aggressively the HUD is excluded from depth-based shaders.
+
+Quick test checklist:
+* Enable the UI depth override and leave the default depth and offset values (effective UI depth of `0x0000`).
+* Enable a depth-based effect in ReShade and confirm HUD elements no longer pollute the depth buffer.
+* Toggle the override back off if you want to return to vanilla UI rendering.
+
 # Project Overview
 Ship of Harkinian (SOH) is built atop a custom library dubbed libultraship (LUS). Back in the N64 days, there was an SDK distributed to developers named libultra; LUS is designed to mimic the functionality of libultra on modern hardware. In addition, we are dependant on the source code provided by the OOT decompilation project.
 
