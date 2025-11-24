@@ -4,6 +4,7 @@
 #include "soh/resource/type/Scene.h"
 #include <ship/utils/StringHelper.h>
 #include "soh/Enhancements/game-interactor/GameInteractor_Hooks.h"
+#include "soh/telemetry/ExternalTelemetry.h"
 #include "global.h"
 #include "vt.h"
 #include <fast/resource/type/Vertex.h>
@@ -25,6 +26,7 @@ extern "C" void OTRPlay_SpawnScene(PlayState* play, s32 sceneId, s32 spawn) {
     scene->unk_13 = 0;
     play->loadedScene = scene;
     play->sceneNum = sceneId;
+    ExternalTelemetry_SetSceneId(static_cast<uint32_t>(sceneId));
     play->sceneConfig = scene->config;
 
     // osSyncPrintf("\nSCENE SIZE %fK\n", (scene->sceneFile.vromEnd - scene->sceneFile.vromStart) / 1024.0f);
