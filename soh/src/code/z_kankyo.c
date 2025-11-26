@@ -8,6 +8,7 @@
 #include "soh/ResourceManagerHelpers.h"
 #include "soh/Enhancements/game-interactor/GameInteractor.h"
 #include "soh/Enhancements/game-interactor/GameInteractor_Hooks.h"
+#include "soh/telemetry/ExternalTelemetry.h"
 
 typedef enum {
     /* 0 */ LENS_FLARE_CIRCLE0,
@@ -889,6 +890,7 @@ void Environment_Update(PlayState* play, EnvironmentContext* envCtx, LightContex
     u16 time;
     EnvLightSettings* lightSettingsList = play->envCtx.lightSettingsList;
     s32 adjustment;
+    u16 previousDayTime = gSaveContext.dayTime;
 
     if ((((void)0, gSaveContext.gameMode) != GAMEMODE_NORMAL) &&
         (((void)0, gSaveContext.gameMode) != GAMEMODE_END_CREDITS)) {
@@ -940,6 +942,10 @@ void Environment_Update(PlayState* play, EnvironmentContext* envCtx, LightContex
              ((void)0, gSaveContext.dayTime) > gSaveContext.skyboxTime) ||
             (((void)0, gSaveContext.dayTime) < 0xAAB || gTimeIncrement < 0)) {
             gSaveContext.skyboxTime = ((void)0, gSaveContext.dayTime);
+        }
+
+        if (gSaveContext.dayTime != previousDayTime) {
+            ExternalTelemetry_SetDayTime(gSaveContext.dayTime);
         }
 
         time = gSaveContext.dayTime;
