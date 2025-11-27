@@ -4,6 +4,110 @@
 #include "soh/Enhancements/game-interactor/GameInteractor.h"
 #include <assert.h>
 
+#define CVAR_PLAYER_DAMAGE_PERCENT_NAME CVAR_ENHANCEMENT("PlayerDamageDealtPercent")
+#define PLAYER_DAMAGE_PERCENT_DEFAULT 100.0f
+#define PLAYER_DAMAGE_PERCENT_MIN 0.0f
+#define PLAYER_DAMAGE_PERCENT_MAX 5000.0f
+#define PLAYER_DAMAGE_REMAINDER_CAPACITY 128
+
+typedef struct {
+    Actor* actor;
+    f32 fractionalDamage;
+} PlayerDamageRemainderEntry;
+
+static PlayerDamageRemainderEntry sPlayerDamageRemainders[PLAYER_DAMAGE_REMAINDER_CAPACITY];
+
+static f32 CollisionCheck_GetPlayerDamagePercent(void) {
+    f32 percent = CVarGetFloat(CVAR_PLAYER_DAMAGE_PERCENT_NAME, PLAYER_DAMAGE_PERCENT_DEFAULT);
+    f32 clampedPercent = percent;
+
+    if (clampedPercent < PLAYER_DAMAGE_PERCENT_MIN) {
+        clampedPercent = PLAYER_DAMAGE_PERCENT_MIN;
+    } else if (clampedPercent > PLAYER_DAMAGE_PERCENT_MAX) {
+        clampedPercent = PLAYER_DAMAGE_PERCENT_MAX;
+    }
+
+    if (percent != clampedPercent) {
+        percent = clampedPercent;
+        CVarSetFloat(CVAR_PLAYER_DAMAGE_PERCENT_NAME, clampedPercent);
+    }
+
+    return percent;
+}
+
+static void CollisionCheck_ClearPlayerDamageRemainder(Actor* actor) {
+    for (s32 i = 0; i < PLAYER_DAMAGE_REMAINDER_CAPACITY; i++) {
+        if (sPlayerDamageRemainders[i].actor == actor) {
+            sPlayerDamageRemainders[i].actor = NULL;
+            sPlayerDamageRemainders[i].fractionalDamage = 0.0f;
+            return;
+        }
+    }
+}
+
+static PlayerDamageRemainderEntry* CollisionCheck_GetPlayerDamageRemainderEntry(Actor* actor) {
+    PlayerDamageRemainderEntry* freeEntry = NULL;
+
+    for (s32 i = 0; i < PLAYER_DAMAGE_REMAINDER_CAPACITY; i++) {
+        PlayerDamageRemainderEntry* entry = &sPlayerDamageRemainders[i];
+
+        if (entry->actor == actor) {
+            return entry;
+        }
+
+        if ((entry->actor == NULL) || (entry->actor->colChkInfo.health == 0)) {
+            if (freeEntry == NULL) {
+                freeEntry = entry;
+            }
+        }
+    }
+
+    if (freeEntry != NULL) {
+        freeEntry->actor = actor;
+        freeEntry->fractionalDamage = 0.0f;
+    }
+
+    return freeEntry;
+}
+
+static f32 CollisionCheck_ApplyPlayerDamageScaling(f32 damage, Actor* targetActor) {
+    f32 percent = CollisionCheck_GetPlayerDamagePercent();
+
+    if ((percent == 100.0f) || (targetActor == NULL)) {
+        if (targetActor != NULL) {
+            CollisionCheck_ClearPlayerDamageRemainder(targetActor);
+        }
+        return damage;
+    }
+
+    f32 scaledDamage = damage * percent / 100.0f;
+
+    if (scaledDamage <= 0.0f) {
+        if (targetActor != NULL) {
+            CollisionCheck_ClearPlayerDamageRemainder(targetActor);
+        }
+        return 0.0f;
+    }
+
+    f32 integerDamage = floorf(scaledDamage);
+    f32 fractionalDamage = scaledDamage - integerDamage;
+
+    PlayerDamageRemainderEntry* remainderEntry = CollisionCheck_GetPlayerDamageRemainderEntry(targetActor);
+
+    if (remainderEntry != NULL) {
+        remainderEntry->fractionalDamage += fractionalDamage;
+
+        if (remainderEntry->fractionalDamage >= 1.0f) {
+            integerDamage += 1.0f;
+            remainderEntry->fractionalDamage -= 1.0f;
+        }
+    } else {
+        integerDamage = roundf(scaledDamage);
+    }
+
+    return integerDamage;
+}
+
 typedef s32 (*ColChkResetFunc)(PlayState*, Collider*);
 typedef void (*ColChkBloodFunc)(PlayState*, Collider*, Vec3f*);
 typedef void (*ColChkApplyFunc)(PlayState*, CollisionCheckContext*, Collider*);
@@ -2995,6 +3099,7 @@ void CollisionCheck_ApplyDamage(PlayState* play, CollisionCheckContext* colChkCt
                                 ColliderInfo* info) {
     DamageTable* tbl;
     f32 damage;
+    Actor* attacker = NULL;
 
     if (collider->actor == NULL || !(collider->acFlags & AC_HIT)) {
         return;
@@ -3023,6 +3128,19 @@ void CollisionCheck_ApplyDamage(PlayState* play, CollisionCheckContext* colChkCt
         damage = tbl->table[i] & 0xF;
         collider->actor->colChkInfo.damageEffect = tbl->table[i] >> 4 & 0xF;
     }
+
+    if (info->acHit != NULL) {
+        attacker = info->acHit->actor;
+    }
+
+    if (attacker != NULL) {
+        Actor* playerActor = &GET_PLAYER(play)->actor;
+
+        if (attacker == playerActor || attacker->parent == playerActor) {
+            damage = CollisionCheck_ApplyPlayerDamageScaling(damage, collider->actor);
+        }
+    }
+
     if (!(collider->acFlags & AC_HARD)) {
         collider->actor->colChkInfo.damage += damage;
     }

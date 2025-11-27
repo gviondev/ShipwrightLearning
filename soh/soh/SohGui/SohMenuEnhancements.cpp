@@ -1197,6 +1197,17 @@ void SohMenu::AddMenuEnhancements() {
             CVarSave();
         }
     };
+    AddWidget(path, "Damage Dealt (%)", WIDGET_CVAR_INPUT)
+        .CVar(CVAR_ENHANCEMENT("PlayerDamageDealtPercent"))
+        .Options(InputOptions()
+                     .InputType(InputTypes::Float)
+                     .DefaultValue("100")
+                     .PlaceholderText("0 - 5000")
+                     .Tooltip("Modifies all damage Link deals, including swords, projectiles, and explosives.\n"
+                              "Accepts decimal percentages for fine tuning (e.g., 110.5).\n"
+                              "100%: Vanilla damage."))
+        .Callback(
+            [clampDamagePercent](WidgetInfo& info) { clampDamagePercent(CVAR_ENHANCEMENT("PlayerDamageDealtPercent")); });
     AddWidget(path, "Damage Taken (%)", WIDGET_CVAR_INPUT)
         .CVar(CVAR_ENHANCEMENT("DamagePercent"))
         .Options(InputOptions()
