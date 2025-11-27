@@ -7,7 +7,9 @@
 #include <random>
 #include <math.h>
 #include <unordered_map>
+#include <cstdlib>
 #include <libultraship/libultra/types.h>
+#include <ship/utils/StringHelper.h>
 #include <spdlog/fmt/fmt.h>
 
 namespace UIWidgets {
@@ -866,10 +868,69 @@ bool InputInt(const char* label, int32_t* value, const InputOptions& options) {
 
 bool CVarInputInt(const char* label, const char* cvarName, const InputOptions& options) {
     bool dirty = false;
-    int32_t defaultValue = std::stoi(options.defaultValue);
+    int32_t defaultValue = options.defaultValue.empty() ? 0 : std::stoi(options.defaultValue);
     int32_t value = CVarGetInteger(cvarName, defaultValue);
     if (InputInt(label, &value, options)) {
         CVarSetInteger(cvarName, value);
+        Ship::Context::GetInstance()->GetWindow()->GetGui()->SaveConsoleVariablesNextFrame();
+        ShipInit::Init(cvarName);
+        dirty = true;
+    }
+    return dirty;
+}
+
+bool InputFloat(const char* label, float* value, const InputOptions& options) {
+    bool dirty = false;
+    ImGui::PushID(label);
+    ImGui::BeginGroup();
+    ImGui::BeginDisabled(options.disabled);
+    PushStyleInput(options.color);
+    float width = (options.size == ImVec2(0, 0)) ? ImGui::GetContentRegionAvail().x : options.size.x;
+    if (options.alignment == ComponentAlignments::Left) {
+        if (options.labelPosition == LabelPositions::Above) {
+            ImGui::Text(label, *value);
+        }
+    } else if (options.alignment == ComponentAlignments::Right) {
+        if (options.labelPosition == LabelPositions::Above) {
+            ImGui::NewLine();
+            ImGui::SameLine(width - ImGui::CalcTextSize(label).x);
+            ImGui::Text(label, *value);
+        }
+    }
+    ImGui::SetNextItemWidth(width);
+    if (ImGui::InputScalar(label, ImGuiDataType_Float, value, nullptr, nullptr, nullptr, options.addedFlags)) {
+        dirty = true;
+    }
+    if ((ImGui::GetItemStatusFlags() & ImGuiItemStatusFlags_Edited) && !options.placeholder.empty()) {
+        ImGui::SameLine(17.0f);
+        ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 0.4f), "%s", options.placeholder.c_str());
+    }
+    PopStyleInput();
+    ImGui::EndDisabled();
+    ImGui::EndGroup();
+    if (options.disabled && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) &&
+        !Ship_IsCStringEmpty(options.disabledTooltip)) {
+        ImGui::SetTooltip("%s", WrappedText(options.disabledTooltip).c_str());
+    } else if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) && !Ship_IsCStringEmpty(options.tooltip)) {
+        ImGui::SetTooltip("%s", WrappedText(options.tooltip).c_str());
+    }
+    ImGui::PopID();
+    return dirty;
+}
+
+bool CVarInputFloat(const char* label, const char* cvarName, const InputOptions& options) {
+    bool dirty = false;
+    float defaultValue = 0.0f;
+    if (!options.defaultValue.empty()) {
+        char* endPtr = nullptr;
+        defaultValue = std::strtof(options.defaultValue.c_str(), &endPtr);
+        if (endPtr == options.defaultValue.c_str()) {
+            defaultValue = 0.0f;
+        }
+    }
+    float value = CVarGetFloat(cvarName, defaultValue);
+    if (InputFloat(label, &value, options)) {
+        CVarSetFloat(cvarName, value);
         Ship::Context::GetInstance()->GetWindow()->GetGui()->SaveConsoleVariablesNextFrame();
         ShipInit::Init(cvarName);
         dirty = true;

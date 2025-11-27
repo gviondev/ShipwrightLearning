@@ -72,7 +72,7 @@ enum Colors {
     NoColor
 };
 
-enum InputTypes { String, Scalar };
+enum InputTypes { String, Int, Float };
 
 const std::unordered_map<Colors, ImVec4> ColorValues = {
     { Colors::Pink, ImVec4(0.87f, 0.3f, 0.87f, 1.0f) },     { Colors::Red, ImVec4(0.55f, 0.0f, 0.0f, 1.0f) },
@@ -1033,6 +1033,8 @@ bool InputString(const char* label, std::string* value, const InputOptions& opti
 bool CVarInputString(const char* label, const char* cvarName, const InputOptions& options = {});
 bool InputInt(const char* label, int32_t* value, const InputOptions& options = {});
 bool CVarInputInt(const char* label, const char* cvarName, const InputOptions& options = {});
+bool InputFloat(const char* label, float* value, const InputOptions& options = {});
+bool CVarInputFloat(const char* label, const char* cvarName, const InputOptions& options = {});
 bool CVarColorPicker(const char* label, const char* cvarName, Color_RGBA8 defaultColor, bool hasAlpha = false,
                      uint8_t modifiers = 0, UIWidgets::Colors themeColor = UIWidgets::Colors::LightBlue);
 bool RadioButton(const char* label, bool active);

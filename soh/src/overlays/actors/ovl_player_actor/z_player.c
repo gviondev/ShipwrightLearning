@@ -38,6 +38,41 @@
 #include <stdlib.h>
 #include <assert.h>
 
+#define CVAR_DAMAGE_PERCENT_NAME CVAR_ENHANCEMENT("DamagePercent")
+#define CVAR_FALL_DAMAGE_PERCENT_NAME CVAR_ENHANCEMENT("FallDamagePercent")
+#define CVAR_VOID_DAMAGE_PERCENT_NAME CVAR_ENHANCEMENT("VoidDamagePercent")
+#define DAMAGE_PERCENT_DEFAULT 100.0f
+#define DAMAGE_PERCENT_MIN 0.0f
+#define DAMAGE_PERCENT_MAX 5000.0f
+
+static f32 Player_GetDamagePercent(const char* cvarName) {
+    f32 percent = CVarGetFloat(cvarName, DAMAGE_PERCENT_DEFAULT);
+    f32 clampedPercent = percent;
+
+    if (clampedPercent < DAMAGE_PERCENT_MIN) {
+        clampedPercent = DAMAGE_PERCENT_MIN;
+    } else if (clampedPercent > DAMAGE_PERCENT_MAX) {
+        clampedPercent = DAMAGE_PERCENT_MAX;
+    }
+
+    if (percent != clampedPercent) {
+        percent = clampedPercent;
+        CVarSetFloat(cvarName, clampedPercent);
+    }
+
+    return percent;
+}
+
+static s32 Player_ApplyPercentScaling(s32 value, const char* cvarName) {
+    f32 percent = Player_GetDamagePercent(cvarName);
+
+    if (percent == 100.0f) {
+        return value;
+    }
+
+    return (s32)((f32)value * percent / 100.0f);
+}
+
 // Some player animations are played at this reduced speed, for reasons yet unclear.
 // This is called "adjusted" for now.
 #define PLAYER_ANIM_ADJUSTED_SPEED (2.0f / 3.0f)
@@ -4502,7 +4537,7 @@ s32 func_80837B18_modified(PlayState* play, Player* this, s32 damage, u8 modifie
 
     s32 modifiedDamage = damage;
     if (modified) {
-        modifiedDamage *= (1 << CVarGetInteger(CVAR_ENHANCEMENT("DamageMult"), 0));
+        modifiedDamage = Player_ApplyPercentScaling(modifiedDamage, CVAR_DAMAGE_PERCENT_NAME);
     }
 
     return Health_ChangeBy(play, modifiedDamage);
@@ -4730,8 +4765,7 @@ s32 func_808382DC(Player* this, PlayState* play) {
 
     if (this->unk_A86 != 0) {
         if (!Player_InBlockingCsMode(play, this)) {
-            Player_InflictDamageModified(play, -16 * (1 << CVarGetInteger(CVAR_ENHANCEMENT("VoidDamageMult"), 0)),
-                                         false);
+            Player_InflictDamageModified(play, -Player_ApplyPercentScaling(16, CVAR_VOID_DAMAGE_PERCENT_NAME), false);
             this->unk_A86 = 0;
         }
     } else {
@@ -9602,8 +9636,8 @@ s32 func_80843E64(PlayState* play, Player* this) {
 
         impactInfo = &D_80854600[impactIndex];
 
-        if (Player_InflictDamageModified(
-                play, impactInfo->damage * (1 << CVarGetInteger(CVAR_ENHANCEMENT("FallDamageMult"), 0)), false)) {
+        if (Player_InflictDamageModified(play, Player_ApplyPercentScaling(impactInfo->damage, CVAR_FALL_DAMAGE_PERCENT_NAME),
+                                         false)) {
             return -1;
         }
 

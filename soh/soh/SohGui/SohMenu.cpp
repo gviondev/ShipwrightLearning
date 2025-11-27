@@ -49,6 +49,10 @@ WidgetInfo& SohMenu::AddWidget(WidgetPath& pathInfo, std::string widgetName, Wid
         case WIDGET_CVAR_SLIDER_INT:
             widget.options = std::make_shared<IntSliderOptions>();
             break;
+        case WIDGET_INPUT:
+        case WIDGET_CVAR_INPUT:
+            widget.options = std::make_shared<InputOptions>();
+            break;
         case WIDGET_COMBOBOX:
         case WIDGET_CVAR_COMBOBOX:
         case WIDGET_AUDIO_BACKEND:

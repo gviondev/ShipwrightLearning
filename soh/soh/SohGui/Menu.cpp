@@ -463,6 +463,28 @@ void Menu::MenuDrawItem(WidgetInfo& widget, uint32_t width, UIWidgets::Colors me
                     }
                 }
             } break;
+            case WIDGET_CVAR_INPUT: {
+                auto options = std::static_pointer_cast<UIWidgets::InputOptions>(widget.options);
+                options->color = menuThemeIndex;
+                bool dirty = false;
+
+                switch (options->type) {
+                    case UIWidgets::InputTypes::Int:
+                        dirty = UIWidgets::CVarInputInt(widget.name.c_str(), widget.cVar, *options);
+                        break;
+                    case UIWidgets::InputTypes::Float:
+                        dirty = UIWidgets::CVarInputFloat(widget.name.c_str(), widget.cVar, *options);
+                        break;
+                    case UIWidgets::InputTypes::String:
+                    default:
+                        dirty = UIWidgets::CVarInputString(widget.name.c_str(), widget.cVar, *options);
+                        break;
+                }
+
+                if (dirty && widget.callback != nullptr) {
+                    widget.callback(widget);
+                }
+            } break;
             case WIDGET_BUTTON: {
                 auto options = std::static_pointer_cast<UIWidgets::ButtonOptions>(widget.options);
                 options->color = menuThemeIndex;

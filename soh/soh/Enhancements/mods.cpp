@@ -8,6 +8,9 @@
 #include <soh/Enhancements/item-tables/ItemTableManager.h>
 #include "soh/Enhancements/timesaver_hook_handlers.h"
 #include "soh/Enhancements/randomizer/hook_handlers.h"
+#include <algorithm>
+#include <cmath>
+#include <unordered_map>
 
 #include "src/overlays/actors/ovl_En_Bb/z_en_bb.h"
 #include "src/overlays/actors/ovl_En_Dekubaba/z_en_dekubaba.h"
@@ -143,6 +146,40 @@ bool IsHyperBossesActive() {
             gSaveContext.ship.quest.data.bossRush.options[BR_OPTIONS_HYPERBOSSES] == BR_CHOICE_HYPERBOSSES_YES);
 }
 
+namespace {
+std::unordered_map<Actor*, float> sFractionalBossUpdates;
+std::unordered_map<Actor*, float> sFractionalEnemyUpdates;
+
+int32_t GetHyperSpeedIncreasePercent() {
+    int32_t speedIncreasePercent = CVarGetInteger(CVAR_ENHANCEMENT("HyperEnemySpeedIncreasePercent"), 100);
+
+    speedIncreasePercent = std::clamp(speedIncreasePercent, 0, 400);
+
+    return speedIncreasePercent;
+}
+
+int32_t CalculateAdditionalHyperUpdates(int32_t speedIncreasePercent, Actor* actor,
+                                        std::unordered_map<Actor*, float>& fractionalUpdates) {
+    if (speedIncreasePercent <= 0) {
+        return 0;
+    }
+
+    const float extraUpdatesPerFrame = static_cast<float>(speedIncreasePercent) / 100.0f;
+    int32_t wholeExtraUpdates = static_cast<int32_t>(std::floor(extraUpdatesPerFrame));
+    float& actorAccumulator = fractionalUpdates[actor];
+
+    actorAccumulator += extraUpdatesPerFrame - static_cast<float>(wholeExtraUpdates);
+
+    if (actorAccumulator >= 1.0f) {
+        const int32_t fractionalCarry = static_cast<int32_t>(actorAccumulator);
+        wholeExtraUpdates += fractionalCarry;
+        actorAccumulator -= static_cast<float>(fractionalCarry);
+    }
+
+    return wholeExtraUpdates;
+}
+} // namespace
+
 void UpdateHyperBossesState() {
     static uint32_t actorUpdateHookId = 0;
     if (actorUpdateHookId != 0) {
@@ -150,10 +187,14 @@ void UpdateHyperBossesState() {
         actorUpdateHookId = 0;
     }
 
-    if (IsHyperBossesActive()) {
+    sFractionalBossUpdates.clear();
+
+    int32_t speedIncreasePercent = GetHyperSpeedIncreasePercent();
+
+    if (IsHyperBossesActive() && speedIncreasePercent > 0) {
         actorUpdateHookId =
             GameInteractor::Instance->RegisterGameHook<GameInteractor::OnActorUpdate>([](void* refActor) {
-                // Run the update function a second time to make bosses move and act twice as fast.
+                // Run the update function multiple times to make bosses move and act faster.
 
                 Player* player = GET_PLAYER(gPlayState);
                 Actor* actor = static_cast<Actor*>(refActor);
@@ -174,20 +215,30 @@ void UpdateHyperBossesState() {
                                       actor->id == ACTOR_BOSS_GANON || // Ganondorf
                                       actor->id == ACTOR_BOSS_GANON2;  // Ganon
 
+                int32_t speedIncreasePercent = GetHyperSpeedIncreasePercent();
+
                 // Don't apply during cutscenes because it causes weird behaviour and/or crashes on some bosses.
-                if (IsHyperBossesActive() && isBossActor && !Player_InBlockingCsMode(gPlayState, player)) {
+                if (IsHyperBossesActive() && speedIncreasePercent > 0 && isBossActor &&
+                    !Player_InBlockingCsMode(gPlayState, player)) {
+                    const int32_t additionalUpdates =
+                        CalculateAdditionalHyperUpdates(speedIncreasePercent, actor, sFractionalBossUpdates);
+
                     // Barinade needs to be updated in sequence to avoid unintended behaviour.
                     if (actor->id == ACTOR_BOSS_VA) {
                         // params -1 is BOSSVA_BODY
                         if (actor->params == -1) {
                             Actor* actorList = gPlayState->actorCtx.actorLists[ACTORCAT_BOSS].head;
                             while (actorList != NULL) {
-                                GameInteractor::RawAction::UpdateActor(actorList);
+                                for (int32_t i = 0; i < additionalUpdates; ++i) {
+                                    GameInteractor::RawAction::UpdateActor(actorList);
+                                }
                                 actorList = actorList->next;
                             }
                         }
                     } else {
-                        GameInteractor::RawAction::UpdateActor(actor);
+                        for (int32_t i = 0; i < additionalUpdates; ++i) {
+                            GameInteractor::RawAction::UpdateActor(actor);
+                        }
                     }
                 }
             });
@@ -207,10 +258,14 @@ void UpdateHyperEnemiesState() {
         actorUpdateHookId = 0;
     }
 
-    if (CVarGetInteger(CVAR_ENHANCEMENT("HyperEnemies"), 0)) {
+    sFractionalEnemyUpdates.clear();
+
+    int32_t speedIncreasePercent = GetHyperSpeedIncreasePercent();
+
+    if (CVarGetInteger(CVAR_ENHANCEMENT("HyperEnemies"), 0) && speedIncreasePercent > 0) {
         actorUpdateHookId =
             GameInteractor::Instance->RegisterGameHook<GameInteractor::OnActorUpdate>([](void* refActor) {
-                // Run the update function a second time to make enemies and minibosses move and act twice as fast.
+                // Run the update function multiple times to make enemies and minibosses move and act faster.
 
                 Player* player = GET_PLAYER(gPlayState);
                 Actor* actor = static_cast<Actor*>(refActor);
@@ -219,10 +274,17 @@ void UpdateHyperEnemiesState() {
                 bool isEnemy = actor->category == ACTORCAT_ENEMY || actor->id == ACTOR_EN_TORCH2;
                 bool isExcludedEnemy = actor->id == ACTOR_EN_FIRE_ROCK || actor->id == ACTOR_EN_ENCOUNT2;
 
+                int32_t speedIncreasePercent = GetHyperSpeedIncreasePercent();
+
                 // Don't apply during cutscenes because it causes weird behaviour and/or crashes on some cutscenes.
-                if (CVarGetInteger(CVAR_ENHANCEMENT("HyperEnemies"), 0) && isEnemy && !isExcludedEnemy &&
-                    !Player_InBlockingCsMode(gPlayState, player)) {
-                    GameInteractor::RawAction::UpdateActor(actor);
+                if (CVarGetInteger(CVAR_ENHANCEMENT("HyperEnemies"), 0) && speedIncreasePercent > 0 && isEnemy &&
+                    !isExcludedEnemy && !Player_InBlockingCsMode(gPlayState, player)) {
+                    const int32_t additionalUpdates =
+                        CalculateAdditionalHyperUpdates(speedIncreasePercent, actor, sFractionalEnemyUpdates);
+
+                    for (int32_t i = 0; i < additionalUpdates; ++i) {
+                        GameInteractor::RawAction::UpdateActor(actor);
+                    }
                 }
             });
     }
