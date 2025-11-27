@@ -149,13 +149,54 @@ bool IsHyperBossesActive() {
 namespace {
 std::unordered_map<Actor*, float> sFractionalBossUpdates;
 std::unordered_map<Actor*, float> sFractionalEnemyUpdates;
+std::unordered_map<Actor*, int32_t> sActorMaxHealth;
 
-int32_t GetHyperSpeedIncreasePercent() {
+int32_t GetBaseHyperSpeedIncreasePercent() {
     int32_t speedIncreasePercent = CVarGetInteger(CVAR_ENHANCEMENT("HyperEnemySpeedIncreasePercent"), 100);
 
     speedIncreasePercent = std::clamp(speedIncreasePercent, 0, 400);
 
     return speedIncreasePercent;
+}
+
+int32_t GetZeroHealthHyperSpeedIncreasePercent() {
+    int32_t speedIncreasePercent = CVarGetInteger(CVAR_ENHANCEMENT("HyperEnemySpeedAtZeroHealthPercent"), 100);
+
+    speedIncreasePercent = std::clamp(speedIncreasePercent, -100, 400);
+
+    return speedIncreasePercent;
+}
+
+float GetActorHealthRatio(Actor* actor) {
+    if (actor == nullptr) {
+        return 1.0f;
+    }
+
+    int32_t currentHealth = std::max<int32_t>(actor->colChkInfo.health, 0);
+    int32_t& maxHealth = sActorMaxHealth[actor];
+
+    if (maxHealth == 0 || currentHealth > maxHealth) {
+        maxHealth = std::max(currentHealth, 1);
+    }
+
+    if (maxHealth <= 0) {
+        return 1.0f;
+    }
+
+    const float healthRatio = static_cast<float>(currentHealth) / static_cast<float>(maxHealth);
+
+    return std::clamp(healthRatio, 0.0f, 1.0f);
+}
+
+int32_t GetActorHyperSpeedIncreasePercent(Actor* actor) {
+    const int32_t baseSpeedPercent = GetBaseHyperSpeedIncreasePercent();
+    const int32_t zeroHealthSpeedPercent = GetZeroHealthHyperSpeedIncreasePercent();
+
+    const float missingHealthRatio = 1.0f - GetActorHealthRatio(actor);
+    const float lerpedSpeed = static_cast<float>(baseSpeedPercent) +
+                              (static_cast<float>(zeroHealthSpeedPercent - baseSpeedPercent) * missingHealthRatio);
+
+    return std::clamp(static_cast<int32_t>(std::round(lerpedSpeed)), -100, 400);
 }
 
 int32_t CalculateAdditionalHyperUpdates(int32_t speedIncreasePercent, Actor* actor,
@@ -188,10 +229,12 @@ void UpdateHyperBossesState() {
     }
 
     sFractionalBossUpdates.clear();
+    sActorMaxHealth.clear();
 
-    int32_t speedIncreasePercent = GetHyperSpeedIncreasePercent();
+    const int32_t maxHyperSpeedPercent =
+        std::max(GetBaseHyperSpeedIncreasePercent(), GetZeroHealthHyperSpeedIncreasePercent());
 
-    if (IsHyperBossesActive() && speedIncreasePercent > 0) {
+    if (IsHyperBossesActive() && maxHyperSpeedPercent > 0) {
         actorUpdateHookId =
             GameInteractor::Instance->RegisterGameHook<GameInteractor::OnActorUpdate>([](void* refActor) {
                 // Run the update function multiple times to make bosses move and act faster.
@@ -215,7 +258,7 @@ void UpdateHyperBossesState() {
                                       actor->id == ACTOR_BOSS_GANON || // Ganondorf
                                       actor->id == ACTOR_BOSS_GANON2;  // Ganon
 
-                int32_t speedIncreasePercent = GetHyperSpeedIncreasePercent();
+                const int32_t speedIncreasePercent = GetActorHyperSpeedIncreasePercent(actor);
 
                 // Don't apply during cutscenes because it causes weird behaviour and/or crashes on some bosses.
                 if (IsHyperBossesActive() && speedIncreasePercent > 0 && isBossActor &&
@@ -259,10 +302,12 @@ void UpdateHyperEnemiesState() {
     }
 
     sFractionalEnemyUpdates.clear();
+    sActorMaxHealth.clear();
 
-    int32_t speedIncreasePercent = GetHyperSpeedIncreasePercent();
+    const int32_t maxHyperSpeedPercent =
+        std::max(GetBaseHyperSpeedIncreasePercent(), GetZeroHealthHyperSpeedIncreasePercent());
 
-    if (CVarGetInteger(CVAR_ENHANCEMENT("HyperEnemies"), 0) && speedIncreasePercent > 0) {
+    if (CVarGetInteger(CVAR_ENHANCEMENT("HyperEnemies"), 0) && maxHyperSpeedPercent > 0) {
         actorUpdateHookId =
             GameInteractor::Instance->RegisterGameHook<GameInteractor::OnActorUpdate>([](void* refActor) {
                 // Run the update function multiple times to make enemies and minibosses move and act faster.
@@ -274,7 +319,7 @@ void UpdateHyperEnemiesState() {
                 bool isEnemy = actor->category == ACTORCAT_ENEMY || actor->id == ACTOR_EN_TORCH2;
                 bool isExcludedEnemy = actor->id == ACTOR_EN_FIRE_ROCK || actor->id == ACTOR_EN_ENCOUNT2;
 
-                int32_t speedIncreasePercent = GetHyperSpeedIncreasePercent();
+                const int32_t speedIncreasePercent = GetActorHyperSpeedIncreasePercent(actor);
 
                 // Don't apply during cutscenes because it causes weird behaviour and/or crashes on some cutscenes.
                 if (CVarGetInteger(CVAR_ENHANCEMENT("HyperEnemies"), 0) && speedIncreasePercent > 0 && isEnemy &&

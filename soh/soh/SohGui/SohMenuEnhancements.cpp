@@ -1339,6 +1339,21 @@ void SohMenu::AddMenuEnhancements() {
                          "Increases how often enemies and bosses update when Hyper settings are enabled.\n"
                          "The value represents the percentage increase over normal speed (e.g. 10% runs one extra update"
                          " every 10 frames, 100% is twice as fast, and 400% is five times as fast)."));
+    AddWidget(path, "Hyper Speed at 0 Health: %+d%%", WIDGET_CVAR_SLIDER_INT)
+        .CVar(CVAR_ENHANCEMENT("HyperEnemySpeedAtZeroHealthPercent"))
+        .Callback([](WidgetInfo& info) {
+            UpdateHyperEnemiesState();
+            UpdateHyperBossesState();
+        })
+        .Options(IntSliderOptions()
+                     .Min(-100)
+                     .Max(400)
+                     .DefaultValue(100)
+                     .Format("%+d%%")
+                     .Tooltip(
+                         "Adjusts the Hyper speed an enemy or boss reaches when they are at 0 health."
+                         " Values below the base Hyper speed make damaged foes slow back down, while higher values"
+                         " ramp up the pressure as they get closer to defeat."));
     AddWidget(path, "Enable Visual Guard Vision", WIDGET_CVAR_CHECKBOX).CVar(CVAR_ENHANCEMENT("GuardVision"));
     AddWidget(path, "Leever Spawn Rate: %d seconds", WIDGET_CVAR_SLIDER_INT)
         .CVar(CVAR_ENHANCEMENT("LeeverSpawnRate"))
