@@ -1,3 +1,5 @@
+THIS IS A FORK I MADE JUST TO LEARN MORE ABOUT OOT I'LL BE ADDING STUFF TO THIS REPO UNTIL I CAN GET SOMETHING WORTH SHARING FOLLOW THE ORIGINAL REPO.
+
 ![Ship of Harkinian](docs/shiptitle.darkmode.png#gh-dark-mode-only)
 ![Ship of Harkinian](docs/shiptitle.lightmode.png#gh-light-mode-only)
 
