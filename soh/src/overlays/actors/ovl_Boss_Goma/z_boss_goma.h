@@ -123,7 +123,8 @@ typedef struct BossGoma {
     /* 0x01C2 */ s16 noBackfaceCulling;
     /* 0x01C4 */ s16 blinkTimer;
     /* 0x01C6 */ s16 lookedAtFrames;
-    /* 0x01C8 */ char unk_1C8[0x8];
+    /* 0x01C8 */ s16 ceilingPounceCooldown;
+    /* 0x01CA */ char unk_1C8[0x6];
     /* 0x01D0 */ s16 actionState;
     /* 0x01D2 */ s16 framesUntilNextAction; // not always used as named
     /* 0x01D4 */ s16 timer;
@@ -140,7 +141,8 @@ typedef struct BossGoma {
     /* 0x0224 */ f32 eyeIrisScaleY;
     /* 0x0228 */ f32 defeatedCameraEyeDist;
     /* 0x022C */ f32 defeatedCameraEyeAngle;
-    /* 0x0230 */ char unk_230[0x30];
+    /* 0x0230 */ f32 ceilingPounceTargetSpeedXZ;
+    /* 0x0234 */ char unk_230[0x30];
     /* 0x0260 */ Vec3f lastTailLimbWorldPos;
     /* 0x026C */ Vec3f firstTailLimbWorldPos;
     /* 0x0278 */ Vec3f rightHandBackLimbWorldPos;
