@@ -142,6 +142,7 @@ typedef struct BossGoma {
     /* 0x0228 */ f32 defeatedCameraEyeDist;
     /* 0x022C */ f32 defeatedCameraEyeAngle;
     /* 0x0230 */ f32 ceilingPounceTargetSpeedXZ;
+    /* 0x0230 */ f32 ceilingPounceVerticalVelocity;
     /* 0x0234 */ char unk_230[0x30];
     /* 0x0260 */ Vec3f lastTailLimbWorldPos;
     /* 0x026C */ Vec3f firstTailLimbWorldPos;

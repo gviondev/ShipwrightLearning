@@ -437,7 +437,7 @@ void BossGoma_SetupEncounter(BossGoma* this, PlayState* play) {
 void BossGoma_SetupFloorIdle(BossGoma* this) {
     f32 lastFrame = Animation_GetLastFrame(&gGohmaIdleCrouchedAnim);
 
-    this->framesUntilNextAction = Rand_S16Offset(20, 30);
+    this->framesUntilNextAction = Rand_S16Offset(5, 15);
     Animation_Change(&this->skelanime, &gGohmaIdleCrouchedAnim, 1.0f, 0.0f, lastFrame, ANIMMODE_LOOP, -5.0f);
     this->actionFunc = BossGoma_FloorIdle;
 }
@@ -446,7 +446,7 @@ void BossGoma_SetupFloorIdle(BossGoma* this) {
  * On the ceiling and not doing anything for 20-30 frames, leads to spawning children gohmas
  */
 void BossGoma_SetupCeilingIdle(BossGoma* this) {
-    this->framesUntilNextAction = Rand_S16Offset(20, 30);
+    this->framesUntilNextAction = Rand_S16Offset(5, 15);
     Animation_Change(&this->skelanime, &gGohmaHangAnim, 1.0f, 0.0f, Animation_GetLastFrame(&gGohmaHangAnim),
                      ANIMMODE_LOOP, -5.0f);
     this->actionFunc = BossGoma_CeilingIdle;
@@ -500,21 +500,18 @@ void BossGoma_SetupCeilingPounceTelegraph(BossGoma* this, PlayState* play) {
 void BossGoma_SetupCeilingPounceDrop(BossGoma* this, PlayState* play) {
     Player* player = GET_PLAYER(play);
     f32 horizontalDistanceToPlayer = Math_Vec3f_DistXZ(&this->actor.world.pos, &player->actor.world.pos);
+    f32 verticalDistanceToPlayer = this->actor.world.pos.y - player->actor.world.pos.y; 
 
     Animation_Change(&this->skelanime, &gGohmaCrashAnim, 1.2f, 0.0f, Animation_GetLastFrame(&gGohmaCrashAnim),
                      ANIMMODE_ONCE, -2.0f);
+
     this->actionFunc = BossGoma_CeilingPounceDrop;
     this->actor.world.rot.y = Actor_WorldYawTowardActor(&this->actor, &player->actor);
     this->actor.shape.rot.y = this->actor.world.rot.y;
-    this->ceilingPounceTargetSpeedXZ = horizontalDistanceToPlayer * 0.12f;
-    if (this->ceilingPounceTargetSpeedXZ < 8.0f) {
-        this->ceilingPounceTargetSpeedXZ = 8.0f;
-    } else if (this->ceilingPounceTargetSpeedXZ > 18.0f) {
-        this->ceilingPounceTargetSpeedXZ = 18.0f;
-    }
+    this->ceilingPounceTargetSpeedXZ = horizontalDistanceToPlayer/12;
     this->actor.speedXZ = this->ceilingPounceTargetSpeedXZ;
-    this->actor.velocity.y = -8.0f;
-    this->actor.gravity = -3.5f;
+    this->actor.velocity.y = -(verticalDistanceToPlayer/10);
+    this->actor.gravity = -1;
     this->currentAnimFrameCount = Animation_GetLastFrame(&gGohmaCrashAnim);
     Audio_PlayActorSound2(&this->actor, NA_SE_EN_GOMA_DOWN);
 }
@@ -539,7 +536,7 @@ void BossGoma_SetupCeilingPrepareSpawnGohmas(BossGoma* this) {
     Animation_Change(&this->skelanime, &gGohmaPrepareEggsAnim, 1.0f, 0.0f,
                      Animation_GetLastFrame(&gGohmaPrepareEggsAnim), ANIMMODE_LOOP, -10.0f);
     this->actionFunc = BossGoma_CeilingPrepareSpawnGohmas;
-    this->framesUntilNextAction = 70;
+    this->framesUntilNextAction = 35;
 }
 
 void BossGoma_SetupWallClimb(BossGoma* this) {
@@ -571,7 +568,7 @@ void BossGoma_SetupFloorMain(BossGoma* this) {
     Animation_Change(&this->skelanime, &gGohmaWalkCrouchedAnim, 1.0f, 0.0f,
                      Animation_GetLastFrame(&gGohmaWalkCrouchedAnim), ANIMMODE_LOOP, -5.0f);
     this->actionFunc = BossGoma_FloorMain;
-    this->framesUntilNextAction = Rand_S16Offset(70, 110);
+    this->framesUntilNextAction = Rand_S16Offset(35, 60);
 }
 
 /**
@@ -1454,7 +1451,7 @@ void BossGoma_FloorLand(BossGoma* this, PlayState* play) {
 
     if (Animation_OnFrame(&this->skelanime, this->currentAnimFrameCount)) {
         BossGoma_SetupFloorIdle(this);
-        this->patienceTimer = 200;
+        this->patienceTimer = 50;
     }
 }
 
@@ -1476,7 +1473,7 @@ void BossGoma_FloorStunned(BossGoma* this, PlayState* play) {
     if (this->framesUntilNextAction == 0) {
         BossGoma_SetupFloorMain(this);
         if (this->patienceTimer == 0 && this->actor.xzDistToPlayer < 130.0f) {
-            this->timer = 20;
+            this->timer = 10;
         }
     }
 
@@ -1546,11 +1543,9 @@ void BossGoma_CeilingPounceDrop(BossGoma* this, PlayState* play) {
     Math_ApproachS(&this->actor.shape.rot.x, 0, 2, 0x7D0);
     Math_ApproachS(&this->actor.world.rot.y, Actor_WorldYawTowardActor(&this->actor, &GET_PLAYER(play)->actor), 2,
                    0x7D0);
-    Math_ApproachF(&this->actor.speedXZ, this->ceilingPounceTargetSpeedXZ, 0.4f, 2.4f);
-    Math_ApproachF(&this->actor.velocity.y, -18.0f, 0.3f, 2.8f);
 
     this->eyeState = EYESTATE_IRIS_FOLLOW_NO_IFRAMES;
-    this->visualState = VISUALSTATE_RED;
+    this->visualState = VISUALSTATE_DEFAULT;
 
     if (this->actor.bgCheckFlags & 1) {
         BossGoma_SetupFloorPounceRecover(this);
@@ -1575,7 +1570,7 @@ void BossGoma_FloorPounceRecover(BossGoma* this, PlayState* play) {
     if (Animation_OnFrame(&this->skelanime, this->currentAnimFrameCount)) {
         BossGoma_SetupFloorMain(this);
         this->framesUntilNextAction = Rand_S16Offset(40, 60);
-        this->patienceTimer = 240;
+        this->patienceTimer = 120;
     }
 
     Actor_SpawnFloorDustRing(play, &this->actor, &this->actor.world.pos, 50.0f, 4, 8.0f, 300, 10, true);
