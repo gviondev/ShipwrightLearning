@@ -500,19 +500,37 @@ void BossGoma_SetupCeilingPounceTelegraph(BossGoma* this, PlayState* play) {
 
 void BossGoma_SetupCeilingPounceDrop(BossGoma* this, PlayState* play) {
     Player* player = GET_PLAYER(play);
-    f32 horizontalDistanceToPlayer = Math_Vec3f_DistXZ(&this->actor.world.pos, &player->actor.world.pos);
-    f32 verticalDistanceToPlayer = this->actor.world.pos.y - player->actor.world.pos.y; 
+    f32 verticalDistanceToPlayer = this->actor.world.pos.y - player->actor.world.pos.y;
+    verticalDistanceToPlayer = MAX(verticalDistanceToPlayer, 1.0f);
+    f32 gravity = -2.0f;
+    f32 naturalFallTime = sqrtf((2.0f * verticalDistanceToPlayer) / -gravity);
+    f32 clampedTimeToImpact = CLAMP(naturalFallTime, 10.0f, 26.0f);
+    f32 initialVelocityY = (-verticalDistanceToPlayer - (0.5f * gravity * SQ(clampedTimeToImpact))) / clampedTimeToImpact;
+    Vec3f predictedPlayerPos;
+    f32 predictedHorizontalDistance;
+    f32 yawToPredictedTarget;
+
+    // Predict where the player will be when Gohma reaches the floor
+    predictedPlayerPos.x = player->actor.world.pos.x +
+                           (player->actor.speedXZ * Math_SinS(player->actor.shape.rot.y) * clampedTimeToImpact);
+    predictedPlayerPos.y = player->actor.world.pos.y;
+    predictedPlayerPos.z = player->actor.world.pos.z +
+                           (player->actor.speedXZ * Math_CosS(player->actor.shape.rot.y) * clampedTimeToImpact);
+
+    predictedHorizontalDistance = Math_Vec3f_DistXZ(&this->actor.world.pos, &predictedPlayerPos);
+    yawToPredictedTarget = Math_Vec3f_Yaw(&this->actor.world.pos, &predictedPlayerPos);
 
     Animation_Change(&this->skelanime, &gGohmaCrashAnim, 1.2f, 0.0f, Animation_GetLastFrame(&gGohmaCrashAnim),
                      ANIMMODE_ONCE, -2.0f);
 
     this->actionFunc = BossGoma_CeilingPounceDrop;
-    this->actor.world.rot.y = Actor_WorldYawTowardActor(&this->actor, &player->actor);
+    this->actor.world.rot.y = yawToPredictedTarget;
     this->actor.shape.rot.y = this->actor.world.rot.y;
-    this->ceilingPounceTargetSpeedXZ = horizontalDistanceToPlayer/12;
+    this->ceilingPounceTargetSpeedXZ = CLAMP_MAX(predictedHorizontalDistance / clampedTimeToImpact, 32.0f);
     this->actor.speedXZ = this->ceilingPounceTargetSpeedXZ;
-    this->actor.velocity.y = -(verticalDistanceToPlayer/10);
-    this->actor.gravity = -1.5f;
+    this->actor.velocity.y = initialVelocityY;
+    this->actor.gravity = gravity;
+    this->ceilingPounceVerticalVelocity = initialVelocityY;
     this->currentAnimFrameCount = Animation_GetLastFrame(&gGohmaCrashAnim);
     Audio_PlayActorSound2(&this->actor, NA_SE_EN_GOMA_DOWN);
 }
@@ -1540,10 +1558,53 @@ void BossGoma_CeilingPounceTelegraph(BossGoma* this, PlayState* play) {
 }
 
 void BossGoma_CeilingPounceDrop(BossGoma* this, PlayState* play) {
+    Player* player = GET_PLAYER(play);
+    f32 verticalDistanceToPlayer = this->actor.world.pos.y - player->actor.world.pos.y;
+    verticalDistanceToPlayer = MAX(verticalDistanceToPlayer, 1.0f);
+    f32 a = 0.5f * this->actor.gravity;
+    f32 b = this->actor.velocity.y;
+    f32 c = verticalDistanceToPlayer;
+    f32 timeToImpact = 0.0f;
+    Vec3f predictedPlayerPos;
+    f32 predictedHorizontalDistance;
+
+    if (a != 0.0f) {
+        f32 discriminant = SQ(b) - (4.0f * a * c);
+
+        if (discriminant >= 0.0f) {
+            f32 sqrtDiscriminant = sqrtf(discriminant);
+            f32 denominator = 2.0f * a;
+
+            timeToImpact = (-b - sqrtDiscriminant) / denominator;
+            if (timeToImpact <= 0.0f) {
+                timeToImpact = (-b + sqrtDiscriminant) / denominator;
+            }
+        }
+    }
+
+    if (timeToImpact <= 0.0f) {
+        timeToImpact = sqrtf((2.0f * verticalDistanceToPlayer) / -this->actor.gravity);
+    }
+
+    predictedPlayerPos.x = player->actor.world.pos.x +
+                           (player->actor.speedXZ * Math_SinS(player->actor.shape.rot.y) * timeToImpact);
+    predictedPlayerPos.y = player->actor.world.pos.y;
+    predictedPlayerPos.z = player->actor.world.pos.z +
+                           (player->actor.speedXZ * Math_CosS(player->actor.shape.rot.y) * timeToImpact);
+
+    predictedHorizontalDistance = Math_Vec3f_DistXZ(&this->actor.world.pos, &predictedPlayerPos);
+
+    if (timeToImpact > 0.0f) {
+        f32 targetSpeedXZ = CLAMP_MAX(predictedHorizontalDistance / timeToImpact, 32.0f);
+
+        // Smoothly converge to the ideal speed to avoid overshooting when starting far away
+        Math_ApproachF(&this->actor.speedXZ, targetSpeedXZ, 1.0f, 3.0f);
+        this->ceilingPounceTargetSpeedXZ = targetSpeedXZ;
+    }
+
     SkelAnime_Update(&this->skelanime);
     Math_ApproachS(&this->actor.shape.rot.x, 0, 2, 0x7D0);
-    Math_ApproachS(&this->actor.world.rot.y, Actor_WorldYawTowardActor(&this->actor, &GET_PLAYER(play)->actor), 2,
-                   0x7D0);
+    Math_ApproachS(&this->actor.world.rot.y, Math_Vec3f_Yaw(&this->actor.world.pos, &predictedPlayerPos), 2, 0x7D0);
 
     this->eyeState = EYESTATE_IRIS_FOLLOW_NO_IFRAMES;
     this->visualState = VISUALSTATE_DEFAULT;
