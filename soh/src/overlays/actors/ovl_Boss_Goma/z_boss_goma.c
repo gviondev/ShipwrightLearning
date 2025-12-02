@@ -1929,9 +1929,13 @@ void BossGoma_FloorMain(BossGoma* this, PlayState* play) {
 
             if (this->actor.xzDistToPlayer < 150.0f) {
                 BossGoma_SetupFloorAttackPosture(this);
-            } else if (this->runawayCounter > 45 && this->framesUntilNextAction < 10) {
-                BossGoma_SetupFloorViolentAttack(this, play);
-                return;
+            } else if (this->runawayCounter > 20 && this->framesUntilNextAction < 20) {
+                f32 violentAttackChance = 0.15f + (this->runawayCounter / 90.0f) * 0.5f;
+
+                if (Rand_ZeroOne() < violentAttackChance) {
+                    BossGoma_SetupFloorViolentAttack(this, play);
+                    return;
+                }
             }
 
             Math_ApproachF(&this->actor.speedXZ, 10.0f / 3.0f, 0.5f, 2.0f);
