@@ -345,6 +345,7 @@ void BossGoma_Init(Actor* thisx, PlayState* play) {
     this->ceilingPounceCooldown = 0;
     this->climbPounceRollState = 0;
     this->ceilingPounceTargetSpeedXZ = 0.0f;
+    this->ceilingPounceTargetPos = this->actor.world.pos;
     this->runawayCounter = 0;
     this->violentDashTimer = 0;
     this->lastPlayerXZDistance = 0.0f;
@@ -534,6 +535,7 @@ void BossGoma_SetupCeilingPounceDrop(BossGoma* this, PlayState* play) {
     this->actionFunc = BossGoma_CeilingPounceDrop;
     this->actor.world.rot.y = yawToPredictedTarget;
     this->actor.shape.rot.y = this->actor.world.rot.y;
+    this->ceilingPounceTargetPos = predictedPlayerPos;
     this->ceilingPounceTargetSpeedXZ = CLAMP_MAX(predictedHorizontalDistance / clampedTimeToImpact, 32.0f);
     this->actor.speedXZ = this->ceilingPounceTargetSpeedXZ;
     this->actor.velocity.y = initialVelocityY;
@@ -1691,7 +1693,11 @@ void BossGoma_CeilingPounceDrop(BossGoma* this, PlayState* play) {
     predictedPlayerPos.z = player->actor.world.pos.z +
                            (player->actor.speedXZ * Math_CosS(player->actor.shape.rot.y) * timeToImpact);
 
-    predictedHorizontalDistance = Math_Vec3f_DistXZ(&this->actor.world.pos, &predictedPlayerPos);
+    Math_ApproachF(&this->ceilingPounceTargetPos.x, predictedPlayerPos.x, 0.2f, 12.0f);
+    Math_ApproachF(&this->ceilingPounceTargetPos.z, predictedPlayerPos.z, 0.2f, 12.0f);
+    this->ceilingPounceTargetPos.y = predictedPlayerPos.y;
+
+    predictedHorizontalDistance = Math_Vec3f_DistXZ(&this->actor.world.pos, &this->ceilingPounceTargetPos);
 
     if (timeToImpact > 0.0f) {
         f32 targetSpeedXZ = CLAMP_MAX(predictedHorizontalDistance / timeToImpact, 32.0f);
@@ -1703,7 +1709,7 @@ void BossGoma_CeilingPounceDrop(BossGoma* this, PlayState* play) {
 
     SkelAnime_Update(&this->skelanime);
     Math_ApproachS(&this->actor.shape.rot.x, 0, 2, 0x7D0);
-    Math_ApproachS(&this->actor.world.rot.y, Math_Vec3f_Yaw(&this->actor.world.pos, &predictedPlayerPos), 2, 0x7D0);
+    Math_ApproachS(&this->actor.world.rot.y, Math_Vec3f_Yaw(&this->actor.world.pos, &this->ceilingPounceTargetPos), 2, 0x5DC);
 
     this->eyeState = EYESTATE_IRIS_FOLLOW_NO_IFRAMES;
     this->visualState = VISUALSTATE_DEFAULT;
