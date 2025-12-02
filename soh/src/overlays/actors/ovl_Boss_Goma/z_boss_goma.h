@@ -110,7 +110,7 @@ typedef struct BossGoma {
     /* 0x019E */ s16 eyeIrisRotX;
     /* 0x01A0 */ s16 eyeIrisRotY;
     /* 0x01A2 */ s16 unusedTimer;
-    /* 0x01A4 */ s16 childrenGohmaState[3]; // 0 not spawned, 1 spawned, -1 dead (-1 set by child gohma)
+    /* 0x01A4 */ s16 childrenGohmaState[6]; // 0 not spawned, 1 spawned, -1 dead (-1 set by child gohma)
     /* 0x01AA */ s16 tailLimbsScaleTimers[4];
     /* 0x01B2 */ s16 spawnGohmasActionTimer;
     /* 0x01B4 */ s16 eyeState;
@@ -123,12 +123,18 @@ typedef struct BossGoma {
     /* 0x01C2 */ s16 noBackfaceCulling;
     /* 0x01C4 */ s16 blinkTimer;
     /* 0x01C6 */ s16 lookedAtFrames;
-    /* 0x01C8 */ char unk_1C8[0x8];
+    /* 0x01C8 */ s16 ceilingPounceCooldown;
+    /* 0x01CA */ s16 climbPounceRollState; // 0: not rolled, 1: skip, 2: trigger
+    /* 0x01CC */ s16 unk_1CC;
+    /* 0x01CE */ s16 unk_1CE;
     /* 0x01D0 */ s16 actionState;
     /* 0x01D2 */ s16 framesUntilNextAction; // not always used as named
     /* 0x01D4 */ s16 timer;
     /* 0x01D6 */ s16 sfxFaintTimer;
-    /* 0x01D8 */ char unk_1D8[0x10];
+    /* 0x01D8 */ s16 runawayCounter;
+    /* 0x01DA */ s16 violentDashTimer;
+    /* 0x01DC */ f32 lastPlayerXZDistance;
+    /* 0x01E0 */ char unk_1E0[0x08];
     /* 0x01E8 */ f32 tailLimbsScale[4];
     /* 0x01F8 */ f32 eyeIrisScaleX;
     /* 0x01FC */ f32 unusedInitX;
@@ -140,7 +146,10 @@ typedef struct BossGoma {
     /* 0x0224 */ f32 eyeIrisScaleY;
     /* 0x0228 */ f32 defeatedCameraEyeDist;
     /* 0x022C */ f32 defeatedCameraEyeAngle;
-    /* 0x0230 */ char unk_230[0x30];
+    /* 0x0230 */ f32 ceilingPounceTargetSpeedXZ;
+    /* 0x0234 */ f32 ceilingPounceVerticalVelocity;
+    /* 0x0238 */ Vec3f ceilingPounceTargetPos;
+    /* 0x0244 */ char unk_244[0x1C];
     /* 0x0260 */ Vec3f lastTailLimbWorldPos;
     /* 0x026C */ Vec3f firstTailLimbWorldPos;
     /* 0x0278 */ Vec3f rightHandBackLimbWorldPos;
