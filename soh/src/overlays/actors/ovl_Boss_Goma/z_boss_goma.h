@@ -124,7 +124,9 @@ typedef struct BossGoma {
     /* 0x01C4 */ s16 blinkTimer;
     /* 0x01C6 */ s16 lookedAtFrames;
     /* 0x01C8 */ s16 ceilingPounceCooldown;
-    /* 0x01CA */ char unk_1C8[0x6];
+    /* 0x01CA */ s16 climbPounceRollState; // 0: not rolled, 1: skip, 2: trigger
+    /* 0x01CC */ s16 unk_1CC;
+    /* 0x01CE */ s16 unk_1CE;
     /* 0x01D0 */ s16 actionState;
     /* 0x01D2 */ s16 framesUntilNextAction; // not always used as named
     /* 0x01D4 */ s16 timer;

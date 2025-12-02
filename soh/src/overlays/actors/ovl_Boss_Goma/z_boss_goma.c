@@ -50,6 +50,8 @@ void BossGoma_FallJump(BossGoma* this, PlayState* play);
 void BossGoma_FallStruckDown(BossGoma* this, PlayState* play);
 void BossGoma_CeilingPounceTelegraph(BossGoma* this, PlayState* play);
 void BossGoma_CeilingPounceDrop(BossGoma* this, PlayState* play);
+void BossGoma_SetupClimbPounceTelegraph(BossGoma* this, PlayState* play);
+void BossGoma_ClimbPounceTelegraph(BossGoma* this, PlayState* play);
 void BossGoma_FloorPounceRecover(BossGoma* this, PlayState* play);
 void BossGoma_CeilingSpawnGohmas(BossGoma* this, PlayState* play);
 void BossGoma_CeilingPrepareSpawnGohmas(BossGoma* this, PlayState* play);
@@ -341,6 +343,7 @@ void BossGoma_Init(Actor* thisx, PlayState* play) {
     this->actor.world.pos.y = -300.0f; // ceiling
     this->actor.gravity = 0.0f;
     this->ceilingPounceCooldown = 0;
+    this->climbPounceRollState = 0;
     this->ceilingPounceTargetSpeedXZ = 0.0f;
     this->runawayCounter = 0;
     this->violentDashTimer = 0;
@@ -540,6 +543,18 @@ void BossGoma_SetupCeilingPounceDrop(BossGoma* this, PlayState* play) {
     Audio_PlayActorSound2(&this->actor, NA_SE_EN_GOMA_DOWN);
 }
 
+void BossGoma_SetupClimbPounceTelegraph(BossGoma* this, PlayState* play) {
+    Animation_Change(&this->skelanime, &gGohmaClimbAnim, 0.0f, 0.0f, Animation_GetLastFrame(&gGohmaClimbAnim),
+                     ANIMMODE_LOOP, -10.0f);
+    this->actionFunc = BossGoma_ClimbPounceTelegraph;
+    this->framesUntilNextAction = 12;
+    this->actor.speedXZ = 0.0f;
+    this->actor.velocity.y = 0.0f;
+    this->actor.gravity = 0.0f;
+    this->ceilingPounceCooldown = Rand_S16Offset(200, 60);
+    Audio_PlayActorSound2(&this->actor, NA_SE_EN_GOMA_DEMO_EYE);
+}
+
 void BossGoma_SetupFloorPounceRecover(BossGoma* this) {
     Animation_Change(&this->skelanime, &gGohmaLandAnim, 1.5f, 0.0f, Animation_GetLastFrame(&gGohmaLandAnim),
                      ANIMMODE_ONCE, -2.0f);
@@ -570,6 +585,7 @@ void BossGoma_SetupWallClimb(BossGoma* this) {
     this->actor.speedXZ = 0.0f;
     this->actor.velocity.y = 0.0f;
     this->actor.gravity = 0.0f;
+    this->climbPounceRollState = 0;
 }
 
 /**
@@ -1867,6 +1883,7 @@ void BossGoma_CeilingIdle(BossGoma* this, PlayState* play) {
  */
 void BossGoma_FloorMain(BossGoma* this, PlayState* play) {
     Player* player = GET_PLAYER(play);
+    f32 retreatSpeedMultiplier = (this->actor.colChkInfo.health <= 10) ? 1.5f : 1.0f;
     s16 rot;
 
     SkelAnime_Update(&this->skelanime);
@@ -1902,7 +1919,7 @@ void BossGoma_FloorMain(BossGoma* this, PlayState* play) {
         }
 
         if (this->patienceTimer != 0) {
-            this->patienceTimer--;
+            this->patienceTimer = (this->actor.colChkInfo.health <= 10) ? CLAMP_MIN(this->patienceTimer - 3, 0) : CLAMP_MIN(this->patienceTimer - 1, 0);
 
             if (this->actor.xzDistToPlayer < 150.0f) {
                 BossGoma_SetupFloorAttackPosture(this);
@@ -1916,15 +1933,17 @@ void BossGoma_FloorMain(BossGoma* this, PlayState* play) {
         } else {
             if (this->timer != 0) {
                 // move away from the player, walking backwards
-                Math_ApproachF(&this->actor.speedXZ, -10.0f, 0.5f, 2.0f);
-                this->skelanime.playSpeed = -3.0f;
+                Math_ApproachF(&this->actor.speedXZ, -10.0f * retreatSpeedMultiplier, 0.5f,
+                               2.0f * retreatSpeedMultiplier);
+                this->skelanime.playSpeed = -3.0f * retreatSpeedMultiplier;
                 if (this->timer == 1) {
                     this->actor.speedXZ = 0.0f;
                 }
             } else {
                 // move away from the player, walking forwards
-                Math_ApproachF(&this->actor.speedXZ, 20.0f / 3.0f, 0.5f, 2.0f);
-                this->skelanime.playSpeed = 2.0f;
+                Math_ApproachF(&this->actor.speedXZ, (20.0f / 3.0f) * retreatSpeedMultiplier, 0.5f,
+                               2.0f * retreatSpeedMultiplier);
+                this->skelanime.playSpeed = 2.0f * retreatSpeedMultiplier;
                 rot += 0x8000;
             }
 
@@ -1945,19 +1964,52 @@ void BossGoma_FloorMain(BossGoma* this, PlayState* play) {
     }
 }
 
+void BossGoma_ClimbPounceTelegraph(BossGoma* this, PlayState* play) {
+    SkelAnime_Update(&this->skelanime);
+    Math_ApproachS(&this->actor.shape.rot.x, -0x4000, 3, 0x3E8);
+    Math_ApproachS(&this->actor.world.rot.y, Actor_WorldYawTowardActor(&this->actor, &GET_PLAYER(play)->actor), 3, 0xBB8);
+    Math_ApproachZeroF(&this->actor.speedXZ, 0.5f, 2.0f);
+
+    this->eyeState = EYESTATE_IRIS_FOLLOW_NO_IFRAMES;
+    this->visualState = VISUALSTATE_RED;
+
+    if (this->framesUntilNextAction == 6) {
+        Audio_PlayActorSound2(&this->actor, NA_SE_EN_GOMA_CRY1);
+    }
+
+    if (this->framesUntilNextAction == 0) {
+        BossGoma_SetupCeilingPounceDrop(this, play);
+        return;
+    }
+}
+
 /**
  * Gohma moves up until it reaches the ceiling
  */
 void BossGoma_WallClimb(BossGoma* this, PlayState* play) {
+    f32 climbSpeedMultiplier = (this->actor.colChkInfo.health <= 10) ? 1.5f : 1.0f;
+
     SkelAnime_Update(&this->skelanime);
 
     if (this->frameCount % 8 == 0) {
         Audio_PlayActorSound2(&this->actor, NA_SE_EN_GOMA_CLIM);
     }
 
-    Math_ApproachF(&this->actor.velocity.y, 5.0f, 0.5f, 2.0f);
+    Math_ApproachF(&this->actor.velocity.y, 5.0f * climbSpeedMultiplier, 0.5f, 2.0f * climbSpeedMultiplier);
     Math_ApproachS(&this->actor.shape.rot.x, -0x4000, 2, 0x7D0);
     Math_ApproachS(&this->actor.world.rot.y, this->actor.wallYaw + 0x8000, 2, 0x5DC);
+
+    if (this->actor.colChkInfo.health <= 10 && this->ceilingPounceCooldown == 0 &&
+        this->actor.world.pos.y > -360.0f && this->actor.projectedPos.z > 0.0f) {
+        if (this->climbPounceRollState == 0) {
+            this->climbPounceRollState = (Rand_ZeroOne() < 0.5f) ? 2 : 1;
+        }
+
+        if (this->climbPounceRollState == 2) {
+            BossGoma_SetupClimbPounceTelegraph(this, play);
+            return;
+        }
+    }
 
     // -320 is a bit below boss room ceiling
     if (this->actor.world.pos.y > -320.0f) {
