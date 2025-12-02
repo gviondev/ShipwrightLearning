@@ -129,7 +129,10 @@ typedef struct BossGoma {
     /* 0x01D2 */ s16 framesUntilNextAction; // not always used as named
     /* 0x01D4 */ s16 timer;
     /* 0x01D6 */ s16 sfxFaintTimer;
-    /* 0x01D8 */ char unk_1D8[0x10];
+    /* 0x01D8 */ s16 runawayCounter;
+    /* 0x01DA */ s16 violentDashTimer;
+    /* 0x01DC */ f32 lastPlayerXZDistance;
+    /* 0x01E0 */ char unk_1E0[0x08];
     /* 0x01E8 */ f32 tailLimbsScale[4];
     /* 0x01F8 */ f32 eyeIrisScaleX;
     /* 0x01FC */ f32 unusedInitX;
