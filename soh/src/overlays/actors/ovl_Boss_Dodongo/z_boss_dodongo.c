@@ -8,6 +8,7 @@
 #include "soh/OTRGlobals.h"
 #include "soh/ResourceManagerHelpers.h"
 
+#include <float.h>
 #include <stdlib.h> // malloc
 #include <string.h> // memcpy
 
@@ -46,6 +47,8 @@ f32 func_808C4F6C(BossDodongo* this, PlayState* play);
 f32 func_808C50A8(BossDodongo* this, PlayState* play);
 void BossDodongo_DrawEffects(PlayState* play);
 void BossDodongo_UpdateEffects(PlayState* play);
+void BossDodongo_TrySpawnDodojrs(BossDodongo* this, PlayState* play);
+void BossDodongo_ClearSpawnedDodojrs(BossDodongo* this, PlayState* play);
 
 const ActorInit Boss_Dodongo_InitVars = {
     ACTOR_BOSS_DODONGO,
@@ -76,6 +79,16 @@ static u16 sLavaFloorModifiedTex[LAVA_TEX_SIZE];
 static u16 sLavaWavyTex[LAVA_TEX_SIZE];
 
 static u8 hasRegisteredBlendedHook = 0;
+
+static const Vec3f sArenaMinBounds = { -1390.0f, -FLT_MAX, -3804.0f };
+static const Vec3f sArenaMaxBounds = { -390.0f, FLT_MAX, -2804.0f };
+static const s32 sMaxDodojrs = 12;
+static const s32 sMaxEnemiesInArena = 12;
+static const f32 sDodojrMinBossDistance = 180.0f;
+static const f32 sDodojrForwardDistanceMin = 240.0f;
+static const f32 sDodojrForwardDistanceRange = 80.0f;
+static const f32 sDodojrForwardCenterLead = 40.0f;
+static const f32 sDodojrLateralSpacing = 110.0f;
 
 static InitChainEntry sInitChain[] = {
     ICHAIN_U8(targetMode, 5, ICHAIN_CONTINUE),
@@ -335,6 +348,8 @@ void BossDodongo_Init(Actor* thisx, PlayState* play) {
     this->colorFilterMax = 1000.0f;
     this->unk_224 = 2.0f;
     this->unk_228 = 9200.0f;
+    this->dodojrSpawnTimer = 0;
+    this->dodojrSpawnedThisCycle = false;
     Collider_InitJntSph(play, &this->collider);
     Collider_SetJntSph(play, &this->collider, &this->actor, &sJntSphInit, this->items);
 
@@ -752,6 +767,8 @@ void BossDodongo_LayDown(BossDodongo* this, PlayState* play) {
                          Animation_GetLastFrame(&object_kingdodongo_Anim_0042A8), ANIMMODE_LOOP, -5.0f);
         this->actionFunc = BossDodongo_Vulnerable;
         this->unk_1DA = 100;
+        this->dodojrSpawnTimer = 0;
+        this->dodojrSpawnedThisCycle = false;
     }
 }
 
@@ -761,6 +778,8 @@ void BossDodongo_Vulnerable(BossDodongo* this, PlayState* play) {
     Math_SmoothStepToF(&this->unk_1F8, 1.0f, 0.5f, 0.02f, 0.001f);
     Math_SmoothStepToF(&this->unk_208, 0.05f, 1.0f, 0.005f, 0.0f);
     SkelAnime_Update(&this->skelAnime);
+
+    BossDodongo_TrySpawnDodojrs(this, play);
 
     if (this->unk_1DA == 0) {
         Animation_Change(&this->skelAnime, &object_kingdodongo_Anim_009D10, 1.0f, 0.0f,
@@ -1012,8 +1031,8 @@ void BossDodongo_Update(Actor* thisx, PlayState* play2) {
         this->unk_1DC--;
     }
 
-    if (this->unk_1DE != 0) {
-        this->unk_1DE--;
+    if (this->dodojrSpawnTimer != 0) {
+        this->dodojrSpawnTimer--;
     }
 
     if (this->unk_1C0 != 0) {
@@ -1467,6 +1486,135 @@ void BossDodongo_PlayerPosCheck(BossDodongo* this, PlayState* play) {
     }
 }
 
+static void BossDodongo_ClampToArenaBounds(Vec3f* pos) {
+    pos->x = CLAMP(pos->x, sArenaMinBounds.x, sArenaMaxBounds.x);
+    pos->y = CLAMP(pos->y, sArenaMinBounds.y, sArenaMaxBounds.y);
+    pos->z = CLAMP(pos->z, sArenaMinBounds.z, sArenaMaxBounds.z);
+}
+
+static s32 BossDodongo_CountDodojrs(PlayState* play, s32* enemyCount) {
+    Actor* enemy = play->actorCtx.actorLists[ACTORCAT_ENEMY].head;
+    s32 dodojrCount = 0;
+    s32 count = 0;
+
+    while (enemy != NULL) {
+        if (enemy->id == ACTOR_EN_DODOJR) {
+            dodojrCount++;
+        }
+        count++;
+        enemy = enemy->next;
+    }
+
+    if (enemyCount != NULL) {
+        *enemyCount = count;
+    }
+
+    return dodojrCount;
+}
+
+void BossDodongo_ClearSpawnedDodojrs(BossDodongo* this, PlayState* play) {
+    Actor* enemy = play->actorCtx.actorLists[ACTORCAT_ENEMY].head;
+
+    while (enemy != NULL) {
+        Actor* next = enemy->next;
+
+        if ((enemy->id == ACTOR_EN_DODOJR) && (enemy->parent == &this->actor)) {
+            Actor_Kill(enemy);
+        }
+
+        enemy = next;
+    }
+
+    this->dodojrSpawnedThisCycle = false;
+    this->dodojrSpawnTimer = 0;
+}
+
+void BossDodongo_TrySpawnDodojrs(BossDodongo* this, PlayState* play) {
+    s32 totalEnemies = 0;
+    s32 dodojrCount = 0;
+    s32 spawnCount;
+    Vec3f spawnOrigin;
+    Vec3f spawnPos;
+    s16 spawnYaw;
+    s32 i;
+    f32 forwardSin;
+    f32 forwardCos;
+    f32 rightSin;
+    f32 rightCos;
+    f32 lateralOffset;
+    f32 forwardDistance;
+    f32 forwardDistanceBase;
+    Actor* spawned;
+    s32 spawnedCount = 0;
+
+    if (this->dodojrSpawnedThisCycle) {
+        return;
+    }
+
+    if (this->dodojrSpawnTimer > 0) {
+        return;
+    }
+
+    dodojrCount = BossDodongo_CountDodojrs(play, &totalEnemies);
+
+    if ((dodojrCount >= sMaxDodojrs) || (totalEnemies >= sMaxEnemiesInArena)) {
+        this->dodojrSpawnedThisCycle = true;
+        return;
+    }
+
+    spawnCount = 3;
+    spawnCount = CLAMP_MAX(spawnCount, sMaxDodojrs - dodojrCount);
+
+    if (spawnCount == 0) {
+        this->dodojrSpawnedThisCycle = true;
+        return;
+    }
+
+    forwardSin = Math_SinS(this->actor.shape.rot.y);
+    forwardCos = Math_CosS(this->actor.shape.rot.y);
+    rightSin = Math_SinS(this->actor.shape.rot.y + 0x4000);
+    rightCos = Math_CosS(this->actor.shape.rot.y + 0x4000);
+    spawnOrigin = this->mouthPos;
+    spawnOrigin.y = this->actor.world.pos.y;
+    forwardDistanceBase = sDodojrForwardDistanceMin + (sDodojrForwardDistanceRange * 0.5f);
+
+    for (i = 0; i < spawnCount; i++) {
+        lateralOffset = (i - ((spawnCount - 1) * 0.5f)) * sDodojrLateralSpacing;
+        forwardDistance = forwardDistanceBase;
+
+        if (((spawnCount & 1) != 0) && (i == (spawnCount / 2))) {
+            forwardDistance += sDodojrForwardCenterLead;
+        }
+
+        spawnPos = spawnOrigin;
+        spawnPos.x += (forwardSin * forwardDistance) + (rightSin * lateralOffset);
+        spawnPos.z += (forwardCos * forwardDistance) + (rightCos * lateralOffset);
+
+        BossDodongo_ClampToArenaBounds(&spawnPos);
+
+        if (Math3D_Vec3fDistSq(&spawnPos, &this->actor.world.pos) < SQ(sDodojrMinBossDistance)) {
+            continue;
+        }
+
+        spawnYaw = this->actor.shape.rot.y;
+
+        spawned = Actor_Spawn(&play->actorCtx, play, ACTOR_EN_DODOJR, spawnPos.x, spawnPos.y, spawnPos.z, 0, spawnYaw,
+                              0, 1, true);
+
+        if (spawned != NULL) {
+            spawned->parent = &this->actor;
+            dodojrCount++;
+            spawnedCount++;
+
+            if ((dodojrCount >= sMaxDodojrs) || (spawnedCount >= spawnCount)) {
+                break;
+            }
+        }
+    }
+
+    this->dodojrSpawnedThisCycle = true;
+}
+
 void BossDodongo_SpawnFire(BossDodongo* this, PlayState* play, s16 params) {
     Actor_SpawnAsChild(&play->actorCtx, &this->actor, play, ACTOR_EN_BDFIRE, this->vec.x, this->vec.y - 20.0f,
                        this->vec.z, 0, this->actor.shape.rot.y, 0, params);
@@ -1481,6 +1629,7 @@ void BossDodongo_UpdateDamage(BossDodongo* this, PlayState* play) {
     s16 i;
 
     if ((this->health <= 0) && (this->actionFunc != BossDodongo_DeathCutscene)) {
+        BossDodongo_ClearSpawnedDodojrs(this, play);
         BossDodongo_SetupDeathCutscene(this);
         Enemy_StartFinishingBlow(play, &this->actor);
         return;
