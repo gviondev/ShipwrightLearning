@@ -84,11 +84,11 @@ static const Vec3f sArenaMinBounds = { -1390.0f, -FLT_MAX, -3804.0f };
 static const Vec3f sArenaMaxBounds = { -390.0f, FLT_MAX, -2804.0f };
 static const s32 sMaxDodojrs = 12;
 static const s32 sMaxEnemiesInArena = 12;
-static const f32 sDodojrMinBossDistance = 180.0f;
-static const f32 sDodojrForwardDistanceMin = 240.0f;
+static const f32 sDodojrMinBossDistance = 80.0f;
+static const f32 sDodojrForwardDistanceMin = 120.0f;
 static const f32 sDodojrForwardDistanceRange = 80.0f;
 static const f32 sDodojrForwardCenterLead = 40.0f;
-static const f32 sDodojrLateralSpacing = 110.0f;
+static const f32 sDodojrLateralSpacing = 40.0f;
 
 static InitChainEntry sInitChain[] = {
     ICHAIN_U8(targetMode, 5, ICHAIN_CONTINUE),
