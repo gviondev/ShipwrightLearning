@@ -2,6 +2,7 @@
 #include "textures/boss_title_cards/object_kingdodongo.h"
 #include "objects/object_kingdodongo/object_kingdodongo.h"
 #include "overlays/actors/ovl_Door_Warp1/z_door_warp1.h"
+#include "overlays/actors/ovl_En_Fire_Rock/z_en_fire_rock.h"
 #include "scenes/dungeons/ddan_boss/ddan_boss_room_1.h"
 #include "soh/frame_interpolation.h"
 #include "soh/Enhancements/game-interactor/GameInteractor_Hooks.h"
@@ -49,6 +50,8 @@ void BossDodongo_DrawEffects(PlayState* play);
 void BossDodongo_UpdateEffects(PlayState* play);
 void BossDodongo_TrySpawnDodojrs(BossDodongo* this, PlayState* play);
 void BossDodongo_ClearSpawnedDodojrs(BossDodongo* this, PlayState* play);
+void BossDodongo_TrySpawnRollingRocks(BossDodongo* this, PlayState* play);
+void BossDodongo_SpawnWallCollisionRocks(BossDodongo* this, PlayState* play);
 
 const ActorInit Boss_Dodongo_InitVars = {
     ACTOR_BOSS_DODONGO,
@@ -84,6 +87,7 @@ static const Vec3f sArenaMinBounds = { -1390.0f, -FLT_MAX, -3804.0f };
 static const Vec3f sArenaMaxBounds = { -390.0f, FLT_MAX, -2804.0f };
 static const s32 sMaxDodojrs = 12;
 static const s32 sMaxEnemiesInArena = 12;
+static const s32 sMaxRollingRocks = 12;
 static const f32 sDodojrMinBossDistance = 80.0f;
 static const f32 sDodojrForwardDistanceMin = 120.0f;
 static const f32 sDodojrForwardDistanceRange = 80.0f;
@@ -348,6 +352,9 @@ void BossDodongo_Init(Actor* thisx, PlayState* play) {
     this->colorFilterMax = 1000.0f;
     this->unk_224 = 2.0f;
     this->unk_228 = 9200.0f;
+    this->rollingRockTimer = 0;
+    this->lightningTimer = 0;
+    this->lightningActive = false;
     this->dodojrSpawnTimer = 0;
     this->dodojrSpawnedThisCycle = false;
     Collider_InitJntSph(play, &this->collider);
@@ -421,6 +428,7 @@ void BossDodongo_Destroy(Actor* thisx, PlayState* play) {
 
     SkelAnime_Free(&this->skelAnime, play);
     Collider_DestroyJntSph(play, &this->collider);
+
 }
 
 void BossDodongo_SetupIntroCutscene(BossDodongo* this, PlayState* play) {
@@ -681,7 +689,118 @@ void BossDodongo_SetupRoll(BossDodongo* this) {
     this->actionFunc = BossDodongo_Roll;
     this->numWallCollisions = 0;
     this->unk_1DA = 27;
+    this->rollingRockTimer = Rand_S16Offset(8, 8);
+    this->lightningTimer = Rand_S16Offset(16, 10);
 }
+
+s32 BossDodongo_CountActiveRollingRocks(PlayState* play) {
+    Actor* actor = play->actorCtx.actorLists[ACTORCAT_ENEMY].head;
+    s32 rockCount = 0;
+
+    while (actor != NULL) {
+        if (actor->id == ACTOR_EN_FIRE_ROCK) {
+            EnFireRock* rock = (EnFireRock*)actor;
+
+            if ((rock->type == FIRE_ROCK_SPAWNED_FALLING1) || (rock->type == FIRE_ROCK_SPAWNED_FALLING2)) {
+                rockCount++;
+            }
+        }
+
+        actor = actor->next;
+    }
+
+    return rockCount;
+}
+
+void BossDodongo_TrySpawnRollingRocks(BossDodongo* this, PlayState* play) {
+    Player* player = GET_PLAYER(play);
+    Vec3f spawnPos;
+    f32 dirX;
+    f32 dirY;
+    f32 dirZ;
+    f32 magnitude;
+
+    if ((this->actionFunc != BossDodongo_Roll) || (this->unk_1DA != 0)) {
+        return;
+    }
+
+    if (this->rollingRockTimer > 0) {
+        this->rollingRockTimer--;
+        return;
+    }
+
+    if (BossDodongo_CountActiveRollingRocks(play) >= sMaxRollingRocks) {
+        this->rollingRockTimer = Rand_S16Offset(22, 10);
+        return;
+    }
+
+    dirX = play->view.lookAt.x - play->view.eye.x;
+    dirY = play->view.lookAt.y - play->view.eye.y;
+    dirZ = play->view.lookAt.z - play->view.eye.z;
+
+    magnitude = sqrtf(SQ(dirX) + SQ(dirY) + SQ(dirZ));
+
+    if (magnitude < 0.001f) {
+        this->rollingRockTimer = 10;
+        return;
+    }
+
+    dirX /= magnitude;
+    dirY /= magnitude;
+    dirZ /= magnitude;
+
+    spawnPos.x = Rand_CenteredFloat(140.0f) + (play->view.eye.x + (dirX * 240.0f));
+    spawnPos.y = (play->view.eye.y + (dirY * 160.0f)) + 380.0f;
+    spawnPos.z = Rand_CenteredFloat(140.0f) + (play->view.eye.z + (dirZ * 240.0f));
+
+    if (Rand_ZeroOne() < 0.55f) {
+        spawnPos.x = Rand_CenteredFloat(60.0f) + player->actor.world.pos.x;
+        spawnPos.z = Rand_CenteredFloat(60.0f) + player->actor.world.pos.z;
+    }
+
+    if (Actor_SpawnAsChild(&play->actorCtx, &this->actor, play, ACTOR_EN_FIRE_ROCK, spawnPos.x, spawnPos.y, spawnPos.z, 0,
+                           0, 0, FIRE_ROCK_SPAWNED_FALLING2) != NULL) {
+        this->rollingRockTimer = Rand_S16Offset(8, 12);
+        Audio_PlayActorSound2(&this->actor, NA_SE_EV_VOLCANO - SFX_FLAG);
+
+        while ((BossDodongo_CountActiveRollingRocks(play) < sMaxRollingRocks) && (Rand_ZeroOne() < 0.7f)) {
+            spawnPos.x = Rand_CenteredFloat(260.0f) +  player->actor.world.pos.x;
+            spawnPos.y = Rand_ZeroFloat(140.0f) +  player->actor.world.pos.y + 240.0f;
+            spawnPos.z = Rand_CenteredFloat(260.0f) + player->actor.world.pos.z;
+
+            Actor_SpawnAsChild(&play->actorCtx, &this->actor, play, ACTOR_EN_FIRE_ROCK, spawnPos.x, spawnPos.y,
+                               spawnPos.z, 0, 0, 0, FIRE_ROCK_SPAWNED_FALLING2);
+        }
+
+        if (this->lightningTimer > 10) {
+            this->lightningTimer = 10;
+        }
+    } else {
+        this->rollingRockTimer = Rand_S16Offset(6, 10);
+    }
+}
+
+void BossDodongo_SpawnWallCollisionRocks(BossDodongo* this, PlayState* play) {
+     Player* player = GET_PLAYER(play);
+    s32 spawnCount = 4 + Rand_ZeroOne() * 3.0f;
+    s32 i;
+
+    for (i = 0; i < spawnCount; i++) {
+        Vec3f spawnPos;
+
+        if (BossDodongo_CountActiveRollingRocks(play) >= sMaxRollingRocks) {
+            break;
+        }
+
+        spawnPos.x = Rand_CenteredFloat(260.0f) +  player->actor.world.pos.x;
+        spawnPos.y = Rand_ZeroFloat(140.0f) +  player->actor.world.pos.y + 240.0f;
+        spawnPos.z = Rand_CenteredFloat(260.0f) + player->actor.world.pos.z;
+
+        Actor_SpawnAsChild(&play->actorCtx, &this->actor, play, ACTOR_EN_FIRE_ROCK, spawnPos.x, spawnPos.y, spawnPos.z,
+                           0, 0, 0, FIRE_ROCK_SPAWNED_FALLING2);
+    }
+}
+
 
 void BossDodongo_SetupBlowFire(BossDodongo* this) {
     this->actor.speedXZ = 0.0f;
@@ -933,6 +1052,7 @@ void BossDodongo_Roll(BossDodongo* this, PlayState* play) {
 
     this->actor.flags |= ACTOR_FLAG_SFX_FOR_PLAYER_BODY_HIT;
     SkelAnime_Update(&this->skelAnime);
+    BossDodongo_TrySpawnRollingRocks(this, play);
 
     if (this->unk_1DA == 10) {
         this->actor.velocity.y = 15.0f;
@@ -974,6 +1094,10 @@ void BossDodongo_Roll(BossDodongo* this, PlayState* play) {
 
     if (fabsf(sp4C) <= 15.0f && fabsf(sp48) <= 15.0f) {
         this->numWallCollisions++;
+        BossDodongo_SpawnWallCollisionRocks(this, play);
+        if (this->lightningTimer > 8) {
+            this->lightningTimer = 8;
+        }
 
         if (this->numWallCollisions >= 2) {
             if (this->unk_1A6 != 0) {
@@ -1098,7 +1222,17 @@ void BossDodongo_Update(Actor* thisx, PlayState* play2) {
         }
     }
 
-    if (this->unk_1BE != 0) {
+    if (this->lightningActive) {
+        f32 targetR = (this->lightningTimer < 4) ? 255.0f : 200.0f;
+        f32 targetG = (this->lightningTimer < 4) ? 40.0f : 25.0f;
+        f32 targetB = (this->lightningTimer < 4) ? 10.0f : 5.0f;
+
+        Math_SmoothStepToF(&this->colorFilterR, targetR, 1, 10.0f, 0.0f);
+        Math_SmoothStepToF(&this->colorFilterG, targetG, 1, 10.0f, 0.0f);
+        Math_SmoothStepToF(&this->colorFilterB, targetB, 1, 10.0f, 0.0f);
+        Math_SmoothStepToF(&this->colorFilterMin, 880.0f, 1, 8.0f, 0.0f);
+        Math_SmoothStepToF(&this->colorFilterMax, 1120.0f, 1, 8.0f, 0.0f);
+    } else if (this->unk_1BE != 0) {
         if (this->unk_1BE >= 1000) {
             Math_SmoothStepToF(&this->colorFilterR, 30.0f, 1, 20.0f, 0.0);
             Math_SmoothStepToF(&this->colorFilterG, 10.0f, 1, 20.0f, 0.0);
