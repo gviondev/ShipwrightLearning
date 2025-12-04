@@ -86,7 +86,12 @@ typedef struct BossDodongo {
     /* 0x0240 */ f32 unk_23C;
     /* 0x0244 */ f32 unk_240;
     /* 0x0248 */ f32 unk_244;
-    /* 0x024C */ char unk_248[0x14];
+    /* 0x024C */ f32 rollingLightPulseTimer;
+    /* 0x0250 */ f32 rollingFogStrength;
+    /* 0x0254 */ f32 rollingFogTarget;
+    /* 0x0258 */ u8 rollingEnvApplied;
+    /* 0x0259 */ char unk_259[0x3];
+    /* 0x025C */ f32 rollingFogNearOffset;
     /* 0x0260 */ f32 unk_25C[50];
     /* 0x0328 */ f32 unk_324[50];
     /* 0x03F0 */ Vec3f vec;

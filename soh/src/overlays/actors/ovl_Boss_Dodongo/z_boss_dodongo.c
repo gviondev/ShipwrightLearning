@@ -52,6 +52,7 @@ void BossDodongo_TrySpawnDodojrs(BossDodongo* this, PlayState* play);
 void BossDodongo_ClearSpawnedDodojrs(BossDodongo* this, PlayState* play);
 void BossDodongo_TrySpawnRollingRocks(BossDodongo* this, PlayState* play);
 void BossDodongo_SpawnWallCollisionRocks(BossDodongo* this, PlayState* play);
+void BossDodongo_UpdateRollingAtmosphere(BossDodongo* this, PlayState* play);
 
 const ActorInit Boss_Dodongo_InitVars = {
     ACTOR_BOSS_DODONGO,
@@ -355,6 +356,11 @@ void BossDodongo_Init(Actor* thisx, PlayState* play) {
     this->rollingRockTimer = 0;
     this->lightningTimer = 0;
     this->lightningActive = false;
+    this->rollingLightPulseTimer = 0.0f;
+    this->rollingFogStrength = 0.0f;
+    this->rollingFogTarget = 0.0f;
+    this->rollingFogNearOffset = 0.0f;
+    this->rollingEnvApplied = false;
     this->dodojrSpawnTimer = 0;
     this->dodojrSpawnedThisCycle = false;
     Collider_InitJntSph(play, &this->collider);
@@ -682,6 +688,7 @@ void BossDodongo_SetupWalk(BossDodongo* this) {
     this->unk_1DA = 0;
     this->actor.flags |= ACTOR_FLAG_ATTENTION_ENABLED;
     this->unk_1E4 = 0.0f;
+    this->rollingFogTarget = 0.0f;
 }
 
 void BossDodongo_SetupRoll(BossDodongo* this) {
@@ -691,6 +698,7 @@ void BossDodongo_SetupRoll(BossDodongo* this) {
     this->unk_1DA = 27;
     this->rollingRockTimer = Rand_S16Offset(8, 8);
     this->lightningTimer = Rand_S16Offset(16, 10);
+    this->rollingFogTarget = 1.0f;
 }
 
 s32 BossDodongo_CountActiveRollingRocks(PlayState* play) {
@@ -781,7 +789,7 @@ void BossDodongo_TrySpawnRollingRocks(BossDodongo* this, PlayState* play) {
 }
 
 void BossDodongo_SpawnWallCollisionRocks(BossDodongo* this, PlayState* play) {
-     Player* player = GET_PLAYER(play);
+    Player* player = GET_PLAYER(play);
     s32 spawnCount = 4 + Rand_ZeroOne() * 3.0f;
     s32 i;
 
@@ -792,12 +800,77 @@ void BossDodongo_SpawnWallCollisionRocks(BossDodongo* this, PlayState* play) {
             break;
         }
 
-        spawnPos.x = Rand_CenteredFloat(260.0f) +  player->actor.world.pos.x;
-        spawnPos.y = Rand_ZeroFloat(140.0f) +  player->actor.world.pos.y + 240.0f;
+        spawnPos.x = Rand_CenteredFloat(260.0f) + player->actor.world.pos.x;
+        spawnPos.y = Rand_ZeroFloat(140.0f) + player->actor.world.pos.y + 240.0f;
         spawnPos.z = Rand_CenteredFloat(260.0f) + player->actor.world.pos.z;
 
         Actor_SpawnAsChild(&play->actorCtx, &this->actor, play, ACTOR_EN_FIRE_ROCK, spawnPos.x, spawnPos.y, spawnPos.z,
                            0, 0, 0, FIRE_ROCK_SPAWNED_FALLING2);
+    }
+}
+
+void BossDodongo_UpdateRollingAtmosphere(BossDodongo* this, PlayState* play) {
+    s32 i;
+    f32 pulseScale;
+    f32 intensity;
+    s16 keyLightR;
+    s16 keyLightG;
+    s16 keyLightB;
+
+    this->rollingFogTarget = (this->actionFunc == BossDodongo_Roll) ? 1.0f : 0.0f;
+
+    if (this->rollingFogTarget <= 0.0f) {
+        if (this->rollingEnvApplied) {
+            for (i = 0; i < ARRAY_COUNT(play->envCtx.adjLight1Color); i++) {
+                play->envCtx.adjLight1Color[i] = 0;
+                play->envCtx.adjAmbientColor[i] = 0;
+                play->envCtx.adjFogColor[i] = 0;
+            }
+
+            play->envCtx.adjFogNear = 0;
+            this->rollingEnvApplied = false;
+        }
+
+        this->rollingFogStrength = 0.0f;
+        this->rollingFogNearOffset = 0.0f;
+        return;
+    }
+
+    Math_SmoothStepToF(&this->rollingFogStrength, this->rollingFogTarget, 0.8f, 0.2f, 0.01f);
+    Math_SmoothStepToF(&this->rollingFogNearOffset, -300.0f * this->rollingFogTarget, 1.0f, 20.0f, 1.0f);
+
+    if (this->rollingFogStrength > 0.01f) {
+        this->rollingLightPulseTimer += 0.3f;
+        pulseScale = (sinf(this->rollingLightPulseTimer) * 0.5f) + 0.5f;
+        intensity = (0.4f + (pulseScale * 0.6f)) * this->rollingFogStrength;
+
+        keyLightR = CLAMP_MAX((s16)(200.0f * intensity), 255);
+        keyLightG = CLAMP_MAX((s16)(70.0f * intensity), 255);
+        keyLightB = CLAMP_MAX((s16)(30.0f * intensity), 255);
+
+        play->envCtx.adjLight1Color[0] = keyLightR;
+        play->envCtx.adjLight1Color[1] = keyLightG;
+        play->envCtx.adjLight1Color[2] = keyLightB;
+
+        play->envCtx.adjAmbientColor[0] = CLAMP_MAX((s16)(140.0f * intensity), 255);
+        play->envCtx.adjAmbientColor[1] = CLAMP_MAX((s16)(40.0f * intensity), 255);
+        play->envCtx.adjAmbientColor[2] = CLAMP_MAX((s16)(20.0f * intensity), 255);
+
+        play->envCtx.adjFogColor[0] = CLAMP_MAX((s16)(160.0f * intensity), 255);
+        play->envCtx.adjFogColor[1] = CLAMP_MAX((s16)(40.0f * intensity), 255);
+        play->envCtx.adjFogColor[2] = CLAMP_MAX((s16)(30.0f * intensity), 255);
+        play->envCtx.adjFogNear = (s16)this->rollingFogNearOffset;
+
+        this->rollingEnvApplied = true;
+    } else if (this->rollingEnvApplied) {
+        for (i = 0; i < ARRAY_COUNT(play->envCtx.adjLight1Color); i++) {
+            play->envCtx.adjLight1Color[i] = 0;
+            play->envCtx.adjAmbientColor[i] = 0;
+            play->envCtx.adjFogColor[i] = 0;
+        }
+
+        play->envCtx.adjFogNear = 0;
+        this->rollingEnvApplied = false;
     }
 }
 
@@ -1196,6 +1269,8 @@ void BossDodongo_Update(Actor* thisx, PlayState* play2) {
     Actor_UpdateBgCheckInfo(play, thisx, 10.0f, 10.0f, 20.0f, 4);
     Math_SmoothStepToF(&this->unk_208, 0, 1, 0.001f, 0.0);
     Math_SmoothStepToF(&this->unk_20C, 0, 1, 0.001f, 0.0);
+
+    BossDodongo_UpdateRollingAtmosphere(this, play);
 
     if ((this->unk_19E % 128) == 0) {
         for (i = 0; i < 50; i++) {
@@ -1709,7 +1784,7 @@ void BossDodongo_TrySpawnDodojrs(BossDodongo* this, PlayState* play) {
     rightSin = Math_SinS(this->actor.shape.rot.y + 0x4000);
     rightCos = Math_CosS(this->actor.shape.rot.y + 0x4000);
     spawnOrigin = this->mouthPos;
-    spawnOrigin.y = this->actor.world.pos.y;
+    spawnOrigin.y = this->actor.world.pos.y - 20.0f;
     forwardDistanceBase = sDodojrForwardDistanceMin + (sDodojrForwardDistanceRange * 0.5f);
 
     for (i = 0; i < spawnCount; i++) {
@@ -1723,8 +1798,6 @@ void BossDodongo_TrySpawnDodojrs(BossDodongo* this, PlayState* play) {
         spawnPos = spawnOrigin;
         spawnPos.x += (forwardSin * forwardDistance) + (rightSin * lateralOffset);
         spawnPos.z += (forwardCos * forwardDistance) + (rightCos * lateralOffset);
-
-        BossDodongo_ClampToArenaBounds(&spawnPos);
 
         if (Math3D_Vec3fDistSq(&spawnPos, &this->actor.world.pos) < SQ(sDodojrMinBossDistance)) {
             continue;
