@@ -818,24 +818,6 @@ void BossDodongo_UpdateRollingAtmosphere(BossDodongo* this, PlayState* play) {
     s16 keyLightB;
 
     this->rollingFogTarget = (this->actionFunc == BossDodongo_Roll) ? 1.0f : 0.0f;
-
-    if (this->rollingFogTarget <= 0.0f) {
-        if (this->rollingEnvApplied) {
-            for (i = 0; i < ARRAY_COUNT(play->envCtx.adjLight1Color); i++) {
-                play->envCtx.adjLight1Color[i] = 0;
-                play->envCtx.adjAmbientColor[i] = 0;
-                play->envCtx.adjFogColor[i] = 0;
-            }
-
-            play->envCtx.adjFogNear = 0;
-            this->rollingEnvApplied = false;
-        }
-
-        this->rollingFogStrength = 0.0f;
-        this->rollingFogNearOffset = 0.0f;
-        return;
-    }
-
     Math_SmoothStepToF(&this->rollingFogStrength, this->rollingFogTarget, 0.8f, 0.2f, 0.01f);
     Math_SmoothStepToF(&this->rollingFogNearOffset, -300.0f * this->rollingFogTarget, 1.0f, 20.0f, 1.0f);
 
@@ -863,14 +845,19 @@ void BossDodongo_UpdateRollingAtmosphere(BossDodongo* this, PlayState* play) {
 
         this->rollingEnvApplied = true;
     } else if (this->rollingEnvApplied) {
-        for (i = 0; i < ARRAY_COUNT(play->envCtx.adjLight1Color); i++) {
-            play->envCtx.adjLight1Color[i] = 0;
-            play->envCtx.adjAmbientColor[i] = 0;
-            play->envCtx.adjFogColor[i] = 0;
-        }
+        Math_SmoothStepToF(&this->rollingFogStrength, 0.0f, 0.8f, 0.2f, 0.01f);
+        Math_SmoothStepToF(&this->rollingFogNearOffset, 0.0f, 1.0f, 20.0f, 1.0f);
 
-        play->envCtx.adjFogNear = 0;
-        this->rollingEnvApplied = false;
+        if (this->rollingFogStrength < 0.01f) {
+            for (i = 0; i < ARRAY_COUNT(play->envCtx.adjLight1Color); i++) {
+                play->envCtx.adjLight1Color[i] = 0;
+                play->envCtx.adjAmbientColor[i] = 0;
+                play->envCtx.adjFogColor[i] = 0;
+            }
+
+            play->envCtx.adjFogNear = 0;
+            this->rollingEnvApplied = false;
+        }
     }
 }
 
