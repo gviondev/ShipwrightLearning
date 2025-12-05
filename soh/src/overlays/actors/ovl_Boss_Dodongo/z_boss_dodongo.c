@@ -21,6 +21,13 @@
 #define LAVA_TEX_HEIGHT 64
 #define LAVA_TEX_SIZE 2048
 
+static const s16 sAggressiveHealthThreshold = 8;
+static const s16 sAggressivePostFireRolls = 3;
+static const f32 sAggressiveRollSpeedMultiplier = 1.25f;
+static const f32 sAggressiveTriggerChance = 0.35f;
+static const s16 sAggressiveChainCooldown = 300;
+static const s16 sAggressiveMaxChainsPerCycle = 2;
+
 void BossDodongo_Init(Actor* thisx, PlayState* play);
 void BossDodongo_Destroy(Actor* thisx, PlayState* play);
 void BossDodongo_Update(Actor* thisx, PlayState* play);
@@ -59,6 +66,11 @@ void BossDodongo_ClearSpawnedDodojrs(BossDodongo* this, PlayState* play);
 void BossDodongo_TrySpawnRollingRocks(BossDodongo* this, PlayState* play);
 void BossDodongo_SpawnWallCollisionRocks(BossDodongo* this, PlayState* play);
 void BossDodongo_UpdateRollingAtmosphere(BossDodongo* this, PlayState* play);
+static void BossDodongo_ResetAggressiveRolling(BossDodongo* this);
+static void BossDodongo_FinishAggressiveRolling(BossDodongo* this);
+static s16 BossDodongo_GetFarthestCornerFromPlayer(BossDodongo* this, PlayState* play);
+static bool BossDodongo_ShouldTriggerAggressiveChain(BossDodongo* this);
+static bool BossDodongo_StartAggressiveRollChain(BossDodongo* this, PlayState* play);
 
 const ActorInit Boss_Dodongo_InitVars = {
     ACTOR_BOSS_DODONGO,
@@ -100,6 +112,12 @@ static const f32 sDodojrForwardDistanceMin = 120.0f;
 static const f32 sDodojrForwardDistanceRange = 80.0f;
 static const f32 sDodojrForwardCenterLead = 40.0f;
 static const f32 sDodojrLateralSpacing = 40.0f;
+static Vec3f sCornerPositions[] = {
+    { -1390.0f, 0.0f, -3804.0f },
+    { -1390.0f, 0.0f, -2804.0f },
+    { -390.0f, 0.0f, -2804.0f },
+    { -390.0f, 0.0f, -3804.0f },
+};
 
 static InitChainEntry sInitChain[] = {
     ICHAIN_U8(targetMode, 5, ICHAIN_CONTINUE),
@@ -353,7 +371,7 @@ void BossDodongo_Init(Actor* thisx, PlayState* play) {
     Animation_PlayLoop(&this->skelAnime, &object_kingdodongo_Anim_00F0D8);
     this->unk_1F8 = 1.0f;
     BossDodongo_SetupIntroCutscene(this, play);
-    this->health = 12;
+    this->health = 20;
     this->colorFilterMin = 995.0f;
     this->actor.colChkInfo.mass = MASS_IMMOVABLE;
     this->colorFilterMax = 1000.0f;
@@ -367,6 +385,9 @@ void BossDodongo_Init(Actor* thisx, PlayState* play) {
     this->rollingFogTarget = 0.0f;
     this->rollingFogNearOffset = 0.0f;
     this->rollingEnvApplied = false;
+    BossDodongo_ResetAggressiveRolling(this);
+    this->aggressiveChainsInCycle = 0;
+    this->aggressiveChainCooldown = 0;
     this->postRollCornerRecoveryTimer = 0;
     this->dodojrSpawnTimer = 0;
     this->dodojrSpawnedThisCycle = false;
@@ -688,6 +709,7 @@ void BossDodongo_SetupExplode(BossDodongo* this) {
 }
 
 void BossDodongo_SetupWalk(BossDodongo* this) {
+    BossDodongo_ResetAggressiveRolling(this);
     Animation_Change(&this->skelAnime, &object_kingdodongo_Anim_01D934, 1.0f, 0.0f,
                      Animation_GetLastFrame(&object_kingdodongo_Anim_01D934), ANIMMODE_ONCE, -10.0f);
     this->unk_1AA = 0;
@@ -705,7 +727,99 @@ void BossDodongo_SetupPostRollCornerRecovery(BossDodongo* this) {
     this->actionFunc = BossDodongo_PostRollCornerRecovery;
 }
 
-void BossDodongo_SetupRoll(BossDodongo* this) {
+static void BossDodongo_ResetAggressiveRolling(BossDodongo* this) {
+    this->aggressiveChainActive = false;
+    this->aggressiveCornerFirePending = false;
+    this->aggressiveRollCornersRemaining = 0;
+    this->currentRollTargetCollisions = 2;
+    this->rollSpeedMultiplier = 1.0f;
+}
+
+static void BossDodongo_FinishAggressiveRolling(BossDodongo* this) {
+    if (this->aggressiveChainActive) {
+        this->aggressiveChainsInCycle++;
+
+        if (this->aggressiveChainsInCycle >= sAggressiveMaxChainsPerCycle) {
+            this->aggressiveChainCooldown = sAggressiveChainCooldown;
+            this->aggressiveChainsInCycle = 0;
+        }
+    }
+
+    BossDodongo_ResetAggressiveRolling(this);
+}
+
+static s16 BossDodongo_GetFarthestCornerFromPlayer(BossDodongo* this, PlayState* play) {
+    Player* player = GET_PLAYER(play);
+    s16 farthestIndex = 0;
+    f32 farthestDistSq = -FLT_MAX;
+
+    for (s16 i = 0; i < ARRAY_COUNT(sCornerPositions); i++) {
+        f32 distX = sCornerPositions[i].x - player->actor.world.pos.x;
+        f32 distZ = sCornerPositions[i].z - player->actor.world.pos.z;
+        f32 distSq = SQ(distX) + SQ(distZ);
+
+        if (distSq > farthestDistSq) {
+            farthestDistSq = distSq;
+            farthestIndex = i;
+        }
+    }
+
+    return farthestIndex;
+}
+
+static bool BossDodongo_ShouldTriggerAggressiveChain(BossDodongo* this) {
+    if (this->aggressiveChainActive || (this->aggressiveChainCooldown > 0)) {
+        return false;
+    }
+
+    return (this->health <= sAggressiveHealthThreshold) && (Rand_ZeroOne() < sAggressiveTriggerChance);
+}
+
+static bool BossDodongo_StartAggressiveRollChain(BossDodongo* this, PlayState* play) {
+    Vec3f* targetCorner;
+    f32 distX;
+    f32 distZ;
+
+    this->aggressiveChainActive = true;
+    this->aggressiveCornerFirePending = true;
+    this->aggressiveRollCornersRemaining = sAggressivePostFireRolls;
+    this->rollSpeedMultiplier = sAggressiveRollSpeedMultiplier;
+    this->currentRollTargetCollisions = 1;
+    this->unk_1A0 = BossDodongo_GetFarthestCornerFromPlayer(this, play);
+
+    targetCorner = &sCornerPositions[this->unk_1A0];
+    distX = targetCorner->x - this->actor.world.pos.x;
+    distZ = targetCorner->z - this->actor.world.pos.z;
+
+    if ((SQ(distX) + SQ(distZ)) <= SQ(20.0f)) {
+        this->aggressiveCornerFirePending = false;
+        return true;
+    }
+
+    return false;
+}
+
+void BossDodongo_SetupRoll(BossDodongo* this, PlayState* play) {
+    if (BossDodongo_ShouldTriggerAggressiveChain(this)) {
+        if (BossDodongo_StartAggressiveRollChain(this, play)) {
+            BossDodongo_SetupPostRollCornerInhale(this);
+            return;
+        }
+    }
+
+    if (!this->aggressiveChainActive) {
+        BossDodongo_ResetAggressiveRolling(this);
+    } else if (this->aggressiveCornerFirePending) {
+        this->unk_1A0 = BossDodongo_GetFarthestCornerFromPlayer(this, play);
+        this->currentRollTargetCollisions = 1;
+    } else {
+        this->currentRollTargetCollisions = this->aggressiveRollCornersRemaining;
+    }
+
+    if (this->currentRollTargetCollisions < 1) {
+        this->currentRollTargetCollisions = 1;
+    }
+
     Animation_Change(&this->skelAnime, &object_kingdodongo_Anim_00DF38, 1.0f, 0.0f, 59.0f, ANIMMODE_ONCE, -5.0f);
     this->actionFunc = BossDodongo_Roll;
     this->numWallCollisions = 0;
@@ -887,6 +1001,11 @@ void BossDodongo_SetupBlowFire(BossDodongo* this) {
 }
 
 void BossDodongo_SetupPostRollCornerFire(BossDodongo* this) {
+    s16 targetYaw = Actor_WorldYawTowardActor(&this->actor, &GET_PLAYER(gPlayState)->actor);
+
+    this->actor.world.rot.y = targetYaw;
+    this->actor.shape.rot.y = targetYaw;
+    this->unk_1C4 = 0;
     this->actor.speedXZ = 0.0f;
     this->unk_1E4 = 0.0f;
     Animation_Change(&this->skelAnime, &object_kingdodongo_Anim_0061D4, 1.0f, 0.0f,
@@ -897,6 +1016,11 @@ void BossDodongo_SetupPostRollCornerFire(BossDodongo* this) {
 }
 
 void BossDodongo_SetupPostRollCornerInhale(BossDodongo* this) {
+    s16 targetYaw = Actor_WorldYawTowardActor(&this->actor, &GET_PLAYER(gPlayState)->actor);
+
+    this->actor.world.rot.y = targetYaw;
+    this->actor.shape.rot.y = targetYaw;
+    this->unk_1C4 = 0;
     this->actor.speedXZ = 0.0f;
     Animation_Change(&this->skelAnime, &object_kingdodongo_Anim_008EEC, 1.5f, 0.0f,
                      Animation_GetLastFrame(&object_kingdodongo_Anim_008EEC), ANIMMODE_ONCE, -5.0f);
@@ -922,7 +1046,7 @@ void BossDodongo_Damaged(BossDodongo* this, PlayState* play) {
     Math_SmoothStepToF(&this->unk_208, 0.05f, 1.0f, 0.005f, 0.0f);
 
     if (Animation_OnFrame(&this->skelAnime, Animation_GetLastFrame(&object_kingdodongo_Anim_001074))) {
-        BossDodongo_SetupRoll(this);
+        BossDodongo_SetupRoll(this, play);
     }
 }
 
@@ -1005,7 +1129,7 @@ void BossDodongo_GetUp(BossDodongo* this, PlayState* play) {
     SkelAnime_Update(&this->skelAnime);
 
     if (Animation_OnFrame(&this->skelAnime, Animation_GetLastFrame(&object_kingdodongo_Anim_009D10))) {
-        BossDodongo_SetupRoll(this);
+        BossDodongo_SetupRoll(this, play);
     }
 }
 
@@ -1031,7 +1155,7 @@ void BossDodongo_BlowFire(BossDodongo* this, PlayState* play) {
     }
 
     if (this->unk_1DA == 0) {
-        BossDodongo_SetupRoll(this);
+        BossDodongo_SetupRoll(this, play);
     }
 }
 
@@ -1043,7 +1167,7 @@ void BossDodongo_PostRollCornerFire(BossDodongo* this, PlayState* play) {
 
     targetYaw = Math_FAtan2F(player->actor.world.pos.x - this->actor.world.pos.x,
                              player->actor.world.pos.z - this->actor.world.pos.z) * (0x8000 / M_PI);
-    Math_SmoothStepToS(&this->actor.world.rot.y, targetYaw, 3, 3000, 20);
+    Math_SmoothStepToS(&this->actor.world.rot.y, targetYaw, 2, 10, 10);
 
     if (Animation_OnFrame(&this->skelAnime, 12.0f)) {
         Audio_PlayActorSound2(&this->actor, NA_SE_EN_DODO_K_CRY);
@@ -1060,7 +1184,18 @@ void BossDodongo_PostRollCornerFire(BossDodongo* this, PlayState* play) {
     }
 
     if (this->unk_1DA == 0) {
-        BossDodongo_SetupWalk(this);
+        if (this->aggressiveChainActive) {
+            this->aggressiveRollCornersRemaining = sAggressivePostFireRolls;
+            this->currentRollTargetCollisions = this->aggressiveRollCornersRemaining;
+
+            if (this->currentRollTargetCollisions < 1) {
+                this->currentRollTargetCollisions = 1;
+            }
+
+            BossDodongo_SetupRoll(this, play);
+        } else {
+            BossDodongo_SetupWalk(this);
+        }
     }
 }
 
@@ -1114,13 +1249,6 @@ void BossDodongo_Inhale(BossDodongo* this, PlayState* PlayState) {
         }
     }
 }
-
-static Vec3f sCornerPositions[] = {
-    { -1390.0f, 0.0f, -3804.0f },
-    { -1390.0f, 0.0f, -2804.0f },
-    { -390.0f, 0.0f, -2804.0f },
-    { -390.0f, 0.0f, -3804.0f },
-};
 
 void BossDodongo_Walk(BossDodongo* this, PlayState* play) {
     Vec3f* sp4C;
@@ -1185,13 +1313,22 @@ void BossDodongo_Walk(BossDodongo* this, PlayState* play) {
     }
 
     if ((this->unk_1DA == 0) && (this->unk_1BC == 0)) {
+        if (BossDodongo_ShouldTriggerAggressiveChain(this)) {
+            if (BossDodongo_StartAggressiveRollChain(this, play)) {
+                BossDodongo_SetupPostRollCornerInhale(this);
+            } else {
+                BossDodongo_SetupRoll(this, play);
+            }
+            return;
+        }
+
         if ((this->actor.xzDistToPlayer < 500.0f) && (this->unk_1A4 != 0) && !this->playerPosInRange) {
             BossDodongo_SetupInhale(this);
             BossDodongo_SpawnFire(this, play, -1);
         }
 
         if (!this->playerPosInRange && !this->playerYawInRange) {
-            BossDodongo_SetupRoll(this);
+            BossDodongo_SetupRoll(this, play);
         }
     }
 }
@@ -1277,7 +1414,7 @@ void BossDodongo_Roll(BossDodongo* this, PlayState* play) {
     }
 
     sp5C = &sCornerPositions[this->unk_1A0];
-    this->unk_1EC = 4.0f;
+    this->unk_1EC = 4.0f * this->rollSpeedMultiplier;
 
     if (this->unk_1DA == 0) {
         Math_SmoothStepToF(&this->unk_1E4, this->unk_1EC * 5.0f, 1.0f, this->unk_1EC * 0.4f, 0.0f);
@@ -1312,13 +1449,31 @@ void BossDodongo_Roll(BossDodongo* this, PlayState* play) {
             this->lightningTimer = 8;
         }
 
-        if (this->numWallCollisions >= 2) {
+        if (this->aggressiveChainActive && this->aggressiveCornerFirePending) {
+            this->aggressiveCornerFirePending = false;
+            this->numWallCollisions = 0;
+            BossDodongo_SetupPostRollCornerInhale(this);
+            return;
+        }
+
+        if (this->aggressiveChainActive && !this->aggressiveCornerFirePending) {
+            if (this->aggressiveRollCornersRemaining > 0) {
+                this->aggressiveRollCornersRemaining--;
+            }
+
+            if (this->aggressiveRollCornersRemaining <= 0) {
+                this->currentRollTargetCollisions = this->numWallCollisions;
+            }
+        }
+
+        if (this->numWallCollisions >= this->currentRollTargetCollisions) {
             if (this->unk_1A6 != 0) {
                 this->unk_1A2 = 1 - this->unk_1A2;
             }
 
             this->unk_1E8 = 0.0f;
             this->unk_1E4 = 0.0f;
+            BossDodongo_FinishAggressiveRolling(this);
             if (this->actor.xzDistToPlayer > 600.0f) {
                 BossDodongo_SetupPostRollCornerRecovery(this);
             } else {
@@ -1374,6 +1529,10 @@ void BossDodongo_Update(Actor* thisx, PlayState* play2) {
 
     if (this->dodojrSpawnTimer != 0) {
         this->dodojrSpawnTimer--;
+    }
+
+    if (this->aggressiveChainCooldown > 0) {
+        this->aggressiveChainCooldown--;
     }
 
     if (this->unk_1C0 != 0) {
