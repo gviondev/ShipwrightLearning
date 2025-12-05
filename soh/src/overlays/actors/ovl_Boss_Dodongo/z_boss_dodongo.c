@@ -29,8 +29,11 @@ void BossDodongo_Draw(Actor* thisx, PlayState* play);
 void BossDodongo_SetupIntroCutscene(BossDodongo* this, PlayState* play);
 void BossDodongo_IntroCutscene(BossDodongo* this, PlayState* play);
 void BossDodongo_Walk(BossDodongo* this, PlayState* play);
+void BossDodongo_PostRollCornerRecovery(BossDodongo* this, PlayState* play);
 void BossDodongo_Inhale(BossDodongo* this, PlayState* play);
+void BossDodongo_PostRollCornerInhale(BossDodongo* this, PlayState* play);
 void BossDodongo_BlowFire(BossDodongo* this, PlayState* play);
+void BossDodongo_PostRollCornerFire(BossDodongo* this, PlayState* play);
 void BossDodongo_Roll(BossDodongo* this, PlayState* play);
 void BossDodongo_SpawnFire(BossDodongo* this, PlayState* play, s16 arg2);
 void BossDodongo_Explode(BossDodongo* this, PlayState* play);
@@ -38,6 +41,9 @@ void BossDodongo_LayDown(BossDodongo* this, PlayState* play);
 void BossDodongo_Vulnerable(BossDodongo* this, PlayState* play);
 void BossDodongo_GetUp(BossDodongo* this, PlayState* play);
 void BossDodongo_SetupWalk(BossDodongo* this);
+void BossDodongo_SetupPostRollCornerRecovery(BossDodongo* this);
+void BossDodongo_SetupPostRollCornerFire(BossDodongo* this);
+void BossDodongo_SetupPostRollCornerInhale(BossDodongo* this);
 void BossDodongo_DeathCutscene(BossDodongo* this, PlayState* play);
 void BossDodongo_SetupDeathCutscene(BossDodongo* this);
 void BossDodongo_Damaged(BossDodongo* this, PlayState* play);
@@ -361,6 +367,7 @@ void BossDodongo_Init(Actor* thisx, PlayState* play) {
     this->rollingFogTarget = 0.0f;
     this->rollingFogNearOffset = 0.0f;
     this->rollingEnvApplied = false;
+    this->postRollCornerRecoveryTimer = 0;
     this->dodojrSpawnTimer = 0;
     this->dodojrSpawnedThisCycle = false;
     Collider_InitJntSph(play, &this->collider);
@@ -686,9 +693,16 @@ void BossDodongo_SetupWalk(BossDodongo* this) {
     this->unk_1AA = 0;
     this->actionFunc = BossDodongo_Walk;
     this->unk_1DA = 0;
+    this->postRollCornerRecoveryTimer = 0;
     this->actor.flags |= ACTOR_FLAG_ATTENTION_ENABLED;
     this->unk_1E4 = 0.0f;
     this->rollingFogTarget = 0.0f;
+}
+
+void BossDodongo_SetupPostRollCornerRecovery(BossDodongo* this) {
+    BossDodongo_SetupWalk(this);
+    this->postRollCornerRecoveryTimer = 15;
+    this->actionFunc = BossDodongo_PostRollCornerRecovery;
 }
 
 void BossDodongo_SetupRoll(BossDodongo* this) {
@@ -872,6 +886,26 @@ void BossDodongo_SetupBlowFire(BossDodongo* this) {
     this->unk_1AE = 0;
 }
 
+void BossDodongo_SetupPostRollCornerFire(BossDodongo* this) {
+    this->actor.speedXZ = 0.0f;
+    this->unk_1E4 = 0.0f;
+    Animation_Change(&this->skelAnime, &object_kingdodongo_Anim_0061D4, 1.0f, 0.0f,
+                     Animation_GetLastFrame(&object_kingdodongo_Anim_0061D4), ANIMMODE_ONCE, 0.0f);
+    this->actionFunc = BossDodongo_PostRollCornerFire;
+    this->unk_1DA = 60;
+    this->unk_1AE = 0;
+}
+
+void BossDodongo_SetupPostRollCornerInhale(BossDodongo* this) {
+    this->actor.speedXZ = 0.0f;
+    Animation_Change(&this->skelAnime, &object_kingdodongo_Anim_008EEC, 1.5f, 0.0f,
+                     Animation_GetLastFrame(&object_kingdodongo_Anim_008EEC), ANIMMODE_ONCE, -5.0f);
+    this->actionFunc = BossDodongo_PostRollCornerInhale;
+    this->unk_1DA = 60;
+    this->unk_1AC = 0;
+    this->unk_1E2 = 1;
+}
+
 void BossDodongo_SetupInhale(BossDodongo* this) {
     this->actor.speedXZ = 0.0f;
     Animation_Change(&this->skelAnime, &object_kingdodongo_Anim_008EEC, 1.0f, 0.0f,
@@ -1001,6 +1035,64 @@ void BossDodongo_BlowFire(BossDodongo* this, PlayState* play) {
     }
 }
 
+void BossDodongo_PostRollCornerFire(BossDodongo* this, PlayState* play) {
+    Player* player = GET_PLAYER(play);
+    s16 targetYaw;
+
+    SkelAnime_Update(&this->skelAnime);
+
+    targetYaw = Math_FAtan2F(player->actor.world.pos.x - this->actor.world.pos.x,
+                             player->actor.world.pos.z - this->actor.world.pos.z) * (0x8000 / M_PI);
+    Math_SmoothStepToS(&this->actor.world.rot.y, targetYaw, 3, 3000, 20);
+
+    if (Animation_OnFrame(&this->skelAnime, 12.0f)) {
+        Audio_PlayActorSound2(&this->actor, NA_SE_EN_DODO_K_CRY);
+    }
+
+    if (Animation_OnFrame(&this->skelAnime, 17.0f)) {
+        this->unk_1C8 = 28;
+    }
+
+    if ((this->skelAnime.curFrame > 17.0f) && (this->skelAnime.curFrame < 35.0f)) {
+        BossDodongo_SpawnFire(this, play, this->unk_1AE);
+        this->unk_1AE++;
+        Math_SmoothStepToF(&this->unk_244, 0.0f, 1.0f, 8.0f, 0.0f);
+    }
+
+    if (this->unk_1DA == 0) {
+        BossDodongo_SetupWalk(this);
+    }
+}
+
+void BossDodongo_PostRollCornerInhale(BossDodongo* this, PlayState* play) {
+    Player* player = GET_PLAYER(play);
+    s16 targetYaw;
+
+    this->unk_1E2 = 1;
+
+    targetYaw = Math_FAtan2F(player->actor.world.pos.x - this->actor.world.pos.x,
+                             player->actor.world.pos.z - this->actor.world.pos.z) * (0x8000 / M_PI);
+    Math_SmoothStepToS(&this->actor.world.rot.y, targetYaw, 3, 3000, 20);
+
+    if (this->unk_1AC > 20) {
+        Audio_PlayActorSound2(&this->actor, NA_SE_EN_DODO_K_BREATH - SFX_FLAG);
+    }
+
+    Math_SmoothStepToF(&this->unk_208, 0.05f, 1.0f, 0.005f, 0.0f);
+    SkelAnime_Update(&this->skelAnime);
+
+    if (this->unk_1DA == 0) {
+        BossDodongo_SetupPostRollCornerFire(this);
+    } else {
+        this->unk_1AC++;
+
+        if ((this->unk_1AC > 20) && (this->unk_1AC < 82) && BossDodongo_AteExplosive(this, play)) {
+            Audio_PlayActorSound2(&this->actor, NA_SE_EN_DODO_K_DRINK);
+            BossDodongo_SetupExplode(this);
+        }
+    }
+}
+
 void BossDodongo_Inhale(BossDodongo* this, PlayState* PlayState) {
     this->unk_1E2 = 1;
 
@@ -1104,6 +1196,67 @@ void BossDodongo_Walk(BossDodongo* this, PlayState* play) {
     }
 }
 
+void BossDodongo_PostRollCornerRecovery(BossDodongo* this, PlayState* play) {
+    Vec3f* targetCorner;
+    f32 distanceX;
+    f32 distanceZ;
+
+    if (this->unk_1AA == 0) {
+        if (Animation_OnFrame(&this->skelAnime, 14.0f)) {
+            Animation_PlayLoop(&this->skelAnime, &object_kingdodongo_Anim_01CAE0);
+            this->unk_1AA = 1;
+        }
+    } else if (this->unk_1BC != 2) {
+        if (((s32)this->skelAnime.curFrame == 1) || ((s32)this->skelAnime.curFrame == 31)) {
+            if ((s32)this->skelAnime.curFrame == 1) {
+                Actor_SpawnFloorDustRing(play, &this->actor, &this->unk_410, 25.0f, 10, 8.0f, 500, 10, false);
+            } else {
+                Actor_SpawnFloorDustRing(play, &this->actor, &this->unk_404, 25.0f, 10, 8.0f, 500, 10, false);
+            }
+
+            if (this->unk_1BC != 0) {
+                Sfx_PlaySfxCentered(NA_SE_EN_DODO_K_WALK);
+            } else {
+                Audio_PlayActorSound2(&this->actor, NA_SE_EN_DODO_K_WALK);
+            }
+
+            if (this->cutsceneCamera == 0) {
+                func_80033E88(&this->actor, play, 4, 10);
+            } else {
+                this->unk_1B6 = 10;
+                func_800A9F6C(0.0f, 180, 20, 100);
+            }
+        }
+    }
+
+    SkelAnime_Update(&this->skelAnime);
+
+    targetCorner = &sCornerPositions[this->unk_1A0];
+    this->unk_1EC = 0.7f;
+    Math_SmoothStepToF(&this->unk_1E4, this->unk_1EC * 4.0f, 1.0f, this->unk_1EC * 0.25f, 0.0f);
+    Math_SmoothStepToF(&this->actor.world.pos.x, targetCorner->x, 0.3f, this->unk_1E4, 0.0f);
+    Math_SmoothStepToF(&this->actor.world.pos.z, targetCorner->z, 0.3f, this->unk_1E4, 0.0f);
+    distanceX = targetCorner->x - this->actor.world.pos.x;
+    distanceZ = targetCorner->z - this->actor.world.pos.z;
+    Math_SmoothStepToF(&this->unk_1E8, 2000.0f, 1.0f, this->unk_1EC * 80.0f, 0.0f);
+    Math_SmoothStepToS(&this->actor.world.rot.y, Math_FAtan2F(distanceX, distanceZ) * (0x8000 / M_PI), 5,
+                       (this->unk_1EC * this->unk_1E8), 5);
+    Math_SmoothStepToS(&this->unk_1C4, 0, 2, 2000, 0);
+
+    if ((fabsf(distanceX) <= 5.0f) && (fabsf(distanceZ) <= 5.0f)) {
+        this->unk_1E8 = 0.0f;
+        this->unk_1E4 = 0.0f;
+    }
+
+    if (this->postRollCornerRecoveryTimer > 0) {
+        this->postRollCornerRecoveryTimer--;
+    }
+
+    if (this->postRollCornerRecoveryTimer == 0) {
+        BossDodongo_SetupPostRollCornerInhale(this);
+    }
+}
+
 void BossDodongo_Roll(BossDodongo* this, PlayState* play) {
     Vec3f* sp5C;
     Vec3f sp50;
@@ -1124,10 +1277,10 @@ void BossDodongo_Roll(BossDodongo* this, PlayState* play) {
     }
 
     sp5C = &sCornerPositions[this->unk_1A0];
-    this->unk_1EC = 3.0f;
+    this->unk_1EC = 4.0f;
 
     if (this->unk_1DA == 0) {
-        Math_SmoothStepToF(&this->unk_1E4, this->unk_1EC * 5.0f, 1.0f, this->unk_1EC * 0.25f, 0.0f);
+        Math_SmoothStepToF(&this->unk_1E4, this->unk_1EC * 5.0f, 1.0f, this->unk_1EC * 0.4f, 0.0f);
         Math_SmoothStepToF(&this->actor.world.pos.x, sp5C->x, 1.0f, this->unk_1E4, 0.0f);
         Math_SmoothStepToF(&this->actor.world.pos.z, sp5C->z, 1.0f, this->unk_1E4, 0.0f);
         this->unk_1C4 += 2000;
@@ -1166,7 +1319,11 @@ void BossDodongo_Roll(BossDodongo* this, PlayState* play) {
 
             this->unk_1E8 = 0.0f;
             this->unk_1E4 = 0.0f;
-            BossDodongo_SetupWalk(this);
+            if (this->actor.xzDistToPlayer > 600.0f) {
+                BossDodongo_SetupPostRollCornerRecovery(this);
+            } else {
+                BossDodongo_SetupWalk(this);
+            }
             this->unk_228 = 9200.0f;
             this->actor.velocity.y = 20.0f;
             Audio_PlayActorSound2(&this->actor, NA_SE_EN_DODO_K_COLI);
