@@ -11,6 +11,7 @@
 #include "textures/boss_title_cards/object_bv.h"
 #include "objects/object_bv/object_bv.h"
 #include "overlays/actors/ovl_En_Boom/z_en_boom.h"
+#include "overlays/actors/ovl_En_Bili/z_en_bili.h"
 #include "objects/gameplay_keep/gameplay_keep.h"
 #include "overlays/actors/ovl_Door_Warp1/z_door_warp1.h"
 
@@ -188,6 +189,8 @@ void BossVa_BariPhase3Attack(BossVa* this, PlayState* play);
 void BossVa_BariPhase2Attack(BossVa* this, PlayState* play);
 void BossVa_BariPhase3Stunned(BossVa* this, PlayState* play);
 void BossVa_BariDeath(BossVa* this, PlayState* play);
+
+void EnBili_SetupApproachPlayer(EnBili* this);
 
 void BossVa_SpawnBloodSplatter(PlayState* play, BossVaEffect* effect, Vec3f* pos, s16 yaw, s16 scale);
 void BossVa_SpawnGore(PlayState* play, BossVaEffect* effect, Vec3f* pos, s16 yaw, s16 scale);
@@ -2797,6 +2800,35 @@ void BossVa_SetupBariDeath(BossVa* this) {
 }
 
 void BossVa_BariDeath(BossVa* this, PlayState* play) {
+    if (this->timer == 30) {
+        Vec3f spawnPos;
+        s16 angle = 0;
+        s32 i;
+
+        for (i = 0; i < 3; i++) {
+            EnBili* childBili;
+            f32 sinAngle = Math_SinS(angle);
+            f32 cosAngle = Math_CosS(angle);
+
+            spawnPos.x = this->actor.world.pos.x + (sinAngle * 10.0f);
+            spawnPos.y = this->actor.world.pos.y;
+            spawnPos.z = this->actor.world.pos.z + (cosAngle * 10.0f);
+
+            childBili = (EnBili*)Actor_Spawn(&play->actorCtx, play, ACTOR_EN_BILI, spawnPos.x, spawnPos.y, spawnPos.z,
+                                             0, angle, 0, EN_BILI_TYPE_NORMAL, true);
+
+            if (childBili != NULL) {
+                EnBili_SetupApproachPlayer(childBili);
+                childBili->actor.world.rot.y = angle;
+                childBili->actor.speedXZ = 1.5f;
+                childBili->actor.velocity.x = sinAngle * 1.5f;
+                childBili->actor.velocity.z = cosAngle * 1.5f;
+            }
+
+            angle += 0x5555;
+        }
+    }
+
     this->timer--;
     if (this->timer == 0) {
         Actor_Kill(&this->actor);
