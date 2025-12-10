@@ -8,9 +8,6 @@
 #include <soh/Enhancements/item-tables/ItemTableManager.h>
 #include "soh/Enhancements/timesaver_hook_handlers.h"
 #include "soh/Enhancements/randomizer/hook_handlers.h"
-#include <algorithm>
-#include <cmath>
-#include <unordered_map>
 
 #include "src/overlays/actors/ovl_En_Bb/z_en_bb.h"
 #include "src/overlays/actors/ovl_En_Dekubaba/z_en_dekubaba.h"
@@ -28,8 +25,6 @@
 #include "src/overlays/actors/ovl_Door_Shutter/z_door_shutter.h"
 #include "src/overlays/actors/ovl_Door_Gerudo/z_door_gerudo.h"
 #include "src/overlays/actors/ovl_En_Elf/z_en_elf.h"
-#include "objects/object_link_boy/object_link_boy.h"
-#include "objects/object_link_child/object_link_child.h"
 #include "soh_assets.h"
 #include "kaleido.h"
 
@@ -146,81 +141,6 @@ bool IsHyperBossesActive() {
             gSaveContext.ship.quest.data.bossRush.options[BR_OPTIONS_HYPERBOSSES] == BR_CHOICE_HYPERBOSSES_YES);
 }
 
-namespace {
-std::unordered_map<Actor*, float> sFractionalBossUpdates;
-std::unordered_map<Actor*, float> sFractionalEnemyUpdates;
-std::unordered_map<Actor*, int32_t> sActorMaxHealth;
-
-int32_t GetBaseHyperSpeedIncreasePercent() {
-    int32_t speedIncreasePercent = CVarGetInteger(CVAR_ENHANCEMENT("HyperEnemySpeedIncreasePercent"), 100);
-
-    speedIncreasePercent = std::clamp(speedIncreasePercent, 0, 400);
-
-    return speedIncreasePercent;
-}
-
-int32_t GetZeroHealthHyperSpeedIncreasePercent() {
-    int32_t speedIncreasePercent = CVarGetInteger(CVAR_ENHANCEMENT("HyperEnemySpeedAtZeroHealthPercent"), 100);
-
-    speedIncreasePercent = std::clamp(speedIncreasePercent, -100, 400);
-
-    return speedIncreasePercent;
-}
-
-float GetActorHealthRatio(Actor* actor) {
-    if (actor == nullptr) {
-        return 1.0f;
-    }
-
-    int32_t currentHealth = std::max<int32_t>(actor->colChkInfo.health, 0);
-    int32_t& maxHealth = sActorMaxHealth[actor];
-
-    if (maxHealth == 0 || currentHealth > maxHealth) {
-        maxHealth = std::max(currentHealth, 1);
-    }
-
-    if (maxHealth <= 0) {
-        return 1.0f;
-    }
-
-    const float healthRatio = static_cast<float>(currentHealth) / static_cast<float>(maxHealth);
-
-    return std::clamp(healthRatio, 0.0f, 1.0f);
-}
-
-int32_t GetActorHyperSpeedIncreasePercent(Actor* actor) {
-    const int32_t baseSpeedPercent = GetBaseHyperSpeedIncreasePercent();
-    const int32_t zeroHealthSpeedPercent = GetZeroHealthHyperSpeedIncreasePercent();
-
-    const float missingHealthRatio = 1.0f - GetActorHealthRatio(actor);
-    const float lerpedSpeed = static_cast<float>(baseSpeedPercent) +
-                              (static_cast<float>(zeroHealthSpeedPercent - baseSpeedPercent) * missingHealthRatio);
-
-    return std::clamp(static_cast<int32_t>(std::round(lerpedSpeed)), -100, 400);
-}
-
-int32_t CalculateAdditionalHyperUpdates(int32_t speedIncreasePercent, Actor* actor,
-                                        std::unordered_map<Actor*, float>& fractionalUpdates) {
-    if (speedIncreasePercent <= 0) {
-        return 0;
-    }
-
-    const float extraUpdatesPerFrame = static_cast<float>(speedIncreasePercent) / 100.0f;
-    int32_t wholeExtraUpdates = static_cast<int32_t>(std::floor(extraUpdatesPerFrame));
-    float& actorAccumulator = fractionalUpdates[actor];
-
-    actorAccumulator += extraUpdatesPerFrame - static_cast<float>(wholeExtraUpdates);
-
-    if (actorAccumulator >= 1.0f) {
-        const int32_t fractionalCarry = static_cast<int32_t>(actorAccumulator);
-        wholeExtraUpdates += fractionalCarry;
-        actorAccumulator -= static_cast<float>(fractionalCarry);
-    }
-
-    return wholeExtraUpdates;
-}
-} // namespace
-
 void UpdateHyperBossesState() {
     static uint32_t actorUpdateHookId = 0;
     if (actorUpdateHookId != 0) {
@@ -228,16 +148,10 @@ void UpdateHyperBossesState() {
         actorUpdateHookId = 0;
     }
 
-    sFractionalBossUpdates.clear();
-    sActorMaxHealth.clear();
-
-    const int32_t maxHyperSpeedPercent =
-        std::max(GetBaseHyperSpeedIncreasePercent(), GetZeroHealthHyperSpeedIncreasePercent());
-
-    if (IsHyperBossesActive() && maxHyperSpeedPercent > 0) {
+    if (IsHyperBossesActive()) {
         actorUpdateHookId =
             GameInteractor::Instance->RegisterGameHook<GameInteractor::OnActorUpdate>([](void* refActor) {
-                // Run the update function multiple times to make bosses move and act faster.
+                // Run the update function a second time to make bosses move and act twice as fast.
 
                 Player* player = GET_PLAYER(gPlayState);
                 Actor* actor = static_cast<Actor*>(refActor);
@@ -258,30 +172,20 @@ void UpdateHyperBossesState() {
                                       actor->id == ACTOR_BOSS_GANON || // Ganondorf
                                       actor->id == ACTOR_BOSS_GANON2;  // Ganon
 
-                const int32_t speedIncreasePercent = GetActorHyperSpeedIncreasePercent(actor);
-
                 // Don't apply during cutscenes because it causes weird behaviour and/or crashes on some bosses.
-                if (IsHyperBossesActive() && speedIncreasePercent > 0 && isBossActor &&
-                    !Player_InBlockingCsMode(gPlayState, player)) {
-                    const int32_t additionalUpdates =
-                        CalculateAdditionalHyperUpdates(speedIncreasePercent, actor, sFractionalBossUpdates);
-
+                if (IsHyperBossesActive() && isBossActor && !Player_InBlockingCsMode(gPlayState, player)) {
                     // Barinade needs to be updated in sequence to avoid unintended behaviour.
                     if (actor->id == ACTOR_BOSS_VA) {
                         // params -1 is BOSSVA_BODY
                         if (actor->params == -1) {
                             Actor* actorList = gPlayState->actorCtx.actorLists[ACTORCAT_BOSS].head;
                             while (actorList != NULL) {
-                                for (int32_t i = 0; i < additionalUpdates; ++i) {
-                                    GameInteractor::RawAction::UpdateActor(actorList);
-                                }
+                                GameInteractor::RawAction::UpdateActor(actorList);
                                 actorList = actorList->next;
                             }
                         }
                     } else {
-                        for (int32_t i = 0; i < additionalUpdates; ++i) {
-                            GameInteractor::RawAction::UpdateActor(actor);
-                        }
+                        GameInteractor::RawAction::UpdateActor(actor);
                     }
                 }
             });
@@ -292,115 +196,6 @@ void RegisterHyperBosses() {
     UpdateHyperBossesState();
     GameInteractor::Instance->RegisterGameHook<GameInteractor::OnLoadGame>(
         [](int16_t fileNum) { UpdateHyperBossesState(); });
-}
-
-void UpdateHyperEnemiesState() {
-    static uint32_t actorUpdateHookId = 0;
-    if (actorUpdateHookId != 0) {
-        GameInteractor::Instance->UnregisterGameHook<GameInteractor::OnActorUpdate>(actorUpdateHookId);
-        actorUpdateHookId = 0;
-    }
-
-    sFractionalEnemyUpdates.clear();
-    sActorMaxHealth.clear();
-
-    const int32_t maxHyperSpeedPercent =
-        std::max(GetBaseHyperSpeedIncreasePercent(), GetZeroHealthHyperSpeedIncreasePercent());
-
-    if (CVarGetInteger(CVAR_ENHANCEMENT("HyperEnemies"), 0) && maxHyperSpeedPercent > 0) {
-        actorUpdateHookId =
-            GameInteractor::Instance->RegisterGameHook<GameInteractor::OnActorUpdate>([](void* refActor) {
-                // Run the update function multiple times to make enemies and minibosses move and act faster.
-
-                Player* player = GET_PLAYER(gPlayState);
-                Actor* actor = static_cast<Actor*>(refActor);
-
-                // Some enemies are not in the ACTORCAT_ENEMY category, and some are that aren't really enemies.
-                bool isEnemy = actor->category == ACTORCAT_ENEMY || actor->id == ACTOR_EN_TORCH2;
-                bool isExcludedEnemy = actor->id == ACTOR_EN_FIRE_ROCK || actor->id == ACTOR_EN_ENCOUNT2;
-
-                const int32_t speedIncreasePercent = GetActorHyperSpeedIncreasePercent(actor);
-
-                // Don't apply during cutscenes because it causes weird behaviour and/or crashes on some cutscenes.
-                if (CVarGetInteger(CVAR_ENHANCEMENT("HyperEnemies"), 0) && speedIncreasePercent > 0 && isEnemy &&
-                    !isExcludedEnemy && !Player_InBlockingCsMode(gPlayState, player)) {
-                    const int32_t additionalUpdates =
-                        CalculateAdditionalHyperUpdates(speedIncreasePercent, actor, sFractionalEnemyUpdates);
-
-                    for (int32_t i = 0; i < additionalUpdates; ++i) {
-                        GameInteractor::RawAction::UpdateActor(actor);
-                    }
-                }
-            });
-    }
-}
-
-void UpdatePatchHand() {
-    if ((CVarGetInteger(CVAR_ENHANCEMENT("EquipmentAlwaysVisible"), 0)) && LINK_IS_CHILD) {
-        ResourceMgr_PatchGfxByName(gLinkAdultLeftHandHoldingHammerNearDL, "childHammer1", 92,
-                                   gsSPDisplayListOTRFilePath(gLinkChildLeftFistNearDL));
-        ResourceMgr_PatchGfxByName(gLinkAdultLeftHandHoldingHammerNearDL, "childHammer2", 93, gsSPEndDisplayList());
-        ResourceMgr_PatchGfxByName(gLinkAdultRightHandHoldingHookshotNearDL, "childHookshot1", 84,
-                                   gsSPDisplayListOTRFilePath(gLinkChildRightHandClosedNearDL));
-        ResourceMgr_PatchGfxByName(gLinkAdultRightHandHoldingHookshotNearDL, "childHookshot2", 85,
-                                   gsSPEndDisplayList());
-        ResourceMgr_PatchGfxByName(gLinkAdultRightHandHoldingBowNearDL, "childBow1", 51,
-                                   gsSPDisplayListOTRFilePath(gLinkChildRightHandClosedNearDL));
-        ResourceMgr_PatchGfxByName(gLinkAdultRightHandHoldingBowNearDL, "childBow2", 52, gsSPEndDisplayList());
-        ResourceMgr_PatchGfxByName(gLinkAdultLeftHandHoldingMasterSwordNearDL, "childMasterSword1", 104,
-                                   gsSPDisplayListOTRFilePath(gLinkChildLeftFistNearDL));
-        ResourceMgr_PatchGfxByName(gLinkAdultLeftHandHoldingMasterSwordNearDL, "childMasterSword2", 105,
-                                   gsSPEndDisplayList());
-        ResourceMgr_PatchGfxByName(gLinkAdultLeftHandHoldingBgsNearDL, "childBiggoronSword1", 79,
-                                   gsSPDisplayListOTRFilePath(gLinkChildLeftFistNearDL));
-        ResourceMgr_PatchGfxByName(gLinkAdultLeftHandHoldingBgsNearDL, "childBiggoronSword2", 80, gsSPEndDisplayList());
-        ResourceMgr_PatchGfxByName(gLinkAdultHandHoldingBrokenGiantsKnifeDL, "childBrokenGiantsKnife1", 76,
-                                   gsSPDisplayListOTRFilePath(gLinkChildLeftFistNearDL));
-        ResourceMgr_PatchGfxByName(gLinkAdultHandHoldingBrokenGiantsKnifeDL, "childBrokenGiantsKnife2", 77,
-                                   gsSPEndDisplayList());
-
-    } else {
-        ResourceMgr_UnpatchGfxByName(gLinkAdultLeftHandHoldingHammerNearDL, "childHammer1");
-        ResourceMgr_UnpatchGfxByName(gLinkAdultLeftHandHoldingHammerNearDL, "childHammer2");
-        ResourceMgr_UnpatchGfxByName(gLinkAdultRightHandHoldingHookshotNearDL, "childHookshot1");
-        ResourceMgr_UnpatchGfxByName(gLinkAdultRightHandHoldingHookshotNearDL, "childHookshot2");
-        ResourceMgr_UnpatchGfxByName(gLinkAdultRightHandHoldingBowNearDL, "childBow1");
-        ResourceMgr_UnpatchGfxByName(gLinkAdultRightHandHoldingBowNearDL, "childBow2");
-        ResourceMgr_UnpatchGfxByName(gLinkAdultLeftHandHoldingMasterSwordNearDL, "childMasterSword1");
-        ResourceMgr_UnpatchGfxByName(gLinkAdultLeftHandHoldingMasterSwordNearDL, "childMasterSword2");
-        ResourceMgr_UnpatchGfxByName(gLinkAdultLeftHandHoldingBgsNearDL, "childBiggoronSword1");
-        ResourceMgr_UnpatchGfxByName(gLinkAdultLeftHandHoldingBgsNearDL, "childBiggoronSword2");
-        ResourceMgr_UnpatchGfxByName(gLinkAdultHandHoldingBrokenGiantsKnifeDL, "childBrokenGiantsKnife1");
-        ResourceMgr_UnpatchGfxByName(gLinkAdultHandHoldingBrokenGiantsKnifeDL, "childBrokenGiantsKnife2");
-    }
-    if ((CVarGetInteger(CVAR_ENHANCEMENT("EquipmentAlwaysVisible"), 0)) && LINK_IS_ADULT) {
-        ResourceMgr_PatchGfxByName(gLinkChildLeftFistAndKokiriSwordNearDL, "adultKokiriSword", 13,
-                                   gsSPDisplayListOTRFilePath(gLinkAdultLeftHandClosedNearDL));
-        ResourceMgr_PatchGfxByName(gLinkChildRightHandHoldingSlingshotNearDL, "adultSlingshot", 13,
-                                   gsSPDisplayListOTRFilePath(gLinkAdultRightHandClosedNearDL));
-        ResourceMgr_PatchGfxByName(gLinkChildLeftFistAndBoomerangNearDL, "adultBoomerang", 50,
-                                   gsSPDisplayListOTRFilePath(gLinkAdultLeftHandClosedNearDL));
-        ResourceMgr_PatchGfxByName(gLinkChildRightFistAndDekuShieldNearDL, "adultDekuShield", 49,
-                                   gsSPDisplayListOTRFilePath(gLinkAdultRightHandClosedNearDL));
-    } else {
-        ResourceMgr_UnpatchGfxByName(gLinkChildLeftFistAndKokiriSwordNearDL, "adultKokiriSword");
-        ResourceMgr_UnpatchGfxByName(gLinkChildRightHandHoldingSlingshotNearDL, "adultSlingshot");
-        ResourceMgr_UnpatchGfxByName(gLinkChildLeftFistAndBoomerangNearDL, "adultBoomerang");
-        ResourceMgr_UnpatchGfxByName(gLinkChildRightFistAndDekuShieldNearDL, "adultDekuShield");
-    }
-    if (CVarGetInteger("gEnhancements.FixHammerHand", 0) && LINK_IS_ADULT) {
-        ResourceMgr_PatchGfxByName(gLinkAdultLeftHandHoldingHammerNearDL, "hammerHand1", 92,
-                                   gsSPDisplayListOTRFilePath(gLinkAdultLeftHandClosedNearDL));
-        ResourceMgr_PatchGfxByName(gLinkAdultLeftHandHoldingHammerNearDL, "hammerHand2", 93, gsSPEndDisplayList());
-    } else {
-        ResourceMgr_UnpatchGfxByName(gLinkAdultLeftHandHoldingHammerNearDL, "hammerHand1");
-        ResourceMgr_UnpatchGfxByName(gLinkAdultLeftHandHoldingHammerNearDL, "hammerHand2");
-    }
-}
-
-void RegisterPatchHandHandler() {
-    GameInteractor::Instance->RegisterGameHook<GameInteractor::OnSceneInit>(
-        [](int32_t sceneNum) { UpdatePatchHand(); });
 }
 
 // this map is used for enemies that can be uniquely identified by their id
@@ -593,28 +388,6 @@ void RegisterEnemyDefeatCounts() {
     });
 }
 
-void UpdateHurtContainerModeState(bool newState) {
-    static bool hurtEnabled = false;
-    if (hurtEnabled == newState) {
-        return;
-    }
-
-    hurtEnabled = newState;
-    uint16_t getHeartPieces = gSaveContext.ship.stats.heartPieces / 4;
-    uint16_t getHeartContainers = gSaveContext.ship.stats.heartContainers;
-
-    if (hurtEnabled) {
-        gSaveContext.healthCapacity = 320 - ((getHeartPieces + getHeartContainers) * 16);
-    } else {
-        gSaveContext.healthCapacity = 48 + ((getHeartPieces + getHeartContainers) * 16);
-    }
-}
-
-void RegisterHurtContainerModeHandler() {
-    GameInteractor::Instance->RegisterGameHook<GameInteractor::OnLoadGame>(
-        [](int32_t fileNum) { UpdateHurtContainerModeState(CVarGetInteger(CVAR_ENHANCEMENT("HurtContainer"), 0)); });
-}
-
 void RegisterRandomizedEnemySizes() {
     GameInteractor::Instance->RegisterGameHook<GameInteractor::OnActorInit>([](void* refActor) {
         // Randomized Enemy Sizes
@@ -675,10 +448,7 @@ void InitMods() {
     RegisterTTS();
     RegisterOcarinaTimeTravel();
     RegisterHyperBosses();
-    UpdateHyperEnemiesState();
     RegisterEnemyDefeatCounts();
     RegisterRandomizedEnemySizes();
-    RegisterPatchHandHandler();
-    RegisterHurtContainerModeHandler();
     RandoKaleido_RegisterHooks();
 }
