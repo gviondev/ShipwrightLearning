@@ -17,14 +17,55 @@ static constexpr int32_t CVAR_HYPER_ENEMIES_DEFAULT = 0;
 
 namespace {
 std::unordered_map<Actor*, float> sFractionalEnemyUpdates;
+std::unordered_map<Actor*, int32_t> sActorMaxHealth;
 uint32_t sActorUpdateHookId = 0;
 
-int32_t GetHyperSpeedIncreasePercent() {
+int32_t GetBaseHyperSpeedIncreasePercent() {
     int32_t speedIncreasePercent = CVarGetInteger(CVAR_ENHANCEMENT("HyperEnemySpeedIncreasePercent"), 100);
 
     speedIncreasePercent = std::clamp(speedIncreasePercent, 0, 400);
 
     return speedIncreasePercent;
+}
+
+int32_t GetZeroHealthHyperSpeedIncreasePercent() {
+    int32_t speedIncreasePercent = CVarGetInteger(CVAR_ENHANCEMENT("HyperEnemySpeedAtZeroHealthPercent"), 100);
+
+    speedIncreasePercent = std::clamp(speedIncreasePercent, -100, 400);
+
+    return speedIncreasePercent;
+}
+
+float GetActorHealthRatio(Actor* actor) {
+    if (actor == nullptr) {
+        return 1.0f;
+    }
+
+    int32_t currentHealth = std::max<int32_t>(actor->colChkInfo.health, 0);
+    int32_t& maxHealth = sActorMaxHealth[actor];
+
+    if (maxHealth == 0 || currentHealth > maxHealth) {
+        maxHealth = std::max(currentHealth, 1);
+    }
+
+    if (maxHealth <= 0) {
+        return 1.0f;
+    }
+
+    const float healthRatio = static_cast<float>(currentHealth) / static_cast<float>(maxHealth);
+
+    return std::clamp(healthRatio, 0.0f, 1.0f);
+}
+
+int32_t GetActorHyperSpeedIncreasePercent(Actor* actor) {
+    const int32_t baseSpeedPercent = GetBaseHyperSpeedIncreasePercent();
+    const int32_t zeroHealthSpeedPercent = GetZeroHealthHyperSpeedIncreasePercent();
+
+    const float missingHealthRatio = 1.0f - GetActorHealthRatio(actor);
+    const float lerpedSpeed = static_cast<float>(baseSpeedPercent) +
+                              (static_cast<float>(zeroHealthSpeedPercent - baseSpeedPercent) * missingHealthRatio);
+
+    return std::clamp(static_cast<int32_t>(std::round(lerpedSpeed)), -100, 400);
 }
 
 int32_t CalculateAdditionalHyperUpdates(int32_t speedIncreasePercent, Actor* actor,
@@ -56,10 +97,12 @@ void UpdateHyperEnemiesState() {
     }
 
     sFractionalEnemyUpdates.clear();
+    sActorMaxHealth.clear();
 
-    int32_t speedIncreasePercent = GetHyperSpeedIncreasePercent();
+    const int32_t maxHyperSpeedPercent =
+        std::max(GetBaseHyperSpeedIncreasePercent(), GetZeroHealthHyperSpeedIncreasePercent());
 
-    if (CVAR_HYPER_ENEMIES_VALUE && speedIncreasePercent > 0) {
+    if (CVAR_HYPER_ENEMIES_VALUE && maxHyperSpeedPercent > 0) {
         sActorUpdateHookId =
             GameInteractor::Instance->RegisterGameHook<GameInteractor::OnActorUpdate>([](void* refActor) {
                 Player* player = GET_PLAYER(gPlayState);
@@ -69,7 +112,7 @@ void UpdateHyperEnemiesState() {
                 bool isEnemy = actor->category == ACTORCAT_ENEMY || actor->id == ACTOR_EN_TORCH2;
                 bool isExcludedEnemy = actor->id == ACTOR_EN_FIRE_ROCK || actor->id == ACTOR_EN_ENCOUNT2;
 
-                int32_t speedIncreasePercent = GetHyperSpeedIncreasePercent();
+                const int32_t speedIncreasePercent = GetActorHyperSpeedIncreasePercent(actor);
 
                 // Don't apply during cutscenes because it causes weird behaviour and/or crashes on some cutscenes.
                 if (CVAR_HYPER_ENEMIES_VALUE && speedIncreasePercent > 0 && isEnemy && !isExcludedEnemy &&
@@ -86,4 +129,5 @@ void UpdateHyperEnemiesState() {
 }
 
 static RegisterShipInitFunc initFunc(UpdateHyperEnemiesState,
-                                     { CVAR_HYPER_ENEMIES_NAME, CVAR_ENHANCEMENT("HyperEnemySpeedIncreasePercent") });
+                                     { CVAR_HYPER_ENEMIES_NAME, CVAR_ENHANCEMENT("HyperEnemySpeedIncreasePercent"),
+                                       CVAR_ENHANCEMENT("HyperEnemySpeedAtZeroHealthPercent") });
