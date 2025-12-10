@@ -608,6 +608,24 @@ void SohMenu::AddMenuEnhancements() {
         .CVar(CVAR_ENHANCEMENT("NoHUDHeartAnimation"))
         .RaceDisable(false)
         .Options(CheckboxOptions().Tooltip("Disables the Beating Animation of the Hearts on the HUD."));
+    AddWidget(path, "Write HUD to Depth Buffer", WIDGET_CVAR_CHECKBOX)
+        .CVar(CVAR_ENHANCEMENT("HUDDepthWrite"))
+        .RaceDisable(false)
+        .Options(CheckboxOptions().Tooltip(
+            "Writes HUD geometry into the depth buffer so depth-based post-processors (such as ReShade) can "
+            "reliably separate it from the 3D scene."));
+    AddWidget(path, "HUD Depth Value", WIDGET_CVAR_SLIDER_INT)
+        .CVar(CVAR_ENHANCEMENT("HUDDepthValue"))
+        .RaceDisable(false)
+        .PreFunc([](WidgetInfo& info) { info.isHidden = CVarGetInteger(CVAR_ENHANCEMENT("HUDDepthWrite"), 0) == 0; })
+        .Options(IntSliderOptions()
+                    .Min(0)
+                    .Max(0xFFFF)
+                    .DefaultValue(0xFFFF)
+                    .Format("%d")
+                    .Tooltip(
+                        "Constant depth (0 = near plane, 65535 = far plane) written for HUD elements when depth output "
+                        "is enabled."));
     AddWidget(path, "Glitch Line-up Tick", WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR_ENHANCEMENT("DrawLineupTick"))
         .Options(CheckboxOptions().Tooltip(

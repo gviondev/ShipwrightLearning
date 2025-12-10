@@ -1187,9 +1187,41 @@ void Gfx_SetupDL_2Opa(GraphicsContext* gfxCtx) {
     CLOSE_DISPS(gfxCtx);
 }
 
+static bool Gfx_GetHudDepthValue(u16* outDepth) {
+    if (CVarGetInteger(CVAR_ENHANCEMENT("HUDDepthWrite"), 0)) {
+        *outDepth = (u16)CLAMP(CVarGetInteger(CVAR_ENHANCEMENT("HUDDepthValue"), 0xFFFF), 0, 0xFFFF);
+        return true;
+    }
+
+    if (CVarGetInteger(CVAR_ENHANCEMENT("UIDepth.Enabled"), 0)) {
+        *outDepth = Gfx_GetUIDepthValue();
+        return true;
+    }
+
+    return false;
+}
+
+static Gfx* Gfx_ApplyHudDepthWriteWithMode(Gfx* gfx, u32 renderMode1, u32 renderMode2) {
+    u16 hudDepth;
+
+    if (Gfx_GetHudDepthValue(&hudDepth)) {
+        gDPPipeSync(gfx++);
+        gDPSetDepthSource(gfx++, G_ZS_PRIM);
+        gDPSetPrimDepth(gfx++, hudDepth, 0);
+        gDPSetRenderMode(gfx++, renderMode1, renderMode2);
+        gSPSetGeometryMode(gfx++, G_ZBUFFER);
+    }
+
+    return gfx;
+}
+
+static Gfx* Gfx_ApplyHudDepthWrite(Gfx* gfx) {
+    return Gfx_ApplyHudDepthWriteWithMode(gfx, G_RM_ZB_XLU_SURF, G_RM_ZB_XLU_SURF2);
+}
+
 Gfx* Gfx_SetupDL_39(Gfx* gfx) {
     gSPDisplayList(gfx++, sSetupDL[SETUPDL_39]);
-    return gfx;
+    return Gfx_ApplyHudDepthWrite(gfx);
 }
 
 void Gfx_SetupDL_39Opa(GraphicsContext* gfxCtx) {
@@ -1213,14 +1245,14 @@ u16 Gfx_GetUIDepthValue(void) {
 }
 
 void Gfx_SetupDL_OverlayUIDepth(GraphicsContext* gfxCtx) {
-    if (!CVarGetInteger(CVAR_ENHANCEMENT("UIDepth.Enabled"), 0)) {
+    u16 primDepth;
+
+    if (!Gfx_GetHudDepthValue(&primDepth)) {
         Gfx_SetupDL_39Overlay(gfxCtx);
         return;
     }
 
     OPEN_DISPS(gfxCtx);
-
-    u16 primDepth = Gfx_GetUIDepthValue();
 
     gSPDisplayList(OVERLAY_DISP++, sSetupDL[SETUPDL_71]);
     gDPSetDepthSource(OVERLAY_DISP++, G_ZS_PRIM);
@@ -1233,7 +1265,7 @@ void Gfx_SetupDL_39Ptr(Gfx** gfxp) {
     Gfx* gfx = *gfxp;
 
     gSPDisplayList(gfx++, sSetupDL[SETUPDL_39]);
-    *gfxp = gfx;
+    *gfxp = Gfx_ApplyHudDepthWrite(gfx);
 }
 
 void Gfx_SetupDL_40Opa(GraphicsContext* gfxCtx) {
@@ -1320,6 +1352,7 @@ void Gfx_SetupDL_42Opa(GraphicsContext* gfxCtx) {
     OPEN_DISPS(gfxCtx);
 
     gSPDisplayList(POLY_OPA_DISP++, sSetupDL[SETUPDL_42]);
+    POLY_OPA_DISP = Gfx_ApplyHudDepthWriteWithMode(POLY_OPA_DISP, G_RM_ZB_XLU_SURF, G_RM_ZB_XLU_SURF2);
 
     CLOSE_DISPS(gfxCtx);
 }
@@ -1328,6 +1361,7 @@ void Gfx_SetupDL_42Overlay(GraphicsContext* gfxCtx) {
     OPEN_DISPS(gfxCtx);
 
     gSPDisplayList(OVERLAY_DISP++, sSetupDL[SETUPDL_42]);
+    OVERLAY_DISP = Gfx_ApplyHudDepthWriteWithMode(OVERLAY_DISP, G_RM_ZB_XLU_SURF, G_RM_ZB_XLU_SURF2);
 
     CLOSE_DISPS(gfxCtx);
 }
