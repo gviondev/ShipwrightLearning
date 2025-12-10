@@ -8,6 +8,7 @@ extern "C" {
 #endif
 
 void UpdateHyperBossesState();
+void UpdateHyperEnemiesState();
 void InitMods();
 void SwitchAge();
 
