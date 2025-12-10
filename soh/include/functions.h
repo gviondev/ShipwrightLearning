@@ -1327,6 +1327,7 @@ void Animation_Change(SkelAnime* skelAnime, AnimationHeader* animation, f32 play
                       u8 mode, f32 morphFrames);
 void Animation_PlayOnce(SkelAnime* skelAnime, AnimationHeader* animation);
 void Animation_MorphToPlayOnce(SkelAnime* skelAnime, AnimationHeader* animation, f32 morphFrames);
+void Animation_MorphToPlayOnceSetSpeed(SkelAnime* skelAnime, AnimationHeader* animation, f32 morphFrames, f32 playSpeed);
 void Animation_PlayOnceSetSpeed(SkelAnime* skelAnime, AnimationHeader* animation, f32 playSpeed);
 void Animation_PlayLoop(SkelAnime* skelAnime, AnimationHeader* animation);
 void Animation_MorphToLoop(SkelAnime* skelAnime, AnimationHeader* animation, f32 morphFrames);

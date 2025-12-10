@@ -46,6 +46,8 @@ void BossGanondrof_SetupPaintings(BossGanondrof* this);
 void BossGanondrof_Paintings(BossGanondrof* this, PlayState* play);
 void BossGanondrof_SetupNeutral(BossGanondrof* this, f32 arg1);
 void BossGanondrof_Neutral(BossGanondrof* this, PlayState* play);
+void BossGanondrof_SetupTripleCombo(BossGanondrof* this, PlayState* play);
+void BossGanondrof_TripleCombo(BossGanondrof* this, PlayState* play);
 void BossGanondrof_SetupThrow(BossGanondrof* this, PlayState* play);
 void BossGanondrof_Throw(BossGanondrof* this, PlayState* play);
 void BossGanondrof_SetupBlock(BossGanondrof* this, PlayState* play);
@@ -198,6 +200,9 @@ static InitChainEntry sInitChain[] = {
 
 static Vec3f sAudioVec = { 0.0f, 0.0f, 50.0f };
 
+static const f32 sTripleComboChance = 0.3f;
+static const s16 sTripleReturnReleaseFrame = 5;
+
 void BossGanondrof_ClearPixels(u8* mask, s16 index) {
     if (mask[index]) {
         sDecayTex[index] = 1;
@@ -220,7 +225,7 @@ void BossGanondrof_Init(Actor* thisx, PlayState* play) {
     SkelAnime_Init(play, &this->skelAnime, &gPhantomGanonSkel, &gPhantomGanonRideAnim, NULL, NULL, 0);
     if (this->actor.params < GND_FAKE_BOSS) {
         this->actor.params = GND_REAL_BOSS;
-        this->actor.colChkInfo.health = 30;
+        this->actor.colChkInfo.health = 10;
         this->lightNode = LightContext_InsertLight(play, &play->lightCtx, &this->lightInfo);
         Lights_PointNoGlowSetInfo(&this->lightInfo, this->actor.world.pos.x, this->actor.world.pos.y,
                                   this->actor.world.pos.z, 255, 255, 255, 255);
@@ -442,6 +447,79 @@ void BossGanondrof_SetupNeutral(BossGanondrof* this, f32 arg1) {
     this->timers[0] = (s16)(Rand_ZeroOne() * 64.0f) + 30;
 }
 
+static void BossGanondrof_SetTripleShotStage(BossGanondrof* this, s16 stage) {
+    this->work[GND_TRIPLE_SHOT_STAGE] = stage;
+
+    switch (stage) {
+        case 0:
+            this->fwork[GND_END_FRAME] = Animation_GetLastFrame(&gPhantomGanonThrowAnim);
+            Animation_MorphToPlayOnceSetSpeed(&this->skelAnime, &gPhantomGanonThrowAnim, -5.0f, 1.5f);
+            this->work[GND_THROW_FRAME] = 25;
+            break;
+        case 1:
+            this->fwork[GND_END_FRAME] = Animation_GetLastFrame(&gPhantomGanonReturn1Anim);
+             Animation_MorphToPlayOnceSetSpeed(&this->skelAnime, &gPhantomGanonReturn1Anim, -2.0f, 1.5f);
+            this->work[GND_THROW_FRAME] = sTripleReturnReleaseFrame;
+            break;
+        case 2:
+        default:
+            this->fwork[GND_END_FRAME] = Animation_GetLastFrame(&gPhantomGanonReturn2Anim);
+             Animation_MorphToPlayOnceSetSpeed(&this->skelAnime, &gPhantomGanonReturn2Anim, -2.0f, 1.5f);
+            this->work[GND_THROW_FRAME] = sTripleReturnReleaseFrame;
+            break;
+    }
+}
+
+void BossGanondrof_SetupTripleCombo(BossGanondrof* this, PlayState* play) {
+    EnfHG* horseTemp;
+    s16 lightTime = 25;
+
+    this->work[GND_ACTION_STATE] = THROW_NORMAL;
+    BossGanondrof_SetTripleShotStage(this, 0);
+    this->actionFunc = BossGanondrof_TripleCombo;
+    horseTemp = (EnfHG*)this->actor.child;
+    Actor_SpawnAsChild(&play->actorCtx, &this->actor, play, ACTOR_EN_FHG_FIRE, this->spearTip.x, this->spearTip.y,
+                       this->spearTip.z, lightTime, FHGFIRE_LIGHT_GREEN, 0, FHGFIRE_SPEAR_LIGHT);
+    this->actor.child = &horseTemp->actor;
+    this->work[GND_THROW_COUNT]++;
+    Audio_PlayActorSound2(&this->actor, NA_SE_EN_FANTOM_STICK);
+}
+
+void BossGanondrof_TripleCombo(BossGanondrof* this, PlayState* play) {
+    SkelAnime_Update(&this->skelAnime);
+
+    if (Animation_OnFrame(&this->skelAnime, this->work[GND_THROW_FRAME])) {
+        EnfHG* horseTemp = (EnfHG*)this->actor.child;
+
+        if (this->flyMode <= GND_FLY_NEUTRAL) {
+            Audio_PlayActorSound2(&this->actor, NA_SE_EN_FANTOM_MASIC2);
+        } else {
+            Audio_PlayActorSound2(&this->actor, NA_SE_EN_FANTOM_MASIC1);
+        }
+
+        Audio_PlayActorSound2(&this->actor, NA_SE_EN_FANTOM_VOICE);
+        Actor_SpawnAsChild(&play->actorCtx, &this->actor, play, ACTOR_EN_FHG_FIRE, this->spearTip.x, this->spearTip.y,
+                           this->spearTip.z, this->work[GND_ACTION_STATE], 0, 0, FHGFIRE_ENERGY_BALL);
+        this->actor.child = &horseTemp->actor;
+    }
+
+    if (Animation_OnFrame(&this->skelAnime, this->fwork[GND_END_FRAME])) {
+        if (this->work[GND_TRIPLE_SHOT_STAGE] >= 2) {
+            BossGanondrof_SetupNeutral(this, -6.0f);
+            this->flyMode = GND_FLY_NEUTRAL;
+        } else {
+            BossGanondrof_SetTripleShotStage(this, this->work[GND_TRIPLE_SHOT_STAGE] + 1);
+        }
+    }
+
+    Math_ApproachS(&this->actor.shape.rot.y, this->actor.yawTowardsPlayer, 5, 0x7D0);
+    this->actor.world.pos.x += this->actor.velocity.x;
+    this->actor.world.pos.z += this->actor.velocity.z;
+    Math_ApproachZeroF(&this->actor.velocity.x, 1.0f, 0.5f);
+    Math_ApproachZeroF(&this->actor.velocity.z, 1.0f, 0.5f);
+    this->actor.world.pos.y += 2.0f * Math_SinS(this->work[GND_VARIANCE_TIMER] * 1500);
+}
+
 void BossGanondrof_Neutral(BossGanondrof* this, PlayState* play) {
     f32 targetX;
     f32 targetY;
@@ -458,27 +536,32 @@ void BossGanondrof_Neutral(BossGanondrof* this, PlayState* play) {
             if (this->timers[0] == 0) {
                 this->timers[0] = (s16)(Rand_ZeroOne() * 64.0f) + 30;
                 rand01 = Rand_ZeroOne();
-                if (thisx->colChkInfo.health < 5) {
-                    if (rand01 < 0.25f) {
+                if (rand01 < sTripleComboChance) {
+                    BossGanondrof_SetupTripleCombo(this, play);
+                } else {
+                    rand01 = Rand_ZeroOne();
+                    if (thisx->colChkInfo.health < 5) {
+                        if (rand01 < 0.25f) {
+                            BossGanondrof_SetupThrow(this, play);
+                        } else if (rand01 >= 0.8f) {
+                            this->flyMode = GND_FLY_CHARGE;
+                            this->timers[0] = 60;
+                            this->fwork[GND_FLOAT_SPEED] = 0.0f;
+                            Audio_PlayActorSound2(thisx, NA_SE_EN_FANTOM_LAUGH);
+                        } else {
+                            this->flyMode = GND_FLY_VOLLEY;
+                            this->timers[0] = 60;
+                            this->fwork[GND_FLOAT_SPEED] = 0.0f;
+                            Audio_PlayActorSound2(thisx, NA_SE_EN_FANTOM_LAUGH);
+                        }
+                    } else if ((rand01 < 0.5f) || (this->work[GND_THROW_COUNT] < 5)) {
                         BossGanondrof_SetupThrow(this, play);
-                    } else if (rand01 >= 0.8f) {
-                        this->flyMode = GND_FLY_CHARGE;
-                        this->timers[0] = 60;
-                        this->fwork[GND_FLOAT_SPEED] = 0.0f;
-                        Audio_PlayActorSound2(thisx, NA_SE_EN_FANTOM_LAUGH);
                     } else {
                         this->flyMode = GND_FLY_VOLLEY;
                         this->timers[0] = 60;
                         this->fwork[GND_FLOAT_SPEED] = 0.0f;
                         Audio_PlayActorSound2(thisx, NA_SE_EN_FANTOM_LAUGH);
                     }
-                } else if ((rand01 < 0.5f) || (this->work[GND_THROW_COUNT] < 5)) {
-                    BossGanondrof_SetupThrow(this, play);
-                } else {
-                    this->flyMode = GND_FLY_VOLLEY;
-                    this->timers[0] = 60;
-                    this->fwork[GND_FLOAT_SPEED] = 0.0f;
-                    Audio_PlayActorSound2(thisx, NA_SE_EN_FANTOM_LAUGH);
                 }
             }
 

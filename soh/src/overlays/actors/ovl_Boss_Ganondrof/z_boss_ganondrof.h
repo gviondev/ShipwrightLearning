@@ -48,6 +48,7 @@ typedef enum {
     /* 15 */ GND_LIMB_DECAY_INDEX,
     /* 16 */ GND_DEATH_ENV_TIMER,
     /* 17 */ GND_DEATH_SFX_TIMER,
+    /* 18 */ GND_TRIPLE_SHOT_STAGE,
     /* 20 */ GND_SHORT_COUNT = 20
 } BossGanondrofS16Var;
 

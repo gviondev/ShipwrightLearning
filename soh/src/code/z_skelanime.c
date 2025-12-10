@@ -1782,6 +1782,10 @@ void Animation_MorphToPlayOnce(SkelAnime* skelAnime, AnimationHeader* animation,
     Animation_Change(skelAnime, animation, 1.0f, 0.0f, Animation_GetLastFrame(animation), ANIMMODE_ONCE, morphFrames);
 }
 
+void Animation_MorphToPlayOnceSetSpeed(SkelAnime* skelAnime, AnimationHeader* animation, f32 morphFrames, f32 playSpeed) {
+    Animation_Change(skelAnime, animation, playSpeed, 0.0f, Animation_GetLastFrame(animation), ANIMMODE_ONCE, morphFrames);
+}
+
 /**
  * Immediately changes to an animation that plays once at the specified speed.
  */
