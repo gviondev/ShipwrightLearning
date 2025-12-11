@@ -942,7 +942,7 @@ void BossMo_Init(Actor* thisx, PlayState* play2) {
         this->actor.world.pos.z = initialSpawnPos.z;
         this->fwork[MO_TENT_SWING_SIZE_X] = 5.0f;
         this->drawActor = true;
-        this->actor.colChkInfo.health = 20;
+        this->actor.colChkInfo.health = 10;
         this->actor.colChkInfo.mass = 0;
         this->actor.params = 0;
         Actor_SetScale(&this->actor, 0.01f);
