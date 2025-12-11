@@ -444,10 +444,10 @@ void EnfHG_SetupApproach(EnfHG* this, PlayState* play, s16 paintingIndex) {
         this->inPaintingVelZ = 1.0f;
     }
 
-    this->timers[0] = 100;
-    this->actor.scale.x = 0.002f;
-    this->actor.scale.y = 0.002f;
-    this->actor.scale.z = 0.001f;
+    this->timers[0] = 80;
+    this->actor.scale.x = 0.003f;
+    this->actor.scale.y = 0.003f;
+    this->actor.scale.z = 0.002f;
     this->approachRate = 0.0f;
 
     this->warpColorFilterR = play->lightCtx.fogColor[0];
@@ -652,7 +652,8 @@ void EnfHG_Retreat(EnfHG* this, PlayState* play) {
     if (this->timers[0] == 0) {
         BossGanondrof* bossGnd = (BossGanondrof*)this->actor.parent;
         s16 paintingIdxReal;
-        s16 paintingIdxFake;
+        s16 decoyIndices[2];
+        s16 decoyCount = 0;
 
         if (this->actor.params != GND_REAL_BOSS) {
             this->killActor = true;
@@ -663,13 +664,33 @@ void EnfHG_Retreat(EnfHG* this, PlayState* play) {
         } else {
             paintingIdxReal = Rand_ZeroOne() * 5.99f;
             EnfHG_SetupApproach(this, play, paintingIdxReal);
-            do {
-                paintingIdxFake = Rand_ZeroOne() * 5.99f;
-            } while (paintingIdxFake == paintingIdxReal);
-            osSyncPrintf("ac1 = %x `````````````````````````````````````````````````\n",
-                         Actor_SpawnAsChild(&play->actorCtx, &this->actor, play, ACTOR_BOSS_GANONDROF,
-                                            this->actor.world.pos.x, this->actor.world.pos.y, this->actor.world.pos.z,
-                                            0, 0, 0, paintingIdxFake + GND_FAKE_BOSS));
+
+            while (decoyCount < ARRAY_COUNT(decoyIndices)) {
+                s16 candidate = Rand_ZeroOne() * 5.99f;
+                s16 i;
+
+                if (candidate == paintingIdxReal) {
+                    continue;
+                }
+
+                for (i = 0; i < decoyCount; i++) {
+                    if (decoyIndices[i] == candidate) {
+                        break;
+                    }
+                }
+
+                if (i == decoyCount) {
+                    decoyIndices[decoyCount++] = candidate;
+                }
+            }
+
+            for (decoyCount = 0; decoyCount < ARRAY_COUNT(decoyIndices); decoyCount++) {
+                osSyncPrintf("ac1 = %x `````````````````````````````````````````````````\n",
+                             Actor_SpawnAsChild(&play->actorCtx, &this->actor, play, ACTOR_BOSS_GANONDROF,
+                                                this->actor.world.pos.x, this->actor.world.pos.y,
+                                                this->actor.world.pos.z, 0, 0, 0,
+                                                decoyIndices[decoyCount] + GND_FAKE_BOSS));
+            }
         }
     }
 }

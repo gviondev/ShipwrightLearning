@@ -581,6 +581,7 @@ void BossGanondrof_Intro(BossGanondrof* this, PlayState* play) {
 void BossGanondrof_SetupPaintings(BossGanondrof* this) {
     Animation_MorphToLoop(&this->skelAnime, &gPhantomGanonRideAnim, -5.0f);
     this->actionFunc = BossGanondrof_Paintings;
+    this->work[GND_PORTAL_ACTIVE] = 0;
 }
 
 void BossGanondrof_Paintings(BossGanondrof* this, PlayState* play) {
@@ -613,13 +614,27 @@ void BossGanondrof_Paintings(BossGanondrof* this, PlayState* play) {
     this->actor.world.pos.y = horse->actor.world.pos.y;
     this->actor.shape.rot.y = this->actor.world.rot.y = horse->actor.world.rot.y;
     if (this->flyMode != GND_FLY_PAINTING) {
-        BossGanondrof_SetupNeutral(this, -20.0f);
-        this->timers[0] = 100;
-        this->colliderBody.dim.radius = 20;
-        this->colliderBody.dim.height = 60;
-        this->colliderBody.dim.yShift = -33;
-        Audio_PlayActorSound2(&this->actor, NA_SE_EN_FANTOM_LAUGH);
-        this->actor.naviEnemyId = 0x1A;
+        if (this->actor.params >= GND_FAKE_BOSS) {
+            if (!this->work[GND_PORTAL_ACTIVE]) {
+                Animation_MorphToPlayOnce(&this->skelAnime, &gPhantomGanonRideSpearRaiseAnim, -2.0f);
+                this->timers[0] = 25;
+                this->work[GND_PORTAL_ACTIVE] = 1;
+                this->actor.flags |= ACTOR_FLAG_ATTENTION_ENABLED;
+            } else if (this->timers[0] == 0) {
+                Math_ApproachF(&this->actor.scale.x, 0.004f, 1.0f, 0.0005f);
+                Math_ApproachF(&this->actor.scale.y, 0.004f, 1.0f, 0.0005f);
+                Math_ApproachF(&this->actor.scale.z, 0.004f, 1.0f, 0.0005f);
+                this->killActor = true;
+            }
+        } else {
+            BossGanondrof_SetupNeutral(this, -20.0f);
+            this->timers[0] = 60;
+            this->colliderBody.dim.radius = 20;
+            this->colliderBody.dim.height = 60;
+            this->colliderBody.dim.yShift = -33;
+            Audio_PlayActorSound2(&this->actor, NA_SE_EN_FANTOM_LAUGH);
+            this->actor.naviEnemyId = 0x1A;
+        }
     } else {
         horse->bossGndSignal = FHG_NO_SIGNAL;
         this->actor.scale.x = horse->actor.scale.x / 1.15f;
