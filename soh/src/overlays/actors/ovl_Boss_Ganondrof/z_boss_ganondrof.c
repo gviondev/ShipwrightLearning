@@ -6,6 +6,8 @@
 
 #include <float.h>
 
+#include <float.h>
+
 #include "z_boss_ganondrof.h"
 #include "objects/object_gnd/object_gnd.h"
 #include "overlays/actors/ovl_En_fHG/z_en_fhg.h"
@@ -1081,6 +1083,7 @@ void BossGanondrof_PortalCharge(BossGanondrof* this, PlayState* play) {
 
                 exitPortalIndex = BossGanondrof_GetPaintingPortalIndexBehindPlayer(
                     &playerx->world.pos, playerx->shape.rot.y, this->work[GND_PORTAL_INDEX]);
+                Player_ReleaseLockOn(player);
                 BossGanondrof_GetPaintingPortalPos(exitPortalIndex, &exitPortalPos, &exitPortalYaw);
                 exitYaw = Math_Vec3f_Yaw(&exitPortalPos, &playerx->world.pos);
                 BossGanondrof_SpawnWarp(this, play, &portalPos, portalYaw, FHGFIRE_WARP_RETREAT);
