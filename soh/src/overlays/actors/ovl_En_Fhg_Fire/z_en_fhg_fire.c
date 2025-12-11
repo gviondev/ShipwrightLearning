@@ -147,10 +147,10 @@ void EnFhgFire_Init(Actor* thisx, PlayState* play) {
 
         switch (speedType) {
             case THROW_NORMAL:
-                this->actor.speedXZ = 8.0f;
+                this->actor.speedXZ = 10.0f;
                 break;
             case THROW_FAST:
-                this->actor.speedXZ = 16.0f;
+                this->actor.speedXZ = 18.0f;
                 break;
             case THROW_HELD:
                 this->actor.speedXZ = 0.0f;
