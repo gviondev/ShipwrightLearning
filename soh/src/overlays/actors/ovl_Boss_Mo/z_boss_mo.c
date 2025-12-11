@@ -56,6 +56,11 @@ void BossMo_Unknown(void);
 static BossMo* BossMo_GetCore(BossMo* this);
 static BossMoEffect* BossMo_GetEffects(BossMo* this);
 
+static const s16 sTentSpawnInitialWaitTimer = 40;
+static const s16 sTentSpawnPrepTimer = 55;
+static const s16 sTentCoreCooldownTimer = 55;
+static const s16 sSecondTentSpawnDelay = 80;
+
 typedef enum {
     /* 0 */ MO_FX_NONE,
     /* 1 */ MO_FX_SMALL_RIPPLE,
@@ -1033,7 +1038,7 @@ void BossMo_Destroy(Actor* thisx, PlayState* play) {
 void BossMo_SetupTentacle(BossMo* this, PlayState* play) {
     this->actionFunc = BossMo_Tentacle;
     this->work[MO_TENT_ACTION_STATE] = MO_TENT_WAIT;
-    this->timers[0] = BossMo_ChaosTimer(this, 50, 20, 15);
+    this->timers[0] = BossMo_ChaosTimer(this, sTentSpawnInitialWaitTimer, 20, 15);
 }
 
 void BossMo_Tentacle(BossMo* this, PlayState* play) {
@@ -1199,7 +1204,7 @@ void BossMo_Tentacle(BossMo* this, PlayState* play) {
             this->actor.flags &= ~ACTOR_FLAG_ATTENTION_ENABLED;
             if (this == core->tent2) {
                 this->work[MO_TENT_ACTION_STATE] = MO_TENT_SPAWN;
-                this->timers[0] = BossMo_ChaosTimer(this, 70, 15, 30);
+                this->timers[0] = BossMo_ChaosTimer(this, sTentSpawnPrepTimer, 15, 30);
                 this->actor.shape.rot.y = this->actor.yawTowardsPlayer;
             }
             break;
@@ -1610,7 +1615,7 @@ void BossMo_Tentacle(BossMo* this, PlayState* play) {
 
                     core->tent2->targetPos.x = sTentSpawnPos[spawnPos].x;
                     core->tent2->targetPos.z = sTentSpawnPos[spawnPos].y;
-                    core->tent2->timers[0] = 100;
+                    core->tent2->timers[0] = sSecondTentSpawnDelay;
                     core->tent2->work[MO_TENT_ACTION_STATE] = MO_TENT_DESPAWN;
                     BossMoFightManager_SetTentReference(core, core->tent1, 0);
                 }
@@ -2599,7 +2604,7 @@ void BossMo_Core(BossMo* this, PlayState* play) {
                 this->work[MO_TENT_ACTION_STATE] = MO_CORE_MAKE_TENT;
                 if (core->tent1->work[MO_TENT_ACTION_STATE] == MO_TENT_WAIT) {
                     core->tent1->work[MO_TENT_ACTION_STATE] = MO_TENT_SPAWN;
-                    core->tent1->timers[0] = 70;
+                    core->tent1->timers[0] = sTentSpawnPrepTimer;
                     core->tent1->actor.shape.rot.y = core->tent1->actor.yawTowardsPlayer;
                 }
             }
@@ -2608,7 +2613,7 @@ void BossMo_Core(BossMo* this, PlayState* play) {
             if ((core->tent1->work[MO_TENT_ACTION_STATE] == MO_TENT_DESPAWN) ||
                 (core->tent1->work[MO_TENT_ACTION_STATE] == MO_TENT_WAIT)) {
                 this->work[MO_TENT_ACTION_STATE] = MO_CORE_MOVE;
-                this->timers[0] = 70;
+                this->timers[0] = sTentCoreCooldownTimer;
             }
             if (core->tent1->work[MO_TENT_ACTION_STATE] == MO_TENT_CUT) {
                 this->work[MO_TENT_ACTION_STATE] = MO_CORE_ATTACK;
