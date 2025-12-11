@@ -368,6 +368,118 @@ static bool BossMoFightManager_ShouldSpawnExtraCore(PlayState* play) {
     return (play->sceneNum == SCENE_WATER_TEMPLE_BOSS) && !sBossMoFightManager.spawnedExtraCore;
 }
 
+static f32 BossMoFightManager_GetCoreRadius(BossMo* core) {
+    return (core != NULL) ? core->coreCollider.dim.radius : 0.0f;
+}
+
+static void BossMoFightManager_ClampToArenaBounds(Vec3f* pos, PlayState* play, f32 padding) {
+    CollisionHeader* colHeader = play->colCtx.colHeader;
+
+    if ((colHeader != NULL) && (colHeader->numWaterBoxes > 0)) {
+        WaterBox* waterBox = &colHeader->waterBoxes[0];
+        f32 minX = waterBox->xMin + padding;
+        f32 maxX = waterBox->xMin + waterBox->xLength - padding;
+        f32 minZ = waterBox->zMin + padding;
+        f32 maxZ = waterBox->zMin + waterBox->zLength - padding;
+
+        pos->x = CLAMP(pos->x, minX, maxX);
+        pos->z = CLAMP(pos->z, minZ, maxZ);
+    }
+}
+
+static void BossMoFightManager_FindNearbyWaterPosition(Vec3f* pos, PlayState* play, f32 desiredHeight) {
+    f32 waterSurface;
+    WaterBox* waterBox;
+
+    if (WaterBox_GetSurface1(play, &play->colCtx, pos->x, pos->z, &waterSurface, &waterBox)) {
+        pos->y = desiredHeight;
+        return;
+    }
+
+    static const Vec2f sSearchOffsets[] = {
+        { 40.0f, 0.0f },  { -40.0f, 0.0f }, { 0.0f, 40.0f },  { 0.0f, -40.0f },
+        { 80.0f, 0.0f },  { -80.0f, 0.0f }, { 0.0f, 80.0f },  { 0.0f, -80.0f },
+    };
+
+    for (s32 i = 0; i < ARRAY_COUNT(sSearchOffsets); i++) {
+        Vec3f candidate = *pos;
+
+        candidate.x += sSearchOffsets[i].x;
+        candidate.z += sSearchOffsets[i].y;
+
+        if (WaterBox_GetSurface1(play, &play->colCtx, candidate.x, candidate.z, &waterSurface, &waterBox)) {
+            pos->x = candidate.x;
+            pos->z = candidate.z;
+            pos->y = desiredHeight;
+            return;
+        }
+    }
+
+    pos->y = desiredHeight;
+}
+
+static bool BossMoFightManager_PositionConflictsWithCore(Vec3f* pos, BossMo* core, f32 otherRadius) {
+    f32 combinedRadius = BossMoFightManager_GetCoreRadius(core) + otherRadius;
+    f32 dx = pos->x - core->actor.world.pos.x;
+    f32 dz = pos->z - core->actor.world.pos.z;
+
+    return (SQ(dx) + SQ(dz)) < SQ(combinedRadius);
+}
+
+static void BossMoFightManager_DisplaceSpawnFromPrimary(Vec3f* spawnPos, BossMo* primaryCore, PlayState* play) {
+    const f32 minRepulsion = 200.0f;
+    f32 primaryRadius = BossMoFightManager_GetCoreRadius(primaryCore);
+    Vec2f offset = { spawnPos->x - primaryCore->actor.world.pos.x, spawnPos->z - primaryCore->actor.world.pos.z };
+    f32 distSq = SQ(offset.x) + SQ(offset.y);
+
+    if (distSq < SQ(minRepulsion)) {
+        if (distSq == 0.0f) {
+            offset.x = minRepulsion;
+            offset.y = 0.0f;
+        } else {
+            f32 invDist = 1.0f / sqrtf(distSq);
+
+            offset.x *= invDist;
+            offset.y *= invDist;
+            offset.x *= minRepulsion;
+            offset.y *= minRepulsion;
+        }
+
+        spawnPos->x = primaryCore->actor.world.pos.x + offset.x;
+        spawnPos->z = primaryCore->actor.world.pos.z + offset.y;
+    }
+
+    BossMoFightManager_ClampToArenaBounds(spawnPos, play, primaryRadius);
+    BossMoFightManager_FindNearbyWaterPosition(spawnPos, play, spawnPos->y);
+
+    offset.x = spawnPos->x - primaryCore->actor.world.pos.x;
+    offset.y = spawnPos->z - primaryCore->actor.world.pos.z;
+
+    Vec2f perp = { -offset.y, offset.x };
+    f32 perpLenSq = SQ(perp.x) + SQ(perp.y);
+
+    if (perpLenSq == 0.0f) {
+        perp.x = 1.0f;
+        perp.y = 0.0f;
+        perpLenSq = 1.0f;
+    }
+
+    f32 invPerpLen = 1.0f / sqrtf(perpLenSq);
+    perp.x *= invPerpLen * primaryRadius;
+    perp.y *= invPerpLen * primaryRadius;
+
+    Vec3f baseSpawnPos = *spawnPos;
+
+    for (s32 i = 0; i < 8 && BossMoFightManager_PositionConflictsWithCore(spawnPos, primaryCore, primaryRadius); i++) {
+        f32 direction = (i & 1) ? -1.0f : 1.0f;
+        f32 scale = 1.0f + (i * 0.5f);
+
+        spawnPos->x = baseSpawnPos.x + (perp.x * scale * direction);
+        spawnPos->z = baseSpawnPos.z + (perp.y * scale * direction);
+        BossMoFightManager_ClampToArenaBounds(spawnPos, play, primaryRadius);
+    }
+}
+
 static void BossMoFightManager_SpawnExtraCore(BossMo* primaryCore, PlayState* play) {
     if (!BossMoFightManager_ShouldSpawnExtraCore(play) || sBossMoFightManager.activeCoreCount != 1) {
         return;
@@ -375,6 +487,8 @@ static void BossMoFightManager_SpawnExtraCore(BossMo* primaryCore, PlayState* pl
 
     Vec3f spawnPos = primaryCore->actor.world.pos;
     spawnPos.x = -spawnPos.x;
+
+    BossMoFightManager_DisplaceSpawnFromPrimary(&spawnPos, primaryCore, play);
 
     sBossMoFightManager.spawnedExtraCore = true;
 
@@ -722,6 +836,7 @@ void BossMo_Init(Actor* thisx, PlayState* play2) {
     u16 i;
     BossMoEffect* effects;
     bool isSecondaryCore = (this->actor.params == BOSSMO_SECONDARY_CORE);
+    Vec3f initialSpawnPos = this->actor.world.pos;
 
     // Due to Ships resource caching, the water level for Morpha needs to be reset
     // to ensure subsequent re-fights in the same running instance start with the correct level
@@ -749,8 +864,9 @@ void BossMo_Init(Actor* thisx, PlayState* play2) {
                 this->effectsBuf[i].epoch++;
             }
         }
-        this->actor.world.pos.x = 200.0f;
+        this->actor.world.pos.x = isSecondaryCore ? initialSpawnPos.x : 200.0f;
         this->actor.world.pos.y = MO_WATER_LEVEL(play) + 50.0f;
+        this->actor.world.pos.z = initialSpawnPos.z;
         this->fwork[MO_TENT_SWING_SIZE_X] = 5.0f;
         this->drawActor = true;
         this->actor.colChkInfo.health = 20;
