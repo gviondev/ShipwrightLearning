@@ -125,6 +125,146 @@ const ActorInit Boss_Mo_InitVars = {
     (ActorResetFunc)BossMo_Reset,
 };
 
+typedef struct BossMoFightManager {
+    BossMo* introLead;
+    BossMo* deathLead;
+    BossMo* waterDriver;
+    s32 activeCoreCount;
+    s32 completedDeaths;
+    s32 lastWaterFrame;
+    f32 sharedWaterLevel;
+    Vec3f rewardPos;
+    bool battleStarted;
+    bool rewardsSpawned;
+} BossMoFightManager;
+
+static BossMoFightManager sBossMoFightManager = { 0 };
+
+static void BossMoFightManager_Reset(void) {
+    memset(&sBossMoFightManager, 0, sizeof(sBossMoFightManager));
+    sBossMoFightManager.lastWaterFrame = -1;
+}
+
+static void BossMoFightManager_RegisterCore(void) {
+    sBossMoFightManager.activeCoreCount++;
+}
+
+static bool BossMoFightManager_IsIntroLead(BossMo* core) {
+    return sBossMoFightManager.introLead == core;
+}
+
+static bool BossMoFightManager_TryReserveIntro(BossMo* core) {
+    if (sBossMoFightManager.battleStarted) {
+        return false;
+    }
+
+    if (sBossMoFightManager.introLead == NULL) {
+        sBossMoFightManager.introLead = core;
+    }
+
+    return BossMoFightManager_IsIntroLead(core);
+}
+
+static void BossMoFightManager_NotifyBattleStarted(void) {
+    sBossMoFightManager.battleStarted = true;
+    sBossMoFightManager.introLead = NULL;
+}
+
+static bool BossMoFightManager_RequestDeathLead(BossMo* core) {
+    if (sBossMoFightManager.deathLead == NULL) {
+        sBossMoFightManager.deathLead = core;
+        return true;
+    }
+
+    return sBossMoFightManager.deathLead == core;
+}
+
+static void BossMoFightManager_ReleaseDeathLead(BossMo* core) {
+    if (sBossMoFightManager.deathLead == core) {
+        sBossMoFightManager.deathLead = NULL;
+    }
+}
+
+static void BossMoFightManager_BeginWaterFrame(PlayState* play) {
+    if (sBossMoFightManager.lastWaterFrame != play->state.frames) {
+        sBossMoFightManager.lastWaterFrame = play->state.frames;
+        sBossMoFightManager.waterDriver = NULL;
+        sBossMoFightManager.sharedWaterLevel = MO_WATER_LEVEL(play);
+    }
+}
+
+static bool BossMoFightManager_HasWaterPriority(BossMo* contender, BossMo* incumbent) {
+    if (incumbent == NULL) {
+        return true;
+    }
+
+    if ((contender->csState >= MO_DEATH_START) && (incumbent->csState < MO_DEATH_START)) {
+        return true;
+    }
+
+    if ((contender->csCamera != 0) && (incumbent->csCamera == 0)) {
+        return true;
+    }
+
+    if ((contender->csState >= MO_INTRO_START) && (incumbent->csState < MO_INTRO_START)) {
+        return true;
+    }
+
+    return false;
+}
+
+static void BossMoFightManager_SubmitWaterLevel(BossMo* core, PlayState* play, f32 targetWaterLevel) {
+    BossMoFightManager_BeginWaterFrame(play);
+
+    if (BossMoFightManager_HasWaterPriority(core, sBossMoFightManager.waterDriver)) {
+        sBossMoFightManager.waterDriver = core;
+        sBossMoFightManager.sharedWaterLevel = targetWaterLevel;
+    }
+
+    MO_WATER_LEVEL(play) = sBossMoFightManager.sharedWaterLevel;
+}
+
+static void BossMoFightManager_ReportDeathComplete(BossMo* core, PlayState* play, Vec3f* pos) {
+    if (sBossMoFightManager.rewardsSpawned) {
+        return;
+    }
+
+    sBossMoFightManager.completedDeaths++;
+    sBossMoFightManager.rewardPos = *pos;
+
+    if ((sBossMoFightManager.activeCoreCount != 0) &&
+        (sBossMoFightManager.completedDeaths >= sBossMoFightManager.activeCoreCount)) {
+        if (GameInteractor_Should(VB_SPAWN_BLUE_WARP, true, core)) {
+            Actor_SpawnAsChild(&play->actorCtx, &core->actor, play, ACTOR_DOOR_WARP1, sBossMoFightManager.rewardPos.x, -280.0f,
+                               sBossMoFightManager.rewardPos.z, 0, 0, 0, WARP_DUNGEON_ADULT);
+        }
+
+        if (GameInteractor_Should(VB_SPAWN_HEART_CONTAINER, true)) {
+            Actor_Spawn(&play->actorCtx, play, ACTOR_ITEM_B_HEART, sBossMoFightManager.rewardPos.x + 200.0f, -280.0f,
+                        sBossMoFightManager.rewardPos.z, 0, 0, 0, 0, true);
+        }
+
+        Audio_QueueSeqCmd(SEQ_PLAYER_BGM_MAIN << 24 | NA_BGM_BOSS_CLEAR);
+        Flags_SetClear(play, play->roomCtx.curRoom.num);
+
+        sBossMoFightManager.rewardsSpawned = true;
+    }
+}
+
+static void BossMoFightManager_FastForwardIntro(BossMo* core, PlayState* play) {
+    core->csState = MO_BATTLE;
+    core->csCamera = 0;
+    core->work[MO_TENT_ACTION_STATE] = MO_CORE_MOVE;
+    core->timers[0] = 0;
+
+    if ((core->tent1 != NULL) && (core->tent1->work[MO_TENT_ACTION_STATE] == MO_TENT_WAIT)) {
+        core->tent1->work[MO_TENT_ACTION_STATE] = MO_TENT_RETREAT;
+        core->tent1->timers[0] = 50;
+    }
+
+    BossMoFightManager_NotifyBattleStarted();
+}
+
 static BossMo* BossMo_GetCore(BossMo* this) {
     return (this->core != NULL) ? this->core : this;
 }
@@ -377,10 +517,12 @@ void BossMo_Init(Actor* thisx, PlayState* play2) {
             MO_WATER_LEVEL(play) = -500;
             return;
         }
+        BossMoFightManager_RegisterCore();
         if (Flags_GetEventChkInf(EVENTCHKINF_BEGAN_MORPHA_BATTLE)) {
             Audio_QueueSeqCmd(SEQ_PLAYER_BGM_MAIN << 24 | NA_BGM_BOSS);
             this->tentMaxAngle = 5.0f;
             this->timers[0] = 50;
+            sBossMoFightManager.battleStarted = true;
         } else {
             this->csState = MO_INTRO_WAIT;
             this->work[MO_TENT_ACTION_STATE] = MO_CORE_INTRO_WAIT;
@@ -1133,19 +1275,7 @@ void BossMo_Tentacle(BossMo* this, PlayState* play) {
                         BossMo_SpawnDroplet(MO_FX_DROPLET, (BossMoEffect*)effects, &spD4, &spE0,
                                             ((300 - indS1) * .0015f) + 0.13f);
                     }
-                    if (GameInteractor_Should(VB_SPAWN_BLUE_WARP, true, this)) {
-                        Actor_SpawnAsChild(&play->actorCtx, &this->actor, play, ACTOR_DOOR_WARP1,
-                                           this->actor.world.pos.x, -280.0f, this->actor.world.pos.z, 0, 0, 0,
-                                           WARP_DUNGEON_ADULT);
-                    }
-
-                    if (GameInteractor_Should(VB_SPAWN_HEART_CONTAINER, true)) {
-                        Actor_Spawn(&play->actorCtx, play, ACTOR_ITEM_B_HEART, this->actor.world.pos.x + 200.0f,
-                                    -280.0f, this->actor.world.pos.z, 0, 0, 0, 0, true);
-                    }
-
-                    Audio_QueueSeqCmd(SEQ_PLAYER_BGM_MAIN << 24 | NA_BGM_BOSS_CLEAR);
-                    Flags_SetClear(play, play->roomCtx.curRoom.num);
+                    BossMoFightManager_ReportDeathComplete(core, play, &this->actor.world.pos);
                 }
             }
             break;
@@ -1251,6 +1381,11 @@ void BossMo_IntroCs(BossMo* this, PlayState* play) {
     f32 pad48;
     BossMo* core = BossMo_GetCore(this);
 
+    if (sBossMoFightManager.battleStarted && !BossMoFightManager_IsIntroLead(core)) {
+        BossMoFightManager_FastForwardIntro(core, play);
+        return;
+    }
+
     if (this->csState < MO_INTRO_REVEAL) {
         this->cameraZoom = 80.0f;
     }
@@ -1268,6 +1403,9 @@ void BossMo_IntroCs(BossMo* this, PlayState* play) {
                 ((fabsf(player->actor.world.pos.z - -180.0f) < 40.0f) &&
                  (fabsf(player->actor.world.pos.x - -180.0f) < 40.0f))) {
                 // checks if Link is on one of the four platforms
+                if (!BossMoFightManager_TryReserveIntro(core)) {
+                    break;
+                }
                 func_80064520(play, &play->csCtx);
                 Player_SetCsActionWithHaltedActors(play, &this->actor, 8);
                 this->csCamera = Play_CreateSubCamera(play);
@@ -1459,10 +1597,10 @@ void BossMo_IntroCs(BossMo* this, PlayState* play) {
                 this->cameraSpeedMod = 0.0f;
                 this->cameraAccel = 0.01f;
             }
-            if (this->timers[2] == 150) {
+            if ((this->timers[2] == 150) && BossMoFightManager_IsIntroLead(core)) {
                 Audio_QueueSeqCmd(SEQ_PLAYER_BGM_MAIN << 24 | NA_BGM_BOSS);
             }
-            if (this->timers[2] == 130) {
+            if ((this->timers[2] == 130) && BossMoFightManager_IsIntroLead(core)) {
                 TitleCard_InitBossName(play, &play->actorCtx.titleCtx, SEGMENTED_TO_VIRTUAL(gMorphaTitleCardENGTex),
                                        160, 180, 128, 40, true);
                 Flags_SetEventChkInf(EVENTCHKINF_BEGAN_MORPHA_BATTLE);
@@ -1489,6 +1627,7 @@ void BossMo_IntroCs(BossMo* this, PlayState* play) {
                 this->csState = this->csCamera = MO_BATTLE;
                 func_80064534(play, &play->csCtx);
                 Player_SetCsActionWithHaltedActors(play, &this->actor, 7);
+                BossMoFightManager_NotifyBattleStarted();
             }
             break;
     }
@@ -1551,14 +1690,20 @@ void BossMo_DeathCs(BossMo* this, PlayState* play) {
     Vec3f pos;
     BossMo* core = BossMo_GetCore(this);
     BossMoEffect* effects = BossMo_GetEffects(this);
+    bool hasDeathCamera;
 
     switch (this->csState) {
         case MO_DEATH_START:
             func_80064520(play, &play->csCtx);
             Player_SetCsActionWithHaltedActors(play, &this->actor, 8);
-            this->csCamera = Play_CreateSubCamera(play);
-            Play_ChangeCameraStatus(play, MAIN_CAM, CAM_STAT_WAIT);
-            Play_ChangeCameraStatus(play, this->csCamera, CAM_STAT_ACTIVE);
+            hasDeathCamera = BossMoFightManager_RequestDeathLead(core);
+            if (hasDeathCamera) {
+                this->csCamera = Play_CreateSubCamera(play);
+                Play_ChangeCameraStatus(play, MAIN_CAM, CAM_STAT_WAIT);
+                Play_ChangeCameraStatus(play, this->csCamera, CAM_STAT_ACTIVE);
+            } else {
+                this->csCamera = 0;
+            }
             this->csState = MO_DEATH_MO_CORE_BURST;
             this->cameraEye = camera->eye;
             this->timers[0] = 90;
@@ -1730,6 +1875,7 @@ void BossMo_DeathCs(BossMo* this, PlayState* play) {
             }
             break;
         case MO_DEATH_FINISH:
+            BossMoFightManager_ReleaseDeathLead(core);
             break;
     }
     if ((this->csState > MO_DEATH_START) && (this->csState < MO_DEATH_FINISH)) {
@@ -2261,13 +2407,15 @@ void BossMo_UpdateCore(Actor* thisx, PlayState* play) {
     BossMo* tent2 = core->tent2;
     f32 tent1WaterMod = (tent1 != NULL) ? tent1->waterLevelMod : 0.0f;
     f32 tent2WaterMod = (tent2 != NULL) ? tent2->waterLevelMod : 0.0f;
+    f32 targetWaterLevel;
 
     osSyncPrintf("CORE mode = <%d>\n", this->work[MO_TENT_ACTION_STATE]);
     if (tent2 == NULL) {
-        MO_WATER_LEVEL(play) = tent1WaterMod + (s16)this->waterLevel;
+        targetWaterLevel = tent1WaterMod + (s16)this->waterLevel;
     } else {
-        MO_WATER_LEVEL(play) = tent2WaterMod + ((s16)this->waterLevel + tent1WaterMod);
+        targetWaterLevel = tent2WaterMod + ((s16)this->waterLevel + tent1WaterMod);
     }
+    BossMoFightManager_SubmitWaterLevel(core, play, targetWaterLevel);
     this->actor.flags |= ACTOR_FLAG_HOOKSHOT_PULLS_ACTOR;
     this->actor.focus.pos = this->actor.world.pos;
     this->work[MO_TENT_VAR_TIMER]++;
@@ -3642,4 +3790,5 @@ void BossMo_Unknown(void) {
 }
 
 void BossMo_Reset(void) {
+    BossMoFightManager_Reset();
 }
