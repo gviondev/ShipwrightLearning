@@ -599,8 +599,9 @@ static void BossMoFightManager_ReportDeathComplete(BossMo* core, PlayState* play
     if ((sBossMoFightManager.activeCoreCount != 0) &&
         (sBossMoFightManager.completedDeaths >= sBossMoFightManager.activeCoreCount)) {
         if (GameInteractor_Should(VB_SPAWN_BLUE_WARP, true, core)) {
-             Actor_SpawnAsChild(&play->actorCtx, &core->actor, play, ACTOR_DOOR_WARP1, 0.0f, -280.0f, 0.0f, 0, 0, 0,
-                                   WARP_DUNGEON_ADULT);
+             Actor_SpawnAsChild(&play->actorCtx, &core->actor, play, ACTOR_DOOR_WARP1,
+                                           core->actor.world.pos.x, -280.0f, core->actor.world.pos.z, 0, 0, 0,
+                                           WARP_DUNGEON_ADULT);
         }
 
         if (GameInteractor_Should(VB_SPAWN_HEART_CONTAINER, true)) {
@@ -836,7 +837,26 @@ void BossMo_Init(Actor* thisx, PlayState* play2) {
     u16 i;
     BossMoEffect* effects;
     bool isSecondaryCore = (this->actor.params == BOSSMO_SECONDARY_CORE);
+    s16 secondaryTimerOffset = 0;
     Vec3f initialSpawnPos = this->actor.world.pos;
+
+    if (isSecondaryCore) {
+        Player* player = GET_PLAYER(play);
+
+        this->work[MO_TENT_VAR_TIMER] = (s16)Rand_ZeroFloat(0x7FFF);
+        this->work[MO_TENT_MOVE_TIMER] = (s16)Rand_ZeroFloat(200.0f);
+        secondaryTimerOffset = (s16)Rand_ZeroFloat(30.0f);
+
+        if (player != NULL) {
+            s16 yawToPlayer = Math_FAtan2F(player->actor.world.pos.x - this->actor.world.pos.x,
+                                           player->actor.world.pos.z - this->actor.world.pos.z) *
+                              (s16)(0x8000 / M_PI);
+
+            yawToPlayer += (s16)Rand_CenteredFloat(0x600);
+            this->actor.world.rot.y = yawToPlayer;
+            this->actor.shape.rot.y = yawToPlayer;
+        }
+    }
 
     // Due to Ships resource caching, the water level for Morpha needs to be reset
     // to ensure subsequent re-fights in the same running instance start with the correct level
@@ -903,12 +923,20 @@ void BossMo_Init(Actor* thisx, PlayState* play2) {
             this->actor.world.pos.x = 1000.0f;
             this->timers[0] = 60;
         }
+
+        if (isSecondaryCore && (this->timers[0] > 0)) {
+            this->timers[0] += secondaryTimerOffset;
+        }
         this->tent1 = (BossMo*)Actor_SpawnAsChild(&play->actorCtx, &this->actor, play, ACTOR_BOSS_MO,
                                                   this->actor.world.pos.x, this->actor.world.pos.y,
                                                   this->actor.world.pos.z, 0, 0, 0, BOSSMO_TENTACLE);
         if (this->tent1 != NULL) {
             BossMoFightManager_SetTentReference(this, this->tent1, 0);
             this->tent1->effects = this->effects;
+            if (isSecondaryCore) {
+                this->tent1->timers[0] += secondaryTimerOffset;
+                BossMoFightManager_SyncTentTimer(this->tent1);
+            }
         }
         this->actor.draw = BossMo_DrawCore;
         this->actor.update = BossMo_UpdateCore;
