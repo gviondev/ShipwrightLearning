@@ -37,9 +37,9 @@ typedef enum {
 
 typedef enum {
     /*  0 */ GND_VARIANCE_TIMER,
-    /*  1 */ GND_US_1,
-    /*  2 */ GND_US_2,
-    /*  3 */ GND_US_3,
+    /*  1 */ GND_PORTAL_ACTIVE,
+    /*  2 */ GND_PORTAL_USED,
+    /*  3 */ GND_PORTAL_INDEX,
     /*  4 */ GND_UNKTIMER_1,
     /*  5 */ GND_UNKTIMER_2,
     /*  6 */ GND_INVINC_TIMER,

@@ -4,6 +4,8 @@
  * Description: Phantom Ganon
  */
 
+#include <float.h>
+
 #include "z_boss_ganondrof.h"
 #include "objects/object_gnd/object_gnd.h"
 #include "overlays/actors/ovl_En_fHG/z_en_fhg.h"
@@ -30,6 +32,14 @@ typedef enum {
     /* 3 */ CHARGE_FINISH
 } BossGanondrofChargeAction;
 
+typedef enum {
+    /* 0 */ PORTAL_CHARGE_WINDUP,
+    /* 1 */ PORTAL_CHARGE_START,
+    /* 2 */ PORTAL_CHARGE_TO_PAINTING,
+    /* 3 */ PORTAL_CHARGE_EMERGE,
+    /* 4 */ PORTAL_CHARGE_RECOVER
+} BossGanondrofPortalChargeAction;
+
 void BossGanondrof_Init(Actor* thisx, PlayState* play);
 void BossGanondrof_Destroy(Actor* thisx, PlayState* play);
 void BossGanondrof_Update(Actor* thisx, PlayState* play);
@@ -50,6 +60,8 @@ void BossGanondrof_Block(BossGanondrof* this, PlayState* play);
 void BossGanondrof_SetupReturn(BossGanondrof* this, PlayState* play);
 void BossGanondrof_Return(BossGanondrof* this, PlayState* play);
 void BossGanondrof_SetupCharge(BossGanondrof* this, PlayState* play);
+void BossGanondrof_SetupPortalCharge(BossGanondrof* this, PlayState* play);
+void BossGanondrof_PortalCharge(BossGanondrof* this, PlayState* play);
 void BossGanondrof_Charge(BossGanondrof* this, PlayState* play);
 void BossGanondrof_Stunned(BossGanondrof* this, PlayState* play);
 void BossGanondrof_Death(BossGanondrof* this, PlayState* play);
@@ -195,8 +207,153 @@ static InitChainEntry sInitChain[] = {
 
 static Vec3f sAudioVec = { 0.0f, 0.0f, 50.0f };
 
+typedef struct BossGanondrofPaintingPortal {
+    Vec3f pos;
+    s16 yRot;
+} BossGanondrofPaintingPortal;
+
+static BossGanondrofPaintingPortal sPaintingPortals[] = {
+    { { 0.0f, 60.0f, -315.0f }, 0x0000 },   { { -260.0f, 60.0f, -145.0f }, 0x2AAA },
+    { { -260.0f, 60.0f, 165.0f }, 0x5554 }, { { 0.0f, 60.0f, 315.0f }, 0x7FFE },
+    { { 260.0f, 60.0f, 155.0f }, 0xAAA8 },  { { 260.0f, 60.0f, -155.0f }, 0xD552 },
+};
+
 static const f32 sTripleComboChance = 0.3f;
 static const s16 sTripleReturnReleaseFrame = 5;
+
+static bool BossGanondrof_ArePaintingPortalsAdjacent(s16 leftIndex, s16 rightIndex) {
+    s16 count = ARRAY_COUNT(sPaintingPortals);
+    s16 clampedLeft = (leftIndex % count + count) % count;
+    s16 clampedRight = (rightIndex % count + count) % count;
+
+    return (clampedLeft == clampedRight) || (ABS(clampedLeft - clampedRight) == 1) ||
+           (ABS(clampedLeft - clampedRight) == (count - 1));
+}
+
+static void BossGanondrof_GetPaintingPortalPos(s16 index, Vec3f* outPos, s16* outYaw) {
+    s16 clampedIndex = CLAMP(index, 0, ARRAY_COUNT(sPaintingPortals) - 1);
+
+    outPos->x = (1.3f * sPaintingPortals[clampedIndex].pos.x) + (GND_BOSSROOM_CENTER_X - 4.0f);
+    outPos->y = sPaintingPortals[clampedIndex].pos.y + (GND_BOSSROOM_CENTER_Y + 153.0f);
+    outPos->z = (1.3f * sPaintingPortals[clampedIndex].pos.z) - -(GND_BOSSROOM_CENTER_Z - 10.0f);
+    *outYaw = sPaintingPortals[clampedIndex].yRot;
+}
+
+static s16 BossGanondrof_GetClosestPaintingPortalIndex(Vec3f* targetPos) {
+    s16 closestIndex = 0;
+    f32 closestDistSq = FLT_MAX;
+    s16 i;
+
+    for (i = 0; i < ARRAY_COUNT(sPaintingPortals); i++) {
+        Vec3f portalPos;
+        s16 portalYaw;
+        f32 distSq;
+
+        BossGanondrof_GetPaintingPortalPos(i, &portalPos, &portalYaw);
+        distSq = SQ(portalPos.x - targetPos->x) + SQ(portalPos.z - targetPos->z);
+        if (distSq < closestDistSq) {
+            closestDistSq = distSq;
+            closestIndex = i;
+        }
+    }
+
+    return closestIndex;
+}
+
+static s16 BossGanondrof_GetPaintingPortalIndexBehindPlayer(Vec3f* playerPos, s16 playerYaw, s16 excludeIndex) {
+    s16 clampedExclude = CLAMP(excludeIndex, 0, ARRAY_COUNT(sPaintingPortals) - 1);
+    s16 bestIndex = -1;
+    s16 bestFallbackIndex = -1;
+    f32 bestBehindCos = 1.0f;
+    f32 bestDistSq = FLT_MAX;
+    f32 bestFallbackDistSq = FLT_MAX;
+    s16 i;
+
+    for (i = 0; i < ARRAY_COUNT(sPaintingPortals); i++) {
+        Vec3f portalPos;
+        s16 portalYaw;
+        f32 distSq;
+        f32 behindCos;
+
+        if (BossGanondrof_ArePaintingPortalsAdjacent(i, clampedExclude)) {
+            continue;
+        }
+
+        BossGanondrof_GetPaintingPortalPos(i, &portalPos, &portalYaw);
+        distSq = SQ(portalPos.x - playerPos->x) + SQ(portalPos.z - playerPos->z);
+        if (distSq < bestFallbackDistSq) {
+            bestFallbackDistSq = distSq;
+            bestFallbackIndex = i;
+        }
+
+        behindCos = Math_CosS(BINANG_SUB(portalYaw, playerYaw));
+
+        if ((behindCos < bestBehindCos) || ((fabsf(behindCos - bestBehindCos) < 0.001f) && (distSq < bestDistSq))) {
+            bestBehindCos = behindCos;
+            bestDistSq = distSq;
+            bestIndex = i;
+        }
+    }
+
+    if (bestIndex < 0) {
+        if (bestFallbackIndex >= 0) {
+            bestIndex = bestFallbackIndex;
+        } else {
+            bestIndex = clampedExclude;
+        }
+    }
+
+    return bestIndex;
+}
+
+static void BossGanondrof_SpawnChargeEffects(BossGanondrof* this, PlayState* play) {
+    Actor* thisx = &this->actor;
+    s16 i;
+    Vec3f pos;
+    Vec3f vel = { 0.0f, 0.0f, 0.0f };
+    Vec3f accel = { 0.0f, 0.0f, 0.0f };
+    Vec3f baseOffset = { 0.0f, 50.0f, 0.0f };
+    Vec3f offset;
+
+    baseOffset.y = 10.0f;
+    for (i = 0; i < 10; i++) {
+        Matrix_Push();
+        Matrix_RotateY((thisx->shape.rot.y / (f32)0x8000) * M_PI, MTXMODE_NEW);
+        Matrix_RotateX((thisx->shape.rot.x / (f32)0x8000) * M_PI, MTXMODE_APPLY);
+        Matrix_RotateZ((this->work[GND_PARTICLE_ANGLE] / (f32)0x8000) * M_PI, MTXMODE_APPLY);
+        Matrix_MultVec3f(&baseOffset, &offset);
+        Matrix_Pop();
+        pos.x = this->spearTip.x + offset.x;
+        pos.y = this->spearTip.y + offset.y;
+        pos.z = this->spearTip.z + offset.z;
+        vel.x = (offset.x * 500.0f) / 1000.0f;
+        vel.y = (offset.y * 500.0f) / 1000.0f;
+        vel.z = (offset.z * 500.0f) / 1000.0f;
+        accel.x = (offset.x * -50.0f) / 1000.0f;
+        accel.y = (offset.y * -50.0f) / 1000.0f;
+        accel.z = (offset.z * -50.0f) / 1000.0f;
+        EffectSsFhgFlash_SpawnLightBall(play, &pos, &vel, &accel, 150, i % 7);
+        this->work[GND_PARTICLE_ANGLE] += 0x1A5C;
+    }
+
+    if (!(this->work[GND_VARIANCE_TIMER] & 7)) {
+        EnfHG* horse = (EnfHG*)thisx->child;
+
+        Actor_SpawnAsChild(&play->actorCtx, thisx, play, ACTOR_EN_FHG_FIRE, this->spearTip.x, this->spearTip.y,
+                           this->spearTip.z, 8, FHGFIRE_LIGHT_BLUE, 0, FHGFIRE_SPEAR_LIGHT);
+        thisx->child = &horse->actor;
+    }
+}
+
+static void BossGanondrof_SpawnWarp(BossGanondrof* this, PlayState* play, Vec3f* pos, s16 rotY, s16 params) {
+    EnfHG* horse = (EnfHG*)this->actor.child;
+    s16 rotatedYaw = rotY + 0x8000;
+
+    Actor_SpawnAsChild(&play->actorCtx, &this->actor, play, ACTOR_EN_FHG_FIRE, pos->x, pos->y, pos->z, 0,
+                       rotatedYaw, 0,
+                       params);
+    this->actor.child = &horse->actor;
+}
 
 void BossGanondrof_ClearPixels(u8* mask, s16 index) {
     if (mask[index]) {
@@ -827,11 +984,171 @@ void BossGanondrof_Block(BossGanondrof* this, PlayState* play) {
 }
 
 void BossGanondrof_SetupCharge(BossGanondrof* this, PlayState* play) {
+    if ((this->flyMode != GND_FLY_PAINTING) &&
+        ((this->actor.colChkInfo.health <= 5) && (Rand_ZeroOne() < 0.5f))) {
+        BossGanondrof_SetupPortalCharge(this, play);
+        return;
+    }
+
     this->fwork[GND_END_FRAME] = Animation_GetLastFrame(&gPhantomGanonChargeWindupAnim);
     Animation_MorphToLoop(&this->skelAnime, &gPhantomGanonChargeWindupAnim, -3.0f);
     this->actionFunc = BossGanondrof_Charge;
     this->timers[0] = 20;
     this->work[GND_ACTION_STATE] = CHARGE_WINDUP;
+}
+
+void BossGanondrof_SetupPortalCharge(BossGanondrof* this, PlayState* play) {
+    this->fwork[GND_END_FRAME] = Animation_GetLastFrame(&gPhantomGanonChargeWindupAnim);
+    Animation_MorphToLoop(&this->skelAnime, &gPhantomGanonChargeWindupAnim, -3.0f);
+    this->actionFunc = BossGanondrof_PortalCharge;
+    this->work[GND_PORTAL_USED] = 0;
+    this->work[GND_PORTAL_INDEX] = Rand_ZeroOne() * 5.99f;
+    this->timers[0] = 15;
+    this->work[GND_ACTION_STATE] = PORTAL_CHARGE_WINDUP;
+    this->actor.gravity = 0.0f;
+}
+
+void BossGanondrof_PortalCharge(BossGanondrof* this, PlayState* play) {
+    Player* player = GET_PLAYER(play);
+    Actor* playerx = &player->actor;
+    Actor* thisx = &this->actor;
+    f32 dxCenter = thisx->world.pos.x - GND_BOSSROOM_CENTER_X;
+    f32 dzCenter = thisx->world.pos.z - GND_BOSSROOM_CENTER_Z;
+
+    this->colliderBody.base.colType = COLTYPE_METAL;
+    SkelAnime_Update(&this->skelAnime);
+    switch (this->work[GND_ACTION_STATE]) {
+        case PORTAL_CHARGE_WINDUP:
+            if (this->timers[0] == 10) {
+                Vec3f portalPos;
+                s16 portalYaw;
+
+                BossGanondrof_GetPaintingPortalPos(this->work[GND_PORTAL_INDEX], &portalPos, &portalYaw);
+                BossGanondrof_SpawnWarp(this, play, &portalPos, portalYaw, FHGFIRE_WARP_RETREAT);
+            }
+
+            thisx->world.pos.x += thisx->velocity.x;
+            thisx->world.pos.z += thisx->velocity.z;
+            Math_ApproachZeroF(&thisx->velocity.x, 1.0f, 0.5f);
+            Math_ApproachZeroF(&thisx->velocity.z, 1.0f, 0.5f);
+            if (this->timers[0] == 0) {
+                this->work[GND_ACTION_STATE] = PORTAL_CHARGE_START;
+                this->timers[0] = 10;
+                thisx->speedXZ = 0.0f;
+                this->fwork[GND_END_FRAME] = Animation_GetLastFrame(&gPhantomGanonChargeStartAnim);
+                Animation_MorphToPlayOnce(&this->skelAnime, &gPhantomGanonChargeStartAnim, 0.0f);
+            }
+
+            Math_ApproachS(&thisx->shape.rot.y, thisx->yawTowardsPlayer, 5, 0x7D0);
+            break;
+        case PORTAL_CHARGE_START:
+            if (Animation_OnFrame(&this->skelAnime, this->fwork[GND_END_FRAME])) {
+                Vec3f portalPos;
+                s16 portalYaw;
+
+                this->fwork[GND_END_FRAME] = Animation_GetLastFrame(&gPhantomGanonChargeAnim);
+                Animation_MorphToLoop(&this->skelAnime, &gPhantomGanonChargeAnim, 0.0f);
+                this->work[GND_ACTION_STATE] = PORTAL_CHARGE_TO_PAINTING;
+                BossGanondrof_GetPaintingPortalPos(this->work[GND_PORTAL_INDEX], &portalPos, &portalYaw);
+                thisx->shape.rot.y = Math_Vec3f_Yaw(&thisx->world.pos, &portalPos);
+                thisx->world.rot.y = thisx->shape.rot.y;
+                thisx->gravity = 0.0f;
+                thisx->velocity.y = 0.0f;
+            }
+            break;
+        case PORTAL_CHARGE_TO_PAINTING: {
+            Vec3f portalPos;
+            s16 portalYaw;
+            f32 distToPortal;
+
+            BossGanondrof_GetPaintingPortalPos(this->work[GND_PORTAL_INDEX], &portalPos, &portalYaw);
+            thisx->world.rot.y = Math_Vec3f_Yaw(&thisx->world.pos, &portalPos);
+            Math_ApproachS(&thisx->shape.rot.y, thisx->world.rot.y, 5, 0x9C4);
+            thisx->world.rot.x = 0;
+            thisx->shape.rot.x = 0;
+            thisx->gravity = 0.0f;
+            thisx->velocity.y = 0.0f;
+            Math_ApproachF(&thisx->world.pos.y, portalPos.y, 1.0f, 2.0f);
+            Actor_UpdateVelocityXYZ(thisx);
+            Actor_UpdatePos(thisx);
+            Math_ApproachF(&thisx->speedXZ, 14.0f, 1.0f, 0.8f);
+            distToPortal = Math_Vec3f_DistXYZ(&thisx->world.pos, &portalPos);
+            if (distToPortal < 60.0f) {
+                s16 exitPortalIndex;
+                Vec3f exitPortalPos;
+                s16 exitPortalYaw;
+                s16 exitYaw;
+
+                exitPortalIndex = BossGanondrof_GetPaintingPortalIndexBehindPlayer(
+                    &playerx->world.pos, playerx->shape.rot.y, this->work[GND_PORTAL_INDEX]);
+                BossGanondrof_GetPaintingPortalPos(exitPortalIndex, &exitPortalPos, &exitPortalYaw);
+                exitYaw = Math_Vec3f_Yaw(&exitPortalPos, &playerx->world.pos);
+                BossGanondrof_SpawnWarp(this, play, &portalPos, portalYaw, FHGFIRE_WARP_RETREAT);
+                BossGanondrof_SpawnWarp(this, play, &exitPortalPos, exitPortalYaw, FHGFIRE_WARP_EMERGE);
+                thisx->world.pos = exitPortalPos;
+                thisx->prevPos = exitPortalPos;
+                thisx->velocity.y = 0.0f;
+                thisx->gravity = 0.0f;
+                thisx->shape.rot.y = thisx->world.rot.y = exitYaw;
+                thisx->shape.rot.x = thisx->world.rot.x = 0;
+                thisx->speedXZ = 14.0f;
+                this->work[GND_PORTAL_USED] = 1;
+                this->timers[0] = 15;
+                this->work[GND_ACTION_STATE] = PORTAL_CHARGE_EMERGE;
+                break;
+            }
+        } break;
+        case PORTAL_CHARGE_EMERGE: {
+            Vec3f vecToLink;
+
+            Math_ApproachS(&thisx->shape.rot.y, thisx->yawTowardsPlayer, 5, 0x7D0);
+            vecToLink.x = playerx->world.pos.x - thisx->world.pos.x;
+            vecToLink.y = playerx->world.pos.y + 40.0f - thisx->world.pos.y;
+            vecToLink.z = playerx->world.pos.z - thisx->world.pos.z;
+            thisx->world.rot.y = thisx->shape.rot.y;
+            thisx->world.rot.x =
+                Math_FAtan2F(vecToLink.y, sqrtf(SQ(vecToLink.x) + SQ(vecToLink.z))) * (0x8000 / M_PI);
+            thisx->gravity = 0.0f;
+            thisx->velocity.y = 0.0f;
+            Actor_UpdateVelocityXYZ(thisx);
+            Actor_UpdatePos(thisx);
+            Math_ApproachF(&thisx->speedXZ, 14.0f, 1.0f, 0.8f);
+            if ((this->timers[0] == 0) || (thisx->xyzDistToPlayerSq < SQ(100.0f))) {
+                this->work[GND_ACTION_STATE] = PORTAL_CHARGE_RECOVER;
+                this->timers[0] = 20;
+            }
+        } break;
+        case PORTAL_CHARGE_RECOVER:
+            thisx->gravity = 0.2f;
+            Actor_MoveXZGravity(thisx);
+            if (thisx->world.pos.y < 5.0f) {
+                thisx->world.pos.y = 5.0f;
+                thisx->velocity.y = 0.0f;
+            }
+
+            if (sqrtf(SQ(dxCenter) + SQ(dzCenter)) > 280.0f) {
+                Math_ApproachZeroF(&thisx->speedXZ, 1.0f, 2.0f);
+                this->timers[0] = 0;
+            }
+
+            if (this->timers[0] == 0) {
+                Math_ApproachZeroF(&thisx->speedXZ, 1.0f, 2.0f);
+                Math_ApproachZeroF(&thisx->velocity.y, 1.0f, 2.0f);
+                Math_ApproachS(&thisx->shape.rot.y, thisx->yawTowardsPlayer, 5, 0x7D0);
+                if ((thisx->speedXZ <= 0.5f) && (fabsf(thisx->velocity.y) <= 0.1f)) {
+                    BossGanondrof_SetupNeutral(this, -10.0f);
+                    this->timers[0] = 30;
+                    this->flyMode = GND_FLY_NEUTRAL;
+                }
+            }
+            break;
+    }
+
+    if (thisx->world.pos.y > (GND_BOSSROOM_CENTER_Y + 83.0f)) {
+        thisx->world.pos.y += 2.0f * Math_SinS(this->work[GND_VARIANCE_TIMER] * 1500);
+    }
+
+    BossGanondrof_SpawnChargeEffects(this, play);
 }
 
 void BossGanondrof_Charge(BossGanondrof* this, PlayState* play) {
@@ -924,43 +1241,8 @@ void BossGanondrof_Charge(BossGanondrof* this, PlayState* play) {
     if (thisx->world.pos.y > (GND_BOSSROOM_CENTER_Y + 83.0f)) {
         thisx->world.pos.y += 2.0f * Math_SinS(this->work[GND_VARIANCE_TIMER] * 1500);
     }
-    {
-        s16 i;
-        Vec3f pos;
-        Vec3f vel = { 0.0f, 0.0f, 0.0f };
-        Vec3f accel = { 0.0f, 0.0f, 0.0f };
-        Vec3f baseOffset = { 0.0f, 50.0f, 0.0f };
-        Vec3f offset;
 
-        baseOffset.y = 10.0f;
-        for (i = 0; i < 10; i++) {
-            Matrix_Push();
-            Matrix_RotateY((thisx->shape.rot.y / (f32)0x8000) * M_PI, MTXMODE_NEW);
-            Matrix_RotateX((thisx->shape.rot.x / (f32)0x8000) * M_PI, MTXMODE_APPLY);
-            Matrix_RotateZ((this->work[GND_PARTICLE_ANGLE] / (f32)0x8000) * M_PI, MTXMODE_APPLY);
-            Matrix_MultVec3f(&baseOffset, &offset);
-            Matrix_Pop();
-            pos.x = this->spearTip.x + offset.x;
-            pos.y = this->spearTip.y + offset.y;
-            pos.z = this->spearTip.z + offset.z;
-            vel.x = (offset.x * 500.0f) / 1000.0f;
-            vel.y = (offset.y * 500.0f) / 1000.0f;
-            vel.z = (offset.z * 500.0f) / 1000.0f;
-            accel.x = (offset.x * -50.0f) / 1000.0f;
-            accel.y = (offset.y * -50.0f) / 1000.0f;
-            accel.z = (offset.z * -50.0f) / 1000.0f;
-            EffectSsFhgFlash_SpawnLightBall(play, &pos, &vel, &accel, 150, i % 7);
-            this->work[GND_PARTICLE_ANGLE] += 0x1A5C;
-        }
-    }
-
-    if (!(this->work[GND_VARIANCE_TIMER] & 7)) {
-        EnfHG* horse = (EnfHG*)thisx->child;
-
-        Actor_SpawnAsChild(&play->actorCtx, thisx, play, ACTOR_EN_FHG_FIRE, this->spearTip.x, this->spearTip.y,
-                           this->spearTip.z, 8, FHGFIRE_LIGHT_BLUE, 0, FHGFIRE_SPEAR_LIGHT);
-        thisx->child = &horse->actor;
-    }
+    BossGanondrof_SpawnChargeEffects(this, play);
 }
 
 void BossGanondrof_SetupDeath(BossGanondrof* this, PlayState* play) {
@@ -1382,6 +1664,10 @@ void BossGanondrof_Update(Actor* thisx, PlayState* play) {
     } else if (this->actionFunc == BossGanondrof_Block) {
         CollisionCheck_SetAC(play, &play->colChkCtx, &this->colliderBody.base);
     } else if (this->actionFunc == BossGanondrof_Charge) {
+        CollisionCheck_SetAC(play, &play->colChkCtx, &this->colliderBody.base);
+        CollisionCheck_SetAT(play, &play->colChkCtx, &this->colliderBody.base);
+        CollisionCheck_SetAT(play, &play->colChkCtx, &this->colliderSpear.base);
+    } else if (this->actionFunc == BossGanondrof_PortalCharge) {
         CollisionCheck_SetAC(play, &play->colChkCtx, &this->colliderBody.base);
         CollisionCheck_SetAT(play, &play->colChkCtx, &this->colliderBody.base);
         CollisionCheck_SetAT(play, &play->colChkCtx, &this->colliderSpear.base);
