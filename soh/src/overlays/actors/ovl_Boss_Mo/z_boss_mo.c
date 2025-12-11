@@ -53,6 +53,9 @@ void BossMo_Tentacle(BossMo* this, PlayState* play);
 
 void BossMo_Unknown(void);
 
+static BossMo* BossMo_GetCore(BossMo* this);
+static BossMoEffect* BossMo_GetEffects(BossMo* this);
+
 typedef enum {
     /* 0 */ MO_FX_NONE,
     /* 1 */ MO_FX_SMALL_RIPPLE,
@@ -125,10 +128,21 @@ const ActorInit Boss_Mo_InitVars = {
     (ActorResetFunc)BossMo_Reset,
 };
 
+typedef struct {
+    BossMo* core;
+    BossMo* tentActors[2];
+    s16 tentSpawnPositions[2];
+    s16 tentSpawnTimers[2];
+} BossMoCoreTentState;
+
+static Vec2f sTentSpawnPos[21];
+
 typedef struct BossMoFightManager {
     BossMo* introLead;
     BossMo* deathLead;
     BossMo* waterDriver;
+    BossMo* tentSpawnOwners[ARRAY_COUNT(sTentSpawnPos)];
+    BossMoCoreTentState coreTentStates[4];
     s32 activeCoreCount;
     s32 completedDeaths;
     s32 lastWaterFrame;
@@ -143,10 +157,205 @@ static BossMoFightManager sBossMoFightManager = { 0 };
 static void BossMoFightManager_Reset(void) {
     memset(&sBossMoFightManager, 0, sizeof(sBossMoFightManager));
     sBossMoFightManager.lastWaterFrame = -1;
+
+    for (s32 i = 0; i < ARRAY_COUNT(sBossMoFightManager.coreTentStates); i++) {
+        sBossMoFightManager.coreTentStates[i].core = NULL;
+        for (s32 tentIndex = 0; tentIndex < ARRAY_COUNT(sBossMoFightManager.coreTentStates[i].tentSpawnPositions);
+             tentIndex++) {
+            sBossMoFightManager.coreTentStates[i].tentSpawnPositions[tentIndex] = -1;
+            sBossMoFightManager.coreTentStates[i].tentSpawnTimers[tentIndex] = 0;
+            sBossMoFightManager.coreTentStates[i].tentActors[tentIndex] = NULL;
+        }
+    }
 }
 
-static void BossMoFightManager_RegisterCore(void) {
+static BossMoCoreTentState* BossMoFightManager_GetTentState(BossMo* core) {
+    for (s32 i = 0; i < ARRAY_COUNT(sBossMoFightManager.coreTentStates); i++) {
+        if (sBossMoFightManager.coreTentStates[i].core == core) {
+            return &sBossMoFightManager.coreTentStates[i];
+        }
+    }
+
+    return NULL;
+}
+
+static BossMoCoreTentState* BossMoFightManager_EnsureTentState(BossMo* core) {
+    BossMoCoreTentState* state = BossMoFightManager_GetTentState(core);
+
+    if (state != NULL) {
+        return state;
+    }
+
+    for (s32 i = 0; i < ARRAY_COUNT(sBossMoFightManager.coreTentStates); i++) {
+        if (sBossMoFightManager.coreTentStates[i].core == NULL) {
+            sBossMoFightManager.coreTentStates[i].core = core;
+            sBossMoFightManager.coreTentStates[i].tentSpawnPositions[0] = -1;
+            sBossMoFightManager.coreTentStates[i].tentSpawnPositions[1] = -1;
+            sBossMoFightManager.coreTentStates[i].tentSpawnTimers[0] = 0;
+            sBossMoFightManager.coreTentStates[i].tentSpawnTimers[1] = 0;
+            return &sBossMoFightManager.coreTentStates[i];
+        }
+    }
+
+    return NULL;
+}
+
+static void BossMoFightManager_ClearTentState(BossMo* core) {
+    BossMoCoreTentState* state = BossMoFightManager_GetTentState(core);
+
+    if (state == NULL) {
+        return;
+    }
+
+    for (s32 tentIndex = 0; tentIndex < ARRAY_COUNT(state->tentSpawnPositions); tentIndex++) {
+        if ((state->tentSpawnPositions[tentIndex] >= 0) &&
+            (state->tentSpawnPositions[tentIndex] < (s16)ARRAY_COUNT(sBossMoFightManager.tentSpawnOwners)) &&
+            (sBossMoFightManager.tentSpawnOwners[state->tentSpawnPositions[tentIndex]] == core)) {
+            sBossMoFightManager.tentSpawnOwners[state->tentSpawnPositions[tentIndex]] = NULL;
+        }
+
+        state->tentActors[tentIndex] = NULL;
+        state->tentSpawnPositions[tentIndex] = -1;
+        state->tentSpawnTimers[tentIndex] = 0;
+    }
+
+    state->core = NULL;
+}
+
+static s32 BossMoFightManager_GetTentSlotIndex(BossMo* tent) {
+    BossMo* core = BossMo_GetCore(tent);
+    BossMoCoreTentState* state = BossMoFightManager_GetTentState(core);
+
+    if (state == NULL) {
+        return -1;
+    }
+
+    for (s32 i = 0; i < ARRAY_COUNT(state->tentActors); i++) {
+        if (state->tentActors[i] == tent) {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
+static void BossMoFightManager_SetTentReference(BossMo* core, BossMo* tent, s32 slot) {
+    BossMoCoreTentState* state = BossMoFightManager_EnsureTentState(core);
+
+    if ((state == NULL) || (slot < 0) || (slot >= ARRAY_COUNT(state->tentActors))) {
+        return;
+    }
+
+    state->tentActors[slot] = tent;
+    if (tent != NULL) {
+        tent->core = core;
+    }
+
+    BossMo* siblingTent = state->tentActors[slot ^ 1];
+
+    if (tent != NULL) {
+        tent->otherTent = siblingTent;
+    }
+
+    if (siblingTent != NULL) {
+        siblingTent->otherTent = tent;
+    }
+}
+
+static void BossMoFightManager_ClearTentReference(BossMo* tent) {
+    s32 slot = BossMoFightManager_GetTentSlotIndex(tent);
+    BossMo* core = BossMo_GetCore(tent);
+    BossMoCoreTentState* state = BossMoFightManager_GetTentState(core);
+
+    if ((state == NULL) || (slot < 0)) {
+        return;
+    }
+
+    if ((state->tentSpawnPositions[slot] >= 0) &&
+        (sBossMoFightManager.tentSpawnOwners[state->tentSpawnPositions[slot]] == core)) {
+        sBossMoFightManager.tentSpawnOwners[state->tentSpawnPositions[slot]] = NULL;
+    }
+
+    if (state->tentActors[slot ^ 1] != NULL) {
+        state->tentActors[slot ^ 1]->otherTent = NULL;
+    }
+
+    state->tentActors[slot] = NULL;
+    state->tentSpawnPositions[slot] = -1;
+    state->tentSpawnTimers[slot] = 0;
+}
+
+static BossMo* BossMoFightManager_GetOtherTent(BossMo* tent) {
+    s32 slot = BossMoFightManager_GetTentSlotIndex(tent);
+    BossMoCoreTentState* state = BossMoFightManager_GetTentState(BossMo_GetCore(tent));
+
+    if ((state == NULL) || (slot < 0)) {
+        return NULL;
+    }
+
+    s32 otherSlot = (slot == 0) ? 1 : 0;
+    return state->tentActors[otherSlot];
+}
+
+static s16 BossMoFightManager_GetTentSpawnPos(BossMo* tent) {
+    s32 slot = BossMoFightManager_GetTentSlotIndex(tent);
+    BossMoCoreTentState* state = BossMoFightManager_GetTentState(BossMo_GetCore(tent));
+
+    if ((state == NULL) || (slot < 0)) {
+        return -1;
+    }
+
+    return state->tentSpawnPositions[slot];
+}
+
+static void BossMoFightManager_SyncTentTimer(BossMo* tent) {
+    s32 slot = BossMoFightManager_GetTentSlotIndex(tent);
+    BossMoCoreTentState* state = BossMoFightManager_GetTentState(BossMo_GetCore(tent));
+
+    if ((state != NULL) && (slot >= 0)) {
+        state->tentSpawnTimers[slot] = tent->timers[0];
+    }
+}
+
+static void BossMoFightManager_ReleaseTentSpawn(BossMo* core, s16 spawnIndex) {
+    if ((spawnIndex >= 0) && (spawnIndex < (s16)ARRAY_COUNT(sBossMoFightManager.tentSpawnOwners)) &&
+        (sBossMoFightManager.tentSpawnOwners[spawnIndex] == core)) {
+        sBossMoFightManager.tentSpawnOwners[spawnIndex] = NULL;
+    }
+}
+
+static bool BossMoFightManager_ReserveTentSpawn(BossMo* tent, s16 spawnIndex) {
+    BossMo* core = BossMo_GetCore(tent);
+    s32 slot = BossMoFightManager_GetTentSlotIndex(tent);
+    BossMoCoreTentState* state = BossMoFightManager_EnsureTentState(core);
+
+    if ((state == NULL) || (slot < 0)) {
+        return false;
+    }
+
+    if ((spawnIndex < 0) || (spawnIndex >= (s16)ARRAY_COUNT(sBossMoFightManager.tentSpawnOwners))) {
+        return false;
+    }
+
+    BossMo* occupyingCore = sBossMoFightManager.tentSpawnOwners[spawnIndex];
+    if ((occupyingCore != NULL) && (occupyingCore != core)) {
+        return false;
+    }
+
+    BossMoFightManager_ReleaseTentSpawn(core, state->tentSpawnPositions[slot]);
+    sBossMoFightManager.tentSpawnOwners[spawnIndex] = core;
+    state->tentSpawnPositions[slot] = spawnIndex;
+    state->tentSpawnTimers[slot] = tent->timers[0];
+    tent->tentSpawnPos = spawnIndex;
+
+    return true;
+}
+
+static void BossMoFightManager_RegisterCore(BossMo* core) {
     sBossMoFightManager.activeCoreCount++;
+
+    // Ensure we have a tent state slot reserved for this core.
+    BossMoFightManager_EnsureTentState(core);
 }
 
 static bool BossMoFightManager_IsIntroLead(BossMo* core) {
@@ -517,7 +726,7 @@ void BossMo_Init(Actor* thisx, PlayState* play2) {
             MO_WATER_LEVEL(play) = -500;
             return;
         }
-        BossMoFightManager_RegisterCore();
+        BossMoFightManager_RegisterCore(this);
         if (Flags_GetEventChkInf(EVENTCHKINF_BEGAN_MORPHA_BATTLE)) {
             Audio_QueueSeqCmd(SEQ_PLAYER_BGM_MAIN << 24 | NA_BGM_BOSS);
             this->tentMaxAngle = 5.0f;
@@ -533,7 +742,7 @@ void BossMo_Init(Actor* thisx, PlayState* play2) {
                                                   this->actor.world.pos.x, this->actor.world.pos.y,
                                                   this->actor.world.pos.z, 0, 0, 0, BOSSMO_TENTACLE);
         if (this->tent1 != NULL) {
-            this->tent1->core = this;
+            BossMoFightManager_SetTentReference(this, this->tent1, 0);
             this->tent1->effects = this->effects;
         }
         this->actor.draw = BossMo_DrawCore;
@@ -565,8 +774,10 @@ void BossMo_Destroy(Actor* thisx, PlayState* play) {
     BossMo* this = (BossMo*)thisx;
 
     if (this->actor.params >= BOSSMO_TENTACLE) {
+        BossMoFightManager_ClearTentReference(this);
         Collider_DestroyJntSph(play, &this->tentCollider);
     } else {
+        BossMoFightManager_ClearTentState(this);
         Collider_DestroyCylinder(play, &this->coreCollider);
     }
 }
@@ -586,7 +797,7 @@ void BossMo_Tentacle(BossMo* this, PlayState* play) {
     s16 indS1;
     Camera* camera1;
     Camera* camera2;
-    BossMo* otherTent = (BossMo*)this->otherTent;
+    BossMo* otherTent = BossMoFightManager_GetOtherTent(this);
     f32 maxSwingRateX;
     f32 maxSwingLagX;
     f32 maxSwingSizeX;
@@ -1095,7 +1306,6 @@ void BossMo_Tentacle(BossMo* this, PlayState* play) {
                 this->actor.flags &= ~ACTOR_FLAG_ATTENTION_ENABLED;
                 Math_ApproachF(&this->baseAlpha, 0.0, 1.0f, 5.0f);
                 for (indS1 = 0; indS1 < 40; indS1++) {
-                    if (core->tent2 && core->tent2->tentSpawnPos) {}
                     indT5 = Rand_ZeroFloat(20.9f);
                     indS0 = sTentSpawnIndex[indT5];
                     spFC.x = 0;
@@ -1106,14 +1316,17 @@ void BossMo_Tentacle(BossMo* this, PlayState* play) {
                     spF0.x = player->actor.world.pos.x + spF0.x;
                     spF0.z = player->actor.world.pos.z + spF0.z;
                     if ((fabsf(spF0.x - sTentSpawnPos[indS0].x) <= 320) &&
-                        (fabsf(spF0.z - sTentSpawnPos[indS0].y) <= 320) &&
-                        ((core->tent2 == NULL) || (core->tent2->tentSpawnPos != indS0))) {
-                        this->targetPos.x = sTentSpawnPos[indS0].x;
-                        this->targetPos.z = sTentSpawnPos[indS0].y;
-                        this->tentSpawnPos = indS0;
-                        this->timers[0] = (s16)Rand_ZeroFloat(20.0f) + 30;
-                        this->work[MO_TENT_ACTION_STATE] = MO_TENT_DESPAWN;
-                        break;
+                        (fabsf(spF0.z - sTentSpawnPos[indS0].y) <= 320)) {
+                        s16 otherTentSpawn = (core->tent2 != NULL) ? BossMoFightManager_GetTentSpawnPos(core->tent2) : -1;
+
+                        if (((core->tent2 == NULL) || (otherTentSpawn != indS0)) &&
+                            BossMoFightManager_ReserveTentSpawn(this, indS0)) {
+                            this->targetPos.x = sTentSpawnPos[indS0].x;
+                            this->targetPos.z = sTentSpawnPos[indS0].y;
+                            this->timers[0] = (s16)Rand_ZeroFloat(20.0f) + 30;
+                            this->work[MO_TENT_ACTION_STATE] = MO_TENT_DESPAWN;
+                            break;
+                        }
                     }
                 }
             }
@@ -1122,20 +1335,26 @@ void BossMo_Tentacle(BossMo* this, PlayState* play) {
                                                     this->actor.world.pos.y, this->actor.world.pos.z, 0, 0, 0,
                                                     BOSSMO_TENTACLE, true);
                 if (core->tent2 != NULL) {
-                    core->tent2->core = core;
+                    BossMoFightManager_SetTentReference(core, core->tent2, 1);
                     core->tent2->effects = core->effects;
-                    core->tent2->tentSpawnPos = this->tentSpawnPos;
-                    if (core->tent2->tentSpawnPos > 10) {
-                        core->tent2->tentSpawnPos--;
+                    s16 spawnPos = BossMoFightManager_GetTentSpawnPos(this);
+
+                    if (spawnPos > 10) {
+                        spawnPos--;
                     } else {
-                        core->tent2->tentSpawnPos++;
+                        spawnPos++;
                     }
-                    core->tent2->targetPos.x = sTentSpawnPos[core->tent2->tentSpawnPos].x;
-                    core->tent2->targetPos.z = sTentSpawnPos[core->tent2->tentSpawnPos].y;
+
+                    if (!BossMoFightManager_ReserveTentSpawn(core->tent2, spawnPos)) {
+                        BossMoFightManager_ReserveTentSpawn(core->tent2, BossMoFightManager_GetTentSpawnPos(this));
+                        spawnPos = BossMoFightManager_GetTentSpawnPos(core->tent2);
+                    }
+
+                    core->tent2->targetPos.x = sTentSpawnPos[spawnPos].x;
+                    core->tent2->targetPos.z = sTentSpawnPos[spawnPos].y;
                     core->tent2->timers[0] = 100;
                     core->tent2->work[MO_TENT_ACTION_STATE] = MO_TENT_DESPAWN;
-                    core->tent2->otherTent = &core->tent1->actor;
-                    core->tent1->otherTent = &core->tent2->actor;
+                    BossMoFightManager_SetTentReference(core, core->tent1, 0);
                 }
             }
             break;
@@ -2433,6 +2652,7 @@ void BossMo_UpdateCore(Actor* thisx, PlayState* play) {
             this->timers[i]--;
         }
     }
+    BossMoFightManager_SyncTentTimer(this);
 
     BossMo_Core(this, play);
     Collider_UpdateCylinder(&this->actor, &this->coreCollider);
@@ -2585,7 +2805,7 @@ void BossMo_UpdateTent(Actor* thisx, PlayState* play) {
         BossMo_TentCollisionCheck(this, play);
         if ((this->work[MO_TENT_INVINC_TIMER] == 0) && (this->work[MO_TENT_ACTION_STATE] != MO_TENT_GRAB) &&
             (this->work[MO_TENT_ACTION_STATE] != MO_TENT_SHAKE)) {
-            BossMo* otherTent = (BossMo*)this->otherTent;
+            BossMo* otherTent = BossMoFightManager_GetOtherTent(this);
 
             if (!HAS_LINK(otherTent) && (this->cutIndex == 0)) {
                 CollisionCheck_SetOC(play, &play->colChkCtx, &this->tentCollider.base);
