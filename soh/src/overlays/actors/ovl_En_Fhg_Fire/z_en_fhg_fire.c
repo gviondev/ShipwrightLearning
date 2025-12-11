@@ -141,13 +141,19 @@ void EnFhgFire_Init(Actor* thisx, PlayState* play) {
         f32 dyL;
         f32 dzL;
         f32 dxzL;
+        s16 speedType = this->actor.world.rot.x;
+        s16 aimYawOffset = this->actor.world.rot.y;
+        s16 aimPitchOffset = this->actor.world.rot.z;
 
-        switch (this->actor.world.rot.x) {
+        switch (speedType) {
             case THROW_NORMAL:
                 this->actor.speedXZ = 8.0f;
                 break;
             case THROW_FAST:
                 this->actor.speedXZ = 16.0f;
+                break;
+            case THROW_HELD:
+                this->actor.speedXZ = 0.0f;
                 break;
             default:
                 this->actor.speedXZ = 3.0f;
@@ -155,15 +161,15 @@ void EnFhgFire_Init(Actor* thisx, PlayState* play) {
         }
         EnFhgFire_SetUpdate(this, EnFhgFire_EnergyBall);
 
-        this->work[FHGFIRE_TIMER] = 70;
+        this->work[FHGFIRE_TIMER] = (speedType == THROW_HELD) ? 120 : 70;
         this->work[FHGFIRE_FX_TIMER] = 2;
 
         dxL = player->actor.world.pos.x - this->actor.world.pos.x;
         dyL = player->actor.world.pos.y + 30.0f - this->actor.world.pos.y;
         dzL = player->actor.world.pos.z - this->actor.world.pos.z;
-        this->actor.world.rot.y = Math_FAtan2F(dxL, dzL) * (0x8000 / M_PI);
+        this->actor.world.rot.y = (Math_FAtan2F(dxL, dzL) * (0x8000 / M_PI)) + aimYawOffset;
         dxzL = sqrtf(SQ(dxL) + SQ(dzL));
-        this->actor.world.rot.x = Math_FAtan2F(dyL, dxzL) * (0x8000 / M_PI);
+        this->actor.world.rot.x = (Math_FAtan2F(dyL, dxzL) * (0x8000 / M_PI)) + aimPitchOffset;
         this->collider.dim.radius = 40;
         this->collider.dim.height = 50;
         this->collider.dim.yShift = -25;
@@ -432,6 +438,44 @@ void EnFhgFire_EnergyBall(EnFhgFire* this, PlayState* play) {
     u8 killMode = BALL_FIZZLE;
     u8 canBottleReflect1;
     Player* player = GET_PLAYER(play);
+
+    if (this->actor.world.rot.x == THROW_HELD) {
+        BossGanondrof* bossGnd = (BossGanondrof*)this->actor.parent;
+
+        this->collider.base.acFlags &= ~AC_ON;
+        this->collider.base.atFlags &= ~AT_ON;
+        this->collider.base.ocFlags1 &= ~OC1_ON;
+
+        if (bossGnd != NULL) {
+            s16 yaw = bossGnd->actor.shape.rot.y;
+            f32 forwardOffset = 50.0f;
+            f32 heightOffset = 40.0f;
+            f32 chargeRatio = 1.0f - ((f32)bossGnd->finalVolleyChannelTimer / (f32)GND_FINAL_VOLLEY_CHANNEL_TIME);
+            f32 pulse = Math_SinS(this->work[FHGFIRE_VARIANCE_TIMER] * 500) * 0.5f;
+            f32 scaledChargeRatio = CLAMP(chargeRatio, 0.0f, 1.0f);
+            f32 baseScale = 5.0f + (scaledChargeRatio * 6.0f);
+
+            this->actor.world.pos.x = bossGnd->spearTip.x + (Math_SinS(yaw) * forwardOffset);
+            this->actor.world.pos.y = bossGnd->spearTip.y + heightOffset;
+            this->actor.world.pos.z = bossGnd->spearTip.z + (Math_CosS(yaw) * forwardOffset);
+            Actor_SetScale(&this->actor, baseScale + pulse);
+
+            if ((this->work[FHGFIRE_VARIANCE_TIMER] % 3) == 0) {
+                Vec3f lightPos = this->actor.world.pos;
+                Vec3f lightVel = { 0.0f, 0.0f, 0.0f };
+                Vec3f lightAccel = { 0.0f, -0.05f, 0.0f };
+
+                EffectSsFhgFlash_SpawnLightBall(play, &lightPos, &lightVel, &lightAccel,
+                                                (s16)(Rand_ZeroOne() * 40.0f) + 100, FHGFLASH_LIGHTBALL_LIGHTBLUE);
+            }
+        }
+
+        this->actor.shape.rot.z += (s16)(Rand_ZeroOne() * 0x4E20) + 0x2000;
+        if (this->work[FHGFIRE_TIMER] == 0) {
+            Actor_Kill(&this->actor);
+        }
+        return;
+    }
 
     if (this->work[FHGFIRE_KILL_TIMER] != 0) {
         this->work[FHGFIRE_KILL_TIMER]--;

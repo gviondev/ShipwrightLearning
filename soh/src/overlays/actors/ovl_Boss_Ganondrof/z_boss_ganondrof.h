@@ -14,6 +14,7 @@ typedef void (*BossGanondrofActionFunc)(struct BossGanondrof*, PlayState*);
 #define GND_BOSSROOM_CENTER_X 14.0f
 #define GND_BOSSROOM_CENTER_Y -33.0f
 #define GND_BOSSROOM_CENTER_Z -3315.0f
+#define GND_FINAL_VOLLEY_CHANNEL_TIME 50
 
 typedef enum {
     /* 0 */ GND_FLY_PAINTING,
@@ -32,7 +33,8 @@ typedef enum {
 typedef enum {
     /* 0 */ THROW_NORMAL,
     /* 1 */ THROW_SLOW,
-    /* 2 */ THROW_FAST
+    /* 2 */ THROW_FAST,
+    /* 3 */ THROW_HELD
 } BossGanondrofThrowAction;
 
 typedef enum {
@@ -123,6 +125,14 @@ typedef struct BossGanondrof {
     /* 0x04D0 */ LightInfo lightInfo;
     /* 0x04E0 */ ColliderCylinder colliderBody;
     /* 0x052C */ ColliderCylinder colliderSpear;
-} BossGanondrof; // size = 0x0578
+    /* 0x0578 */ s16 finalVolleyCooldown;
+    /* 0x057A */ s16 finalVolleyShotsRemaining;
+    /* 0x057C */ s16 finalVolleyChannelTimer;
+    /* 0x057E */ u8 finalVolleyQueued;
+    /* 0x057F */ u8 finalVolleyActive;
+    /* 0x0580 */ u8 finalVolleyUsed;
+    /* 0x0581 */ u8 finalVolleyCentering;
+    /* 0x0588 */ Actor* finalVolleyChargeBall;
+} BossGanondrof; // size = 0x0590
 
 #endif

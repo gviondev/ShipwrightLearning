@@ -59,6 +59,8 @@ void BossGanondrof_SetupThrow(BossGanondrof* this, PlayState* play);
 void BossGanondrof_Throw(BossGanondrof* this, PlayState* play);
 void BossGanondrof_SetupBlock(BossGanondrof* this, PlayState* play);
 void BossGanondrof_Block(BossGanondrof* this, PlayState* play);
+void BossGanondrof_SetupFinalVolleyCharge(BossGanondrof* this, PlayState* play);
+void BossGanondrof_FinalVolleyCharge(BossGanondrof* this, PlayState* play);
 void BossGanondrof_SetupReturn(BossGanondrof* this, PlayState* play);
 void BossGanondrof_Return(BossGanondrof* this, PlayState* play);
 void BossGanondrof_SetupCharge(BossGanondrof* this, PlayState* play);
@@ -67,6 +69,7 @@ void BossGanondrof_PortalCharge(BossGanondrof* this, PlayState* play);
 void BossGanondrof_Charge(BossGanondrof* this, PlayState* play);
 void BossGanondrof_Stunned(BossGanondrof* this, PlayState* play);
 void BossGanondrof_Death(BossGanondrof* this, PlayState* play);
+static void BossGanondrof_DestroyChargeBall(BossGanondrof* this);
 
 const ActorInit Boss_Ganondrof_InitVars = {
     ACTOR_BOSS_GANONDROF,
@@ -222,6 +225,16 @@ static BossGanondrofPaintingPortal sPaintingPortals[] = {
 
 static const f32 sTripleComboChance = 0.3f;
 static const s16 sTripleReturnReleaseFrame = 5;
+static const s16 sDesperationHealthThreshold = 10;
+static const s16 sFinalVolleyShotCount = 15;
+static const s16 sFinalVolleyInterval = 3;
+static const s16 sFinalVolleyDuration = 80;
+static const s16 sFinalVolleyYawJitter = 0x800;
+static const s16 sFinalVolleyPitchJitter = 0x200;
+static const s16 sFinalVolleyChannelTime = GND_FINAL_VOLLEY_CHANNEL_TIME;
+static const f32 sFinalVolleyChannelHoverHeight = 140.0f;
+static const s16 sFinalVolleyDimLevel = -80;
+static const s16 sFinalVolleyLightingRate = 6;
 
 static bool BossGanondrof_ArePaintingPortalsAdjacent(s16 leftIndex, s16 rightIndex) {
     s16 count = ARRAY_COUNT(sPaintingPortals);
@@ -230,6 +243,19 @@ static bool BossGanondrof_ArePaintingPortalsAdjacent(s16 leftIndex, s16 rightInd
 
     return (clampedLeft == clampedRight) || (ABS(clampedLeft - clampedRight) == 1) ||
            (ABS(clampedLeft - clampedRight) == (count - 1));
+}
+
+static void BossGanondrof_UpdateDesperationLighting(PlayState* play, bool dim) {
+    s16 target = dim ? sFinalVolleyDimLevel : 0;
+    s16* ambient = play->envCtx.adjAmbientColor;
+    s16* light1 = play->envCtx.adjLight1Color;
+    s16* fog = play->envCtx.adjFogColor;
+
+    for (s32 i = 0; i < 3; i++) {
+        Math_ApproachS(&ambient[i], target, 1, sFinalVolleyLightingRate);
+        Math_ApproachS(&light1[i], target, 1, sFinalVolleyLightingRate);
+        Math_ApproachS(&fog[i], target, 1, sFinalVolleyLightingRate);
+    }
 }
 
 static void BossGanondrof_GetPaintingPortalPos(s16 index, Vec3f* outPos, s16* outYaw) {
@@ -427,12 +453,22 @@ void BossGanondrof_Init(Actor* thisx, PlayState* play) {
     for (int i = 0; i < ARRAY_COUNT(sMouthTex_ci8_16x16); i++) {
         Gfx_RegisterBlendedTexture(sMouthTex_ci8_16x16[i], sDecayTex, NULL);
     }
+
+    this->finalVolleyCooldown = 0;
+    this->finalVolleyShotsRemaining = 0;
+    this->finalVolleyChannelTimer = 0;
+    this->finalVolleyQueued = false;
+    this->finalVolleyActive = false;
+    this->finalVolleyUsed = false;
+    this->finalVolleyCentering = false;
+    this->finalVolleyChargeBall = NULL;
 }
 
 void BossGanondrof_Destroy(Actor* thisx, PlayState* play) {
     s32 pad;
     BossGanondrof* this = (BossGanondrof*)thisx;
 
+    BossGanondrof_DestroyChargeBall(this);
     osSyncPrintf("DT1\n");
     SkelAnime_Free(&this->skelAnime, play);
     Collider_DestroyCylinder(play, &this->colliderBody);
@@ -967,11 +1003,124 @@ void BossGanondrof_Stunned(BossGanondrof* this, PlayState* play) {
     Actor_MoveXZGravity(&this->actor);
 }
 
+static void BossGanondrof_DestroyChargeBall(BossGanondrof* this) {
+    if ((this->finalVolleyChargeBall != NULL) && (this->finalVolleyChargeBall->update != NULL)) {
+        Actor_Kill(this->finalVolleyChargeBall);
+    }
+
+    this->finalVolleyChargeBall = NULL;
+}
+
+void BossGanondrof_SetupFinalVolleyCharge(BossGanondrof* this, PlayState* play) {
+    this->fwork[GND_END_FRAME] = Animation_GetLastFrame(&gPhantomGanonBlockAnim);
+    Animation_MorphToLoop(&this->skelAnime, &gPhantomGanonBlockAnim, -3.0f);
+    this->actionFunc = BossGanondrof_FinalVolleyCharge;
+    this->finalVolleyActive = false;
+    this->finalVolleyQueued = false;
+    this->finalVolleyUsed = true;
+    this->finalVolleyCentering = true;
+    this->finalVolleyChannelTimer = sFinalVolleyChannelTime;
+    this->finalVolleyCooldown = sFinalVolleyInterval;
+    this->finalVolleyShotsRemaining = sFinalVolleyShotCount;
+    this->actor.gravity = 0.0f;
+    this->actor.velocity.x = 0.0f;
+    this->actor.velocity.z = 0.0f;
+    BossGanondrof_DestroyChargeBall(this);
+    Audio_PlayActorSound2(&this->actor, NA_SE_EN_FANTOM_VOICE);
+}
+
+void BossGanondrof_FinalVolleyCharge(BossGanondrof* this, PlayState* play) {
+    Vec3f centerPos = { GND_BOSSROOM_CENTER_X, GND_BOSSROOM_CENTER_Y + sFinalVolleyChannelHoverHeight,
+                        GND_BOSSROOM_CENTER_Z };
+    f32 distXZ;
+    f32 deltaX;
+    f32 deltaZ;
+
+    SkelAnime_Update(&this->skelAnime);
+    Math_ApproachS(&this->actor.shape.rot.y, this->actor.yawTowardsPlayer, 4, 0x7D0);
+
+    this->actor.world.pos.x += this->actor.velocity.x;
+    this->actor.world.pos.z += this->actor.velocity.z;
+    Math_ApproachZeroF(&this->actor.velocity.x, 1.0f, 0.6f);
+    Math_ApproachZeroF(&this->actor.velocity.z, 1.0f, 0.6f);
+
+    deltaX = centerPos.x - this->actor.world.pos.x;
+    deltaZ = centerPos.z - this->actor.world.pos.z;
+    distXZ = SQ(deltaX) + SQ(deltaZ);
+
+    if (this->finalVolleyCentering) {
+        Math_ApproachF(&this->actor.world.pos.x, centerPos.x, 0.4f, 8.0f);
+        Math_ApproachF(&this->actor.world.pos.z, centerPos.z, 0.4f, 8.0f);
+        Math_ApproachF(&this->actor.world.pos.y, centerPos.y, 0.4f, 4.0f);
+
+        if ((distXZ < SQ(6.0f)) && (fabsf(this->actor.world.pos.y - centerPos.y) < 3.0f)) {
+            this->finalVolleyCentering = false;
+            Audio_PlayActorSound2(&this->actor, NA_SE_EN_FANTOM_LAUGH);
+        }
+    } else {
+        Math_ApproachS(&this->actor.shape.rot.y, this->actor.yawTowardsPlayer, 3, 0x5DC);
+        this->actor.world.rot.y = this->actor.shape.rot.y;
+
+        if (this->finalVolleyChargeBall == NULL) {
+            s16 yaw = this->actor.shape.rot.y;
+            f32 forwardOffset = 50.0f;
+            f32 heightOffset = 40.0f;
+            f32 sinYaw = Math_SinS(yaw);
+            f32 cosYaw = Math_CosS(yaw);
+
+            Vec3f chargePos = {
+                this->spearTip.x + (sinYaw * forwardOffset),
+                this->spearTip.y + heightOffset,
+                this->spearTip.z + (cosYaw * forwardOffset),
+            };
+
+            this->finalVolleyChargeBall =
+                Actor_SpawnAsChild(&play->actorCtx, &this->actor, play, ACTOR_EN_FHG_FIRE, chargePos.x, chargePos.y,
+                                   chargePos.z, THROW_HELD, 0, 0, FHGFIRE_ENERGY_BALL);
+            Audio_PlayActorSound2(&this->actor, NA_SE_EN_GANON_DARKWAVE);
+        }
+
+        if (this->finalVolleyChannelTimer > 0) {
+            this->finalVolleyChannelTimer--;
+            if ((this->finalVolleyChannelTimer % 10) == 0) {
+                Audio_PlayActorSound2(&this->actor, NA_SE_EN_FANTOM_FLOAT);
+            }
+            Audio_PlayActorSound2(&this->actor, NA_SE_EN_GANON_DARKWAVE_M - SFX_FLAG);
+        }
+
+        if (this->finalVolleyChannelTimer == 0) {
+            BossGanondrof_DestroyChargeBall(this);
+            this->finalVolleyQueued = true;
+            BossGanondrof_SetupBlock(this, play);
+        }
+    }
+}
+
 void BossGanondrof_SetupBlock(BossGanondrof* this, PlayState* play) {
+    bool triggerFinalVolley = false;
+
     this->fwork[GND_END_FRAME] = Animation_GetLastFrame(&gPhantomGanonBlockAnim);
     Animation_MorphToLoop(&this->skelAnime, &gPhantomGanonBlockAnim, -3.0f);
     this->actionFunc = BossGanondrof_Block;
-    this->timers[0] = 10;
+    this->finalVolleyActive = false;
+    triggerFinalVolley = this->finalVolleyQueued ||
+                         ((this->actor.colChkInfo.health <= sDesperationHealthThreshold) && !this->finalVolleyUsed);
+    this->finalVolleyQueued = false;
+    if (triggerFinalVolley) {
+        this->finalVolleyActive = true;
+        this->finalVolleyUsed = true;
+        this->finalVolleyShotsRemaining = sFinalVolleyShotCount;
+        this->finalVolleyCooldown = sFinalVolleyInterval;
+        this->timers[0] = sFinalVolleyDuration;
+        Audio_PlayActorSound2(&this->actor, NA_SE_EN_FANTOM_VOICE);
+    } else {
+        this->timers[0] = 10;
+        this->finalVolleyShotsRemaining = 0;
+        this->finalVolleyCooldown = 0;
+    }
+    this->finalVolleyChannelTimer = 0;
+    this->finalVolleyCentering = false;
+    BossGanondrof_DestroyChargeBall(this);
     Audio_PlayActorSound2(&this->actor, NA_SE_EN_FANTOM_STICK);
 }
 
@@ -983,7 +1132,33 @@ void BossGanondrof_Block(BossGanondrof* this, PlayState* play) {
     Math_ApproachZeroF(&this->actor.velocity.x, 1.0f, 0.5f);
     Math_ApproachZeroF(&this->actor.velocity.z, 1.0f, 0.5f);
     this->actor.world.pos.y += 2.0f * Math_SinS(this->work[GND_VARIANCE_TIMER] * 1500);
-    if (this->timers[0] == 0) {
+
+    if (this->finalVolleyActive) {
+        if (this->finalVolleyCooldown > 0) {
+            this->finalVolleyCooldown--;
+        }
+
+        if ((this->finalVolleyCooldown == 0) && (this->finalVolleyShotsRemaining > 0)) {
+            EnfHG* horseTemp = (EnfHG*)this->actor.child;
+            s16 yawJitter = Rand_CenteredFloat((f32)sFinalVolleyYawJitter);
+            s16 pitchJitter = Rand_CenteredFloat((f32)sFinalVolleyPitchJitter);
+
+            Actor_SpawnAsChild(&play->actorCtx, &this->actor, play, ACTOR_EN_FHG_FIRE, this->spearTip.x,
+                               this->spearTip.y, this->spearTip.z, THROW_FAST, yawJitter, pitchJitter,
+                               FHGFIRE_ENERGY_BALL);
+            this->actor.child = &horseTemp->actor;
+            this->finalVolleyShotsRemaining--;
+            this->finalVolleyCooldown = sFinalVolleyInterval;
+            Audio_PlayActorSound2(&this->actor, NA_SE_EN_FANTOM_MASIC2);
+        }
+
+        if ((this->finalVolleyShotsRemaining == 0) && (this->finalVolleyCooldown == 0)) {
+            this->finalVolleyActive = false;
+            this->timers[0] = 10;
+        }
+    }
+
+    if (!this->finalVolleyActive && (this->timers[0] == 0)) {
         BossGanondrof_SetupNeutral(this, -5.0f);
         this->timers[0] = 10;
         this->flyMode = GND_FLY_NEUTRAL;
@@ -1578,6 +1753,8 @@ void BossGanondrof_CollisionCheck(BossGanondrof* this, PlayState* play) {
                     osSyncPrintf("hit != 0 \n");
                 } else if (this->actionFunc != BossGanondrof_Charge) {
                     if (this->returnCount == 0) {
+                        s8 health = (s8)this->actor.colChkInfo.health;
+                        s8 newHealth = health;
                         u8 dmg;
                         u8 canKill = false;
                         s32 dmgFlags = hurtbox->toucher.dmgFlags;
@@ -1587,9 +1764,19 @@ void BossGanondrof_CollisionCheck(BossGanondrof* this, PlayState* play) {
                         }
                         dmg = CollisionCheck_GetSwordDamage(dmgFlags, play);
                         (dmg == 0) ? (dmg = 2) : (canKill = true);
-                        if (((s8)this->actor.colChkInfo.health > 2) || canKill) {
-                            this->actor.colChkInfo.health -= dmg;
+                        if ((health > 2) || canKill) {
+                            newHealth -= dmg;
                         }
+
+                        if ((this->actionFunc == BossGanondrof_FinalVolleyCharge || !this->finalVolleyUsed) &&
+                            (newHealth <= sDesperationHealthThreshold)) {
+                            if (newHealth < 1) {
+                                newHealth = 1;
+                            }
+                            this->finalVolleyQueued = true;
+                        }
+
+                        this->actor.colChkInfo.health = newHealth;
 
                         if ((s8)this->actor.colChkInfo.health <= 0) {
                             BossGanondrof_SetupDeath(this, play);
@@ -1638,6 +1825,12 @@ void BossGanondrof_Update(Actor* thisx, PlayState* play) {
         Actor_Kill(&this->actor);
         return;
     }
+
+    if (this->finalVolleyQueued && !this->finalVolleyActive &&
+        (this->actionFunc != BossGanondrof_FinalVolleyCharge)) {
+        BossGanondrof_SetupFinalVolleyCharge(this, play);
+    }
+
     this->work[GND_VARIANCE_TIMER]++;
     horse = (EnfHG*)this->actor.child;
     osSyncPrintf("MOVE START EEEEEEEEEEEEEEEEEEEEEE%d\n", this->actor.params);
@@ -1661,6 +1854,9 @@ void BossGanondrof_Update(Actor* thisx, PlayState* play) {
     }
 
     osSyncPrintf("MOVE END\n");
+    BossGanondrof_UpdateDesperationLighting(play,
+                                            this->finalVolleyActive ||
+                                                (this->actionFunc == BossGanondrof_FinalVolleyCharge));
     BossGanondrof_SetColliderPos(&this->targetPos, &this->colliderBody);
     BossGanondrof_SetColliderPos(&this->spearTip, &this->colliderSpear);
     if ((this->flyMode == GND_FLY_PAINTING) && !horse->bossGndInPainting) {

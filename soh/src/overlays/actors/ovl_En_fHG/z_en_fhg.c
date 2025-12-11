@@ -65,6 +65,8 @@ static EnfHGPainting sPaintings[] = {
     { { 260.0f, 60.0f, 155.0f }, 0xAAA8 },  { { 260.0f, 60.0f, -155.0f }, 0xD552 },
 };
 
+static const s16 sHorseDismountHealthThreshold = 42;
+
 static InitChainEntry sInitChain[] = {
     ICHAIN_S8(naviEnemyId, 0x1A, ICHAIN_CONTINUE),
     ICHAIN_F32(uncullZoneScale, 1200, ICHAIN_STOP),
@@ -617,7 +619,7 @@ void EnfHG_Damage(EnfHG* this, PlayState* play) {
         this->timers[0] = 140;
         this->actionFunc = EnfHG_Retreat;
         Animation_MorphToLoop(&this->skin.skelAnime, &gPhantomHorseRunningAnim, 0.0f);
-        if (bossGnd->actor.colChkInfo.health > 24) {
+        if (bossGnd->actor.colChkInfo.health > sHorseDismountHealthThreshold) {
             this->bossGndSignal = FHG_RIDE;
         } else {
             bossGnd->flyMode = GND_FLY_NEUTRAL;
