@@ -138,6 +138,7 @@ typedef struct {
 static Vec2f sTentSpawnPos[21];
 
 typedef struct BossMoFightManager {
+    BossMo* primaryCore;
     BossMo* introLead;
     BossMo* deathLead;
     BossMo* waterDriver;
@@ -150,6 +151,7 @@ typedef struct BossMoFightManager {
     Vec3f rewardPos;
     bool battleStarted;
     bool rewardsSpawned;
+    bool spawnedExtraCore;
 } BossMoFightManager;
 
 static BossMoFightManager sBossMoFightManager = { 0 };
@@ -354,8 +356,34 @@ static bool BossMoFightManager_ReserveTentSpawn(BossMo* tent, s16 spawnIndex) {
 static void BossMoFightManager_RegisterCore(BossMo* core) {
     sBossMoFightManager.activeCoreCount++;
 
+    if (sBossMoFightManager.primaryCore == NULL) {
+        sBossMoFightManager.primaryCore = core;
+    }
+
     // Ensure we have a tent state slot reserved for this core.
     BossMoFightManager_EnsureTentState(core);
+}
+
+static bool BossMoFightManager_ShouldSpawnExtraCore(PlayState* play) {
+    return (play->sceneNum == SCENE_WATER_TEMPLE_BOSS) && !sBossMoFightManager.spawnedExtraCore;
+}
+
+static void BossMoFightManager_SpawnExtraCore(BossMo* primaryCore, PlayState* play) {
+    if (!BossMoFightManager_ShouldSpawnExtraCore(play) || sBossMoFightManager.activeCoreCount != 1) {
+        return;
+    }
+
+    Vec3f spawnPos = primaryCore->actor.world.pos;
+    spawnPos.x = -spawnPos.x;
+
+    sBossMoFightManager.spawnedExtraCore = true;
+
+    BossMo* extraCore = (BossMo*)Actor_Spawn(&play->actorCtx, play, ACTOR_BOSS_MO, spawnPos.x, spawnPos.y, spawnPos.z, 0,
+                                             0, 0, BOSSMO_SECONDARY_CORE, true);
+
+    if ((extraCore != NULL) && (primaryCore->effects != NULL)) {
+        extraCore->effects = primaryCore->effects;
+    }
 }
 
 static bool BossMoFightManager_IsIntroLead(BossMo* core) {
@@ -392,6 +420,19 @@ static void BossMoFightManager_ReleaseDeathLead(BossMo* core) {
     if (sBossMoFightManager.deathLead == core) {
         sBossMoFightManager.deathLead = NULL;
     }
+}
+
+static bool BossMoFightManager_HasLivingCoreBesides(BossMo* excludingCore) {
+    for (s32 i = 0; i < ARRAY_COUNT(sBossMoFightManager.coreTentStates); i++) {
+        BossMo* otherCore = sBossMoFightManager.coreTentStates[i].core;
+
+        if ((otherCore != NULL) && (otherCore != excludingCore) && (otherCore->csState < MO_DEATH_START) &&
+            (otherCore->actor.colChkInfo.health > 0)) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 static void BossMoFightManager_BeginWaterFrame(PlayState* play) {
@@ -444,13 +485,12 @@ static void BossMoFightManager_ReportDeathComplete(BossMo* core, PlayState* play
     if ((sBossMoFightManager.activeCoreCount != 0) &&
         (sBossMoFightManager.completedDeaths >= sBossMoFightManager.activeCoreCount)) {
         if (GameInteractor_Should(VB_SPAWN_BLUE_WARP, true, core)) {
-            Actor_SpawnAsChild(&play->actorCtx, &core->actor, play, ACTOR_DOOR_WARP1, sBossMoFightManager.rewardPos.x, -280.0f,
-                               sBossMoFightManager.rewardPos.z, 0, 0, 0, WARP_DUNGEON_ADULT);
+             Actor_SpawnAsChild(&play->actorCtx, &core->actor, play, ACTOR_DOOR_WARP1, 0.0f, -280.0f, 0.0f, 0, 0, 0,
+                                   WARP_DUNGEON_ADULT);
         }
 
         if (GameInteractor_Should(VB_SPAWN_HEART_CONTAINER, true)) {
-            Actor_Spawn(&play->actorCtx, play, ACTOR_ITEM_B_HEART, sBossMoFightManager.rewardPos.x + 200.0f, -280.0f,
-                        sBossMoFightManager.rewardPos.z, 0, 0, 0, 0, true);
+            Actor_Spawn(&play->actorCtx, play, ACTOR_ITEM_B_HEART, -200.0f, -280.0f, 0.0f, 0, 0, 0, 0, true);
         }
 
         Audio_QueueSeqCmd(SEQ_PLAYER_BGM_MAIN << 24 | NA_BGM_BOSS_CLEAR);
@@ -681,6 +721,7 @@ void BossMo_Init(Actor* thisx, PlayState* play2) {
     BossMo* this = (BossMo*)thisx;
     u16 i;
     BossMoEffect* effects;
+    bool isSecondaryCore = (this->actor.params == BOSSMO_SECONDARY_CORE);
 
     // Due to Ships resource caching, the water level for Morpha needs to be reset
     // to ensure subsequent re-fights in the same running instance start with the correct level
@@ -695,13 +736,18 @@ void BossMo_Init(Actor* thisx, PlayState* play2) {
         this->core = this;
         this->tent1 = NULL;
         this->tent2 = NULL;
+        if (isSecondaryCore && (sBossMoFightManager.primaryCore != NULL)) {
+            this->effects = sBossMoFightManager.primaryCore->effects;
+        }
         MO_WATER_LEVEL(play) = this->waterLevel = MO_WATER_LEVEL(play);
         play->roomCtx.unk_74[0] = 0xA0;
         effects = this->effects;
-        play->specialEffects = effects;
-        for (i = 0; i < ARRAY_COUNT(this->effectsBuf); i++) {
-            this->effectsBuf[i].type = MO_FX_NONE;
-            this->effectsBuf[i].epoch++;
+        if (!isSecondaryCore) {
+            play->specialEffects = effects;
+            for (i = 0; i < ARRAY_COUNT(this->effectsBuf); i++) {
+                this->effectsBuf[i].type = MO_FX_NONE;
+                this->effectsBuf[i].epoch++;
+            }
         }
         this->actor.world.pos.x = 200.0f;
         this->actor.world.pos.y = MO_WATER_LEVEL(play) + 50.0f;
@@ -727,6 +773,9 @@ void BossMo_Init(Actor* thisx, PlayState* play2) {
             return;
         }
         BossMoFightManager_RegisterCore(this);
+        if (!isSecondaryCore) {
+            BossMoFightManager_SpawnExtraCore(this, play);
+        }
         if (Flags_GetEventChkInf(EVENTCHKINF_BEGAN_MORPHA_BATTLE)) {
             Audio_QueueSeqCmd(SEQ_PLAYER_BGM_MAIN << 24 | NA_BGM_BOSS);
             this->tentMaxAngle = 5.0f;
@@ -2179,6 +2228,20 @@ void BossMo_CoreCollisionCheck(BossMo* this, PlayState* play) {
                 this->actor.colChkInfo.health -= damage;
                 this->hitCount++;
                 if ((s8)this->actor.colChkInfo.health <= 0) {
+                    if (BossMoFightManager_HasLivingCoreBesides(core)) {
+                        BossMoFightManager_ReportDeathComplete(core, play, &this->actor.world.pos);
+                        if (core->tent1 != NULL) {
+                            Actor_Kill(&core->tent1->actor);
+                        }
+
+                        if (core->tent2 != NULL) {
+                            Actor_Kill(&core->tent2->actor);
+                        }
+
+                        Actor_Kill(&core->actor);
+                        return;
+                    }
+
                     if (((core->tent1->csCamera == 0) && (core->tent2 == NULL)) ||
                         ((core->tent1->csCamera == 0) && (core->tent2 != NULL) && (core->tent2->csCamera == 0))) {
                         Enemy_StartFinishingBlow(play, &this->actor);

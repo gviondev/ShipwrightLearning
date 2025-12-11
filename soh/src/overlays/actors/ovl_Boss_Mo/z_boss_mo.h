@@ -153,6 +153,7 @@ typedef struct BossMo {
 } BossMo; // size = 0x4548
 
 #define BOSSMO_CORE -1
+#define BOSSMO_SECONDARY_CORE 1
 #define BOSSMO_TENTACLE 100
 
 #endif
