@@ -379,7 +379,7 @@ void BossGanondrof_Init(Actor* thisx, PlayState* play) {
     SkelAnime_Init(play, &this->skelAnime, &gPhantomGanonSkel, &gPhantomGanonRideAnim, NULL, NULL, 0);
     if (this->actor.params < GND_FAKE_BOSS) {
         this->actor.params = GND_REAL_BOSS;
-        this->actor.colChkInfo.health = 10;
+        this->actor.colChkInfo.health = 50;
         this->lightNode = LightContext_InsertLight(play, &play->lightCtx, &this->lightInfo);
         Lights_PointNoGlowSetInfo(&this->lightInfo, this->actor.world.pos.x, this->actor.world.pos.y,
                                   this->actor.world.pos.z, 255, 255, 255, 255);
@@ -694,10 +694,10 @@ void BossGanondrof_Neutral(BossGanondrof* this, PlayState* play) {
                     BossGanondrof_SetupTripleCombo(this, play);
                 } else {
                     rand01 = Rand_ZeroOne();
-                    if (thisx->colChkInfo.health < 5) {
+                    if (thisx->colChkInfo.health < 25) {
                         if (rand01 < 0.25f) {
                             BossGanondrof_SetupThrow(this, play);
-                        } else if (rand01 >= 0.8f) {
+                        } else if (rand01 < 0.6f) {
                             this->flyMode = GND_FLY_CHARGE;
                             this->timers[0] = 60;
                             this->fwork[GND_FLOAT_SPEED] = 0.0f;
@@ -708,8 +708,13 @@ void BossGanondrof_Neutral(BossGanondrof* this, PlayState* play) {
                             this->fwork[GND_FLOAT_SPEED] = 0.0f;
                             Audio_PlayActorSound2(thisx, NA_SE_EN_FANTOM_LAUGH);
                         }
-                    } else if ((rand01 < 0.5f) || (this->work[GND_THROW_COUNT] < 5)) {
+                    } else if (rand01 < 0.4f) {
                         BossGanondrof_SetupThrow(this, play);
+                    } else if (rand01 < 0.6f) {
+                        this->flyMode = GND_FLY_CHARGE;
+                        this->timers[0] = 60;
+                        this->fwork[GND_FLOAT_SPEED] = 0.0f;
+                        Audio_PlayActorSound2(thisx, NA_SE_EN_FANTOM_LAUGH);
                     } else {
                         this->flyMode = GND_FLY_VOLLEY;
                         this->timers[0] = 60;
@@ -987,7 +992,7 @@ void BossGanondrof_Block(BossGanondrof* this, PlayState* play) {
 
 void BossGanondrof_SetupCharge(BossGanondrof* this, PlayState* play) {
     if ((this->flyMode != GND_FLY_PAINTING) &&
-        ((this->actor.colChkInfo.health <= 5) && (Rand_ZeroOne() < 0.5f))) {
+        ((this->actor.colChkInfo.health <= 25) && (Rand_ZeroOne() < 0.5f))) {
         BossGanondrof_SetupPortalCharge(this, play);
         return;
     }
