@@ -143,7 +143,15 @@ typedef struct BossMo {
     /* 0x101C */ ColliderJntSph tentCollider;
     /* 0x103C */ ColliderJntSphElement tentElements[19];
     /* 0x14FC */ ColliderCylinder coreCollider;
-    /* 0x1548 */ char unk_1548[0x44];
+    /* 0x1548 */ f32 chaosSwingScale;
+    /* 0x154C */ f32 chaosSwingTarget;
+    /* 0x1550 */ f32 chaosTimerScale;
+    /* 0x1554 */ f32 chaosTimerTarget;
+    /* 0x1558 */ f32 chaosAnimRate;
+    /* 0x155C */ f32 chaosAnimTarget;
+    /* 0x1560 */ f32 chaosAnimAccumulator;
+    /* 0x1564 */ s16 chaosRecalcTimer;
+    /* 0x1566 */ char unk_1566[0x26];
     /* 0x158C */ struct BossMo* core;
     /* 0x1590 */ struct BossMo* tent1;
     /* 0x1594 */ struct BossMo* tent2;
