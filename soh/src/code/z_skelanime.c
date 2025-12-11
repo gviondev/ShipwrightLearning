@@ -1810,6 +1810,12 @@ void Animation_MorphToLoop(SkelAnime* skelAnime, AnimationHeader* animation, f32
     Animation_Change(skelAnime, animation, 1.0f, 0.0f, 0.0f, ANIMMODE_LOOP, morphFrames);
 }
 
+
+void Animation_MorphToLoopSetSpeed(SkelAnime* skelAnime, AnimationHeader* animation, f32 morphFrames, f32 playSpeed) {
+    Animation_Change(skelAnime, animation, playSpeed, 0.0f, 0.0f, ANIMMODE_LOOP, morphFrames);
+}
+
+
 /**
  * Immediately changes to an animation that loops at the specified speed.
  */

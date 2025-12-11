@@ -1401,7 +1401,7 @@ void BossGanondrof_Charge(BossGanondrof* this, PlayState* play) {
                 this->timers[0] = 10;
                 thisx->speedXZ = 0.0f;
                 this->fwork[GND_END_FRAME] = Animation_GetLastFrame(&gPhantomGanonChargeStartAnim);
-                Animation_MorphToPlayOnce(&this->skelAnime, &gPhantomGanonChargeStartAnim, 0.0f);
+                Animation_MorphToPlayOnceSetSpeed(&this->skelAnime, &gPhantomGanonChargeStartAnim, 0.0f, 1.5f);
             }
 
             Math_ApproachS(&thisx->shape.rot.y, thisx->yawTowardsPlayer, 5, 0x7D0);
