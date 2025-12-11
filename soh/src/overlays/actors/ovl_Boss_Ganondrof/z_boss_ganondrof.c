@@ -972,8 +972,8 @@ void BossGanondrof_SetupStunned(BossGanondrof* this, PlayState* play) {
     if (this->actionFunc != BossGanondrof_Stunned) {
         this->fwork[GND_END_FRAME] = Animation_GetLastFrame(&gPhantomGanonAirDamageAnim);
         Animation_MorphToLoop(&this->skelAnime, &gPhantomGanonAirDamageAnim, 0.0f);
-        this->timers[0] = 50;
-        this->shockTimer = 60;
+        this->timers[0] = 35;
+        this->shockTimer = 30;
     } else {
         this->fwork[GND_END_FRAME] = Animation_GetLastFrame(&gPhantomGanonGroundDamageAnim);
         Animation_MorphToLoop(&this->skelAnime, &gPhantomGanonGroundDamageAnim, 0.0f);
@@ -1007,9 +1007,20 @@ void BossGanondrof_Stunned(BossGanondrof* this, PlayState* play) {
 
     osSyncPrintf("TIME0 %d ********************************************\n", this->timers[0]);
     if (this->timers[0] == 0) {
+        Player* player = GET_PLAYER(play);
+        f32 dxToPlayer = player->actor.world.pos.x - this->actor.world.pos.x;
+        f32 dzToPlayer = player->actor.world.pos.z - this->actor.world.pos.z;
+
+        if ((SQ(dxToPlayer) + SQ(dzToPlayer)) < SQ(200.0f)) {
+            Actor_SpawnAsChild(&play->actorCtx, &this->actor, play, ACTOR_EN_FHG_FIRE, this->actor.world.pos.x,
+                               (this->actor.world.pos.y + 100.0f) + 25.0f, this->actor.world.pos.z, 0, 0, 0,
+                               FHGFIRE_LIGHTNING_STRIKE);
+            this->shockTimer = 12;
+        }
+
         BossGanondrof_SetupNeutral(this, -5.0f);
-        this->timers[0] = 30;
-        this->timers[2] = 30;
+        this->timers[0] = 15;
+        this->timers[2] = 15;
         this->flyMode = GND_FLY_NEUTRAL;
         this->actor.velocity.y = 0.0f;
         this->actor.gravity = 0.0f;
