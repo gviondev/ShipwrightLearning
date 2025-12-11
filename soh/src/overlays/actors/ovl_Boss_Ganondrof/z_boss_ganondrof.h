@@ -30,6 +30,12 @@ typedef enum {
 } BossGanondrofEyeState;
 
 typedef enum {
+    /* 0 */ THROW_NORMAL,
+    /* 1 */ THROW_SLOW,
+    /* 2 */ THROW_FAST
+} BossGanondrofThrowAction;
+
+typedef enum {
     /*  0 */ GND_VARIANCE_TIMER,
     /*  1 */ GND_US_1,
     /*  2 */ GND_US_2,

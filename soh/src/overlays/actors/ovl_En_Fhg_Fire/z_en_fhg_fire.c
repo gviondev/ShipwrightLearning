@@ -142,7 +142,17 @@ void EnFhgFire_Init(Actor* thisx, PlayState* play) {
         f32 dzL;
         f32 dxzL;
 
-        this->actor.speedXZ = (this->actor.world.rot.x == 0) ? 8.0f : 3.0f;
+        switch (this->actor.world.rot.x) {
+            case THROW_NORMAL:
+                this->actor.speedXZ = 8.0f;
+                break;
+            case THROW_FAST:
+                this->actor.speedXZ = 16.0f;
+                break;
+            default:
+                this->actor.speedXZ = 3.0f;
+                break;
+        }
         EnFhgFire_SetUpdate(this, EnFhgFire_EnergyBall);
 
         this->work[FHGFIRE_TIMER] = 70;

@@ -19,11 +19,6 @@
      ACTOR_FLAG_DRAW_CULLING_DISABLED)
 
 typedef enum {
-    /* 0 */ THROW_NORMAL,
-    /* 1 */ THROW_SLOW
-} BossGanondrofThrowAction;
-
-typedef enum {
     /* 0 */ STUNNED_FALL,
     /* 1 */ STUNNED_GROUND
 } BossGanondrofStunnedAction;
@@ -474,7 +469,7 @@ void BossGanondrof_SetupTripleCombo(BossGanondrof* this, PlayState* play) {
     EnfHG* horseTemp;
     s16 lightTime = 25;
 
-    this->work[GND_ACTION_STATE] = THROW_NORMAL;
+    this->work[GND_ACTION_STATE] = THROW_FAST;
     BossGanondrof_SetTripleShotStage(this, 0);
     this->actionFunc = BossGanondrof_TripleCombo;
     horseTemp = (EnfHG*)this->actor.child;
