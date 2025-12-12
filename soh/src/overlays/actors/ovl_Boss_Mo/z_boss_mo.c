@@ -55,6 +55,11 @@ void BossMo_Unknown(void);
 
 static BossMo* BossMo_GetCore(BossMo* this);
 static BossMoEffect* BossMo_GetEffects(BossMo* this);
+static void BossMoFightManager_ReportDeathComplete(BossMo* core, PlayState* play, Vec3f* pos);
+
+void BossMo_SpawnRipple(BossMoEffect* effect, Vec3f* pos, f32 scale, f32 maxScale, s16 maxAlpha, s16 partLimit,
+                        u8 type);
+void BossMo_SpawnDroplet(s16 type, BossMoEffect* effect, Vec3f* pos, Vec3f* vel, f32 scale);
 
 static const s16 sTentSpawnInitialWaitTimer = 40;
 static const s16 sTentSpawnPrepTimer = 55;
@@ -93,6 +98,7 @@ typedef enum {
 } BossMoTentState;
 
 typedef enum {
+    /* -12 */ MO_CORE_DEFEATED = -12,
     /* -11 */ MO_CORE_UNUSED = -11,
     /*   0 */ MO_CORE_MOVE = 0,
     /*   1 */ MO_CORE_MAKE_TENT,
@@ -541,6 +547,19 @@ static void BossMoFightManager_ReleaseDeathLead(BossMo* core) {
     }
 }
 
+static BossMo* BossMoFightManager_GetLivingCoreBesides(BossMo* excludingCore) {
+    for (s32 i = 0; i < ARRAY_COUNT(sBossMoFightManager.coreTentStates); i++) {
+        BossMo* otherCore = sBossMoFightManager.coreTentStates[i].core;
+
+        if ((otherCore != NULL) && (otherCore != excludingCore) && (otherCore->csState < MO_DEATH_START) &&
+            (otherCore->actor.colChkInfo.health > 0)) {
+            return otherCore;
+        }
+    }
+
+    return NULL;
+}
+
 static bool BossMoFightManager_HasLivingCoreBesides(BossMo* excludingCore) {
     for (s32 i = 0; i < ARRAY_COUNT(sBossMoFightManager.coreTentStates); i++) {
         BossMo* otherCore = sBossMoFightManager.coreTentStates[i].core;
@@ -591,6 +610,52 @@ static void BossMoFightManager_SubmitWaterLevel(BossMo* core, PlayState* play, f
     }
 
     MO_WATER_LEVEL(play) = sBossMoFightManager.sharedWaterLevel;
+}
+
+static void BossMo_SpawnCoreDefeatEffects(BossMo* defeatedCore, BossMo* effectOwner, PlayState* play) {
+    BossMoEffect* effects = BossMo_GetEffects((effectOwner != NULL) ? effectOwner : defeatedCore);
+    Vec3f effectPos;
+    Vec3f velocity;
+
+    effectPos = defeatedCore->actor.world.pos;
+    effectPos.y = MO_WATER_LEVEL(play);
+    BossMo_SpawnRipple(effects, &effectPos, 600.0f, 800.0f, 120, 1, MO_FX_BIG_RIPPLE);
+
+    effectPos = defeatedCore->actor.world.pos;
+    for (s32 i = 0; i < 30; i++) {
+        velocity.x = Rand_CenteredFloat(10.0f);
+        velocity.y = Rand_ZeroFloat(8.0f) + 8.0f;
+        velocity.z = Rand_CenteredFloat(10.0f);
+        BossMo_SpawnDroplet(MO_FX_DROPLET, effects, &effectPos, &velocity, Rand_ZeroFloat(0.08f) + 0.18f);
+    }
+
+    Sfx_PlaySfxAtPos(&effectPos, NA_SE_EN_MOFER_DEAD);
+}
+
+static void BossMo_BeginSecondaryCoreDeath(BossMo* defeatedCore, BossMo* survivingCore, PlayState* play) {
+    if (defeatedCore->work[MO_TENT_ACTION_STATE] == MO_CORE_DEFEATED) {
+        return;
+    }
+
+    BossMo_SpawnCoreDefeatEffects(defeatedCore, survivingCore, play);
+    BossMoFightManager_ReportDeathComplete(defeatedCore, play, &defeatedCore->actor.world.pos);
+
+    if (defeatedCore->tent1 != NULL) {
+        Actor_Kill(&defeatedCore->tent1->actor);
+        defeatedCore->tent1 = NULL;
+    }
+
+    if (defeatedCore->tent2 != NULL) {
+        Actor_Kill(&defeatedCore->tent2->actor);
+        defeatedCore->tent2 = NULL;
+    }
+
+    defeatedCore->work[MO_TENT_ACTION_STATE] = MO_CORE_DEFEATED;
+    defeatedCore->work[MO_CORE_SHORT_5] = 20;
+    defeatedCore->actor.flags &= ~ACTOR_FLAG_ATTENTION_ENABLED;
+    defeatedCore->coreCollider.base.acFlags &= ~AC_ON;
+    defeatedCore->coreCollider.base.atFlags &= ~AT_ON;
+    defeatedCore->actor.speedXZ = 0.0f;
 }
 
 static void BossMoFightManager_ReportDeathComplete(BossMo* core, PlayState* play, Vec3f* pos) {
@@ -2443,16 +2508,9 @@ void BossMo_CoreCollisionCheck(BossMo* this, PlayState* play) {
                 this->hitCount++;
                 if ((s8)this->actor.colChkInfo.health <= 0) {
                     if (BossMoFightManager_HasLivingCoreBesides(core)) {
-                        BossMoFightManager_ReportDeathComplete(core, play, &this->actor.world.pos);
-                        if (core->tent1 != NULL) {
-                            Actor_Kill(&core->tent1->actor);
-                        }
+                        BossMo* survivingCore = BossMoFightManager_GetLivingCoreBesides(core);
 
-                        if (core->tent2 != NULL) {
-                            Actor_Kill(&core->tent2->actor);
-                        }
-
-                        Actor_Kill(&core->actor);
+                        BossMo_BeginSecondaryCoreDeath(core, survivingCore, play);
                         return;
                     }
 
@@ -2906,6 +2964,20 @@ void BossMo_UpdateCore(Actor* thisx, PlayState* play) {
     f32 targetWaterLevel;
     s16 chaosStep;
 
+    if (this->work[MO_TENT_ACTION_STATE] == MO_CORE_DEFEATED) {
+        if (this->work[MO_CORE_SHORT_5] > 0) {
+            this->work[MO_CORE_SHORT_5]--;
+            Math_ApproachF(&this->actor.scale.x, 0.0f, 1.0f, 0.001f);
+            this->actor.scale.z = this->actor.scale.x;
+            Math_ApproachF(&this->actor.scale.y, 0.0f, 1.0f, 0.001f);
+        } else {
+            Actor_Kill(&this->actor);
+        }
+
+        BossMo_UpdateEffects(this, play);
+        return;
+    }
+
     osSyncPrintf("CORE mode = <%d>\n", this->work[MO_TENT_ACTION_STATE]);
     if (tent2 == NULL) {
         targetWaterLevel = tent1WaterMod + (s16)this->waterLevel;
@@ -3269,6 +3341,16 @@ void BossMo_DrawTentacle(BossMo* this, PlayState* play) {
 void BossMo_DrawWater(BossMo* this, PlayState* play) {
     s32 pad;
     BossMo* core = BossMo_GetCore(this);
+    s8 waterAlpha;
+
+    if (core->tent1 != NULL) {
+        waterAlpha = (s8)core->tent1->waterTexAlpha;
+    } else {
+        waterAlpha = (core != NULL) ? (s8)core->waterTexAlpha : 255;
+        if (waterAlpha == 0) {
+            waterAlpha = 255;
+        }
+    }
 
     OPEN_DISPS(play->state.gfxCtx);
 
@@ -3282,7 +3364,7 @@ void BossMo_DrawWater(BossMo* this, PlayState* play) {
 
     gDPPipeSync(POLY_XLU_DISP++);
 
-    gDPSetPrimColor(POLY_XLU_DISP++, 0xFF, 0xFF, 200, 255, 255, (s8)core->tent1->waterTexAlpha);
+    gDPSetPrimColor(POLY_XLU_DISP++, 0xFF, 0xFF, 200, 255, 255, waterAlpha);
 
     gDPSetEnvColor(POLY_XLU_DISP++, 0, 100, 255, 80);
 
