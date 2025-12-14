@@ -1053,7 +1053,7 @@ void BossMo_Destroy(Actor* thisx, PlayState* play) {
 void BossMo_SetupTentacle(BossMo* this, PlayState* play) {
     this->actionFunc = BossMo_Tentacle;
     this->work[MO_TENT_ACTION_STATE] = MO_TENT_WAIT;
-    this->timers[0] = 50 + (s16)Rand_ZeroFloat(20.0f);
+    this->timers[0] = 30 + (s16)Rand_ZeroFloat(10.0f);
 }
 
 void BossMo_Tentacle(BossMo* this, PlayState* play) {
@@ -1209,7 +1209,7 @@ void BossMo_Tentacle(BossMo* this, PlayState* play) {
             this->actor.flags &= ~ACTOR_FLAG_ATTENTION_ENABLED;
             if (this == core->tent2) {
                 this->work[MO_TENT_ACTION_STATE] = MO_TENT_SPAWN;
-                this->timers[0] = 70;
+                this->timers[0] = 45;
                 this->actor.shape.rot.y = this->actor.yawTowardsPlayer;
             }
             break;
@@ -1221,7 +1221,7 @@ void BossMo_Tentacle(BossMo* this, PlayState* play) {
                 Math_ApproachF(&this->baseAlpha, 150.0f, 1.0f, 5.0f);
                 if (this->baseAlpha >= 150.0f) {
                     this->work[MO_TENT_ACTION_STATE] = MO_TENT_READY;
-                    this->timers[0] = 60;
+                    this->timers[0] = 40;
                 }
             }
             if (this->timers[0] > 50) {
@@ -1336,7 +1336,7 @@ void BossMo_Tentacle(BossMo* this, PlayState* play) {
                     this->fwork[MO_TENT_SWING_RATE_Z] = 0;
                     this->fwork[MO_TENT_SWING_SIZE_X] = 0;
                     this->fwork[MO_TENT_SWING_SIZE_Z] = 0;
-                    this->timers[0] = 30;
+                    this->timers[0] = 20;
                     if ((fabsf(player->actor.world.pos.x - this->actor.world.pos.x) > 300.0f) ||
                         (player->actor.world.pos.y < MO_WATER_LEVEL(play)) || HAS_LINK(otherTent) ||
                         (fabsf(player->actor.world.pos.z - this->actor.world.pos.z) > 300.0f)) {
@@ -1395,7 +1395,7 @@ void BossMo_Tentacle(BossMo* this, PlayState* play) {
                         this->fwork[MO_TENT_SWING_SIZE_X] = 0;
                         this->fwork[MO_TENT_SWING_RATE_Z] = 0;
                         this->fwork[MO_TENT_SWING_RATE_X] = 0;
-                        this->timers[0] = 30;
+                        this->timers[0] = 20;
                     }
                 }
                 if (this->timers[0] == 4) {
@@ -1406,7 +1406,7 @@ void BossMo_Tentacle(BossMo* this, PlayState* play) {
                     this->fwork[MO_TENT_SWING_SIZE_X] = 0;
                     this->fwork[MO_TENT_SWING_RATE_Z] = 0;
                     this->fwork[MO_TENT_SWING_RATE_X] = 0;
-                    this->timers[0] = 30;
+                    this->timers[0] = 20;
                 }
             }
             if (this->work[MO_TENT_ACTION_STATE] == MO_TENT_GRAB) {
