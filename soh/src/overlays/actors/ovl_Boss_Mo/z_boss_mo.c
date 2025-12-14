@@ -737,59 +737,6 @@ f32 BossMo_RandZeroOne(BossMo* this) {
     return fabsf(randFloat);
 }
 
-static void BossMo_InitChaos(BossMo* core) {
-    core->chaosSwingScale = 1.0f;
-    core->chaosTimerScale = 1.0f;
-    core->chaosAnimRate = 1.0f;
-    core->chaosSwingTarget = 0.8f + Rand_ZeroFloat(0.7f);
-    core->chaosTimerTarget = 0.9f + Rand_ZeroFloat(0.5f);
-    core->chaosAnimTarget = 0.8f + Rand_ZeroFloat(0.8f);
-    core->chaosRecalcTimer = 80 + (s16)Rand_ZeroFloat(60.0f);
-    core->chaosAnimAccumulator = 0.0f;
-}
-
-static void BossMo_UpdateChaos(BossMo* core) {
-    if (core->chaosRecalcTimer <= 0) {
-        core->chaosSwingTarget = 0.7f + BossMo_RandZeroOne(core) * 1.1f;
-        core->chaosTimerTarget = 0.85f + BossMo_RandZeroOne(core) * 0.7f;
-        core->chaosAnimTarget = 0.75f + BossMo_RandZeroOne(core) * 1.1f;
-        core->chaosRecalcTimer = 70 + (s16)(BossMo_RandZeroOne(core) * 90.0f);
-    } else {
-        core->chaosRecalcTimer--;
-    }
-
-    Math_ApproachF(&core->chaosSwingScale, core->chaosSwingTarget, 1.0f, 0.02f);
-    Math_ApproachF(&core->chaosTimerScale, core->chaosTimerTarget, 1.0f, 0.01f);
-    Math_ApproachF(&core->chaosAnimRate, core->chaosAnimTarget, 1.0f, 0.02f);
-}
-
-static s16 BossMo_ChaosTimer(BossMo* this, s16 base, s16 spread, s16 minValue) {
-    BossMo* core = BossMo_GetCore(this);
-    s16 timer = (s16)((f32)base * core->chaosTimerScale);
-
-    timer += (s16)(Rand_CenteredFloat(spread) * core->chaosTimerScale);
-    if (timer < minValue) {
-        timer = minValue;
-    }
-
-    return timer;
-}
-
-static s16 BossMo_CalcChaosStep(BossMo* this) {
-    BossMo* core = BossMo_GetCore(this);
-
-    this->chaosAnimAccumulator += core->chaosAnimRate;
-
-    s16 step = (s16)this->chaosAnimAccumulator;
-
-    if (step < 1) {
-        step = 1;
-    }
-
-    this->chaosAnimAccumulator -= step;
-    return step;
-}
-
 s32 BossMo_NearLand(Vec3f* pos, f32 margin) {
     if (450.0f - margin <= fabsf(pos->x)) {
         return true;
@@ -1012,7 +959,6 @@ void BossMo_Init(Actor* thisx, PlayState* play2) {
         this->actor.colChkInfo.mass = 0;
         this->actor.params = 0;
         Actor_SetScale(&this->actor, 0.01f);
-        BossMo_InitChaos(this);
         Collider_InitCylinder(play, &this->coreCollider);
         Collider_SetCylinder(play, &this->coreCollider, &this->actor, &sCylinderInit);
             if (Flags_GetClear(play, play->roomCtx.curRoom.num)) {
@@ -1063,7 +1009,6 @@ void BossMo_Init(Actor* thisx, PlayState* play2) {
         Actor_ChangeCategory(play, &play->actorCtx, &this->actor, ACTORCAT_BOSS);
     } else {
         Actor_SetScale(&this->actor, 0.01f);
-        this->chaosAnimAccumulator = 0.0f;
         this->core = (BossMo*)this->actor.parent;
         if (this->core != NULL) {
             this->effects = this->core->effects;
@@ -1099,7 +1044,7 @@ void BossMo_Destroy(Actor* thisx, PlayState* play) {
 void BossMo_SetupTentacle(BossMo* this, PlayState* play) {
     this->actionFunc = BossMo_Tentacle;
     this->work[MO_TENT_ACTION_STATE] = MO_TENT_WAIT;
-    this->timers[0] = BossMo_ChaosTimer(this, 50, 20, 15);
+    this->timers[0] = 50 + (s16)Rand_ZeroFloat(20.0f);
 }
 
 void BossMo_Tentacle(BossMo* this, PlayState* play) {
@@ -1150,8 +1095,6 @@ void BossMo_Tentacle(BossMo* this, PlayState* play) {
     Vec3f spC8;
     BossMo* core = BossMo_GetCore(this);
     BossMoEffect* effects = BossMo_GetEffects(this);
-    f32 chaosSwing = core->chaosSwingScale;
-    f32 chaosAnimRate = core->chaosAnimRate;
 
     if (this->work[MO_TENT_ACTION_STATE] <= MO_TENT_DEATH_3) {
         this->actor.world.pos.y = MO_WATER_LEVEL(play);
@@ -1243,14 +1186,6 @@ void BossMo_Tentacle(BossMo* this, PlayState* play) {
             swingRateAccel = 30.0f;
             swingSizeAccel = 60.0f;
         }
-        maxSwingRateX *= chaosSwing;
-        maxSwingLagX *= chaosSwing;
-        maxSwingSizeX *= chaosSwing;
-        maxSwingRateZ *= chaosSwing;
-        maxSwingLagZ *= chaosSwing;
-        maxSwingSizeZ *= chaosSwing;
-        swingRateAccel *= chaosAnimRate;
-        swingSizeAccel *= chaosAnimRate;
         Math_ApproachF(&this->fwork[MO_TENT_SWING_RATE_X], maxSwingRateX, 1.0f, swingRateAccel);
         Math_ApproachF(&this->fwork[MO_TENT_SWING_LAG_X], maxSwingLagX, 1.0f, 30.0f);
         Math_ApproachF(&this->fwork[MO_TENT_SWING_SIZE_X], maxSwingSizeX, 1.0f, swingSizeAccel);
@@ -1265,7 +1200,7 @@ void BossMo_Tentacle(BossMo* this, PlayState* play) {
             this->actor.flags &= ~ACTOR_FLAG_ATTENTION_ENABLED;
             if (this == core->tent2) {
                 this->work[MO_TENT_ACTION_STATE] = MO_TENT_SPAWN;
-                this->timers[0] = BossMo_ChaosTimer(this, 70, 15, 30);
+                this->timers[0] = 70;
                 this->actor.shape.rot.y = this->actor.yawTowardsPlayer;
             }
             break;
@@ -1277,7 +1212,7 @@ void BossMo_Tentacle(BossMo* this, PlayState* play) {
                 Math_ApproachF(&this->baseAlpha, 150.0f, 1.0f, 5.0f);
                 if (this->baseAlpha >= 150.0f) {
                     this->work[MO_TENT_ACTION_STATE] = MO_TENT_READY;
-                    this->timers[0] = BossMo_ChaosTimer(this, 60, 20, 25);
+                    this->timers[0] = 60;
                 }
             }
             if (this->timers[0] > 50) {
@@ -1331,15 +1266,15 @@ void BossMo_Tentacle(BossMo* this, PlayState* play) {
             Math_ApproachF(&this->fwork[MO_TENT_MAX_STRETCH], 1.0f, 0.5f, 0.04);
             if (core->csState != MO_BATTLE) {
                 Math_ApproachF(&this->tentMaxAngle, 1.0f, 1.0f, 0.001f);
-                Math_ApproachF(&this->tentSpeed, 240.0f * chaosAnimRate, 1.0f, 3.0f * chaosAnimRate);
+                Math_ApproachF(&this->tentSpeed, 240.0f, 1.0f, 3.0);
             } else {
                 Math_ApproachF(&this->tentMaxAngle, 1.0f, 1.0f, 0.002f);
-                Math_ApproachF(&this->tentSpeed, 400.0f * chaosAnimRate, 1.0f, 6.0f * chaosAnimRate);
+                Math_ApproachF(&this->tentSpeed, 400.0f, 1.0f, 6.0f);
             }
             if (this->work[MO_TENT_ACTION_STATE] == MO_TENT_READY) {
                 if ((this->timers[0] == 0) && !HAS_LINK(otherTent)) {
                     this->work[MO_TENT_ACTION_STATE] = MO_TENT_SWING;
-                    this->timers[0] = BossMo_ChaosTimer(this, 50, 20, 15);
+                    this->timers[0] = 50;
                     Audio_ResetIncreasingTranspose();
                     this->attackAngleMod = Rand_CenteredFloat(0x1000);
                 }
@@ -1348,9 +1283,9 @@ void BossMo_Tentacle(BossMo* this, PlayState* play) {
                 if ((this->timers[0] == 0) && (tentXrot >= 0) && (sp1B4 < 0)) {
                     this->work[MO_TENT_ACTION_STATE] = MO_TENT_ATTACK;
                     if (this == core->tent1) {
-                        this->timers[0] = BossMo_ChaosTimer(this, 175, 30, 80);
+                        this->timers[0] = 175;
                     } else {
-                        this->timers[0] = BossMo_ChaosTimer(this, 55, 15, 25);
+                        this->timers[0] = 55;
                     }
                 }
             }
@@ -1369,7 +1304,7 @@ void BossMo_Tentacle(BossMo* this, PlayState* play) {
             }
             this->targetPos = this->actor.world.pos;
             Math_ApproachF(&this->tentMaxAngle, 0.5f, 1.0f, 0.01);
-            Math_ApproachF(&this->tentSpeed, 160.0f * chaosAnimRate, 1.0f, 50.0f * chaosAnimRate);
+            Math_ApproachF(&this->tentSpeed, 160.0f, 1.0f, 50.0f);
             if ((this->timers[0] == 0) || (this->linkHitTimer != 0)) {
                 dx = this->tentPos[22].x - player->actor.world.pos.x;
                 dy = this->tentPos[22].y - player->actor.world.pos.y;
@@ -1377,7 +1312,7 @@ void BossMo_Tentacle(BossMo* this, PlayState* play) {
                 if ((fabsf(dy) < 50.0f) && !HAS_LINK(otherTent) && (sqrtf(SQ(dx) + SQ(dy) + SQ(dz)) < 120.0f)) {
                     this->tentMaxAngle = .001f;
                     this->work[MO_TENT_ACTION_STATE] = MO_TENT_CURL;
-                    this->timers[0] = BossMo_ChaosTimer(this, 40, 15, 15);
+                    this->timers[0] = 40;
                     this->tentSpeed = 0;
                     if ((s16)(this->actor.shape.rot.y - this->actor.yawTowardsPlayer) >= 0) {
                         this->linkToLeft = false;
@@ -1392,13 +1327,13 @@ void BossMo_Tentacle(BossMo* this, PlayState* play) {
                     this->fwork[MO_TENT_SWING_RATE_Z] = 0;
                     this->fwork[MO_TENT_SWING_SIZE_X] = 0;
                     this->fwork[MO_TENT_SWING_SIZE_Z] = 0;
-                    this->timers[0] = BossMo_ChaosTimer(this, 30, 15, 10);
+                    this->timers[0] = 30;
                     if ((fabsf(player->actor.world.pos.x - this->actor.world.pos.x) > 300.0f) ||
                         (player->actor.world.pos.y < MO_WATER_LEVEL(play)) || HAS_LINK(otherTent) ||
                         (fabsf(player->actor.world.pos.z - this->actor.world.pos.z) > 300.0f)) {
 
                         this->work[MO_TENT_ACTION_STATE] = MO_TENT_RETREAT;
-                        this->timers[0] = BossMo_ChaosTimer(this, 75, 25, 25);
+                        this->timers[0] = 75;
                     }
                 }
             }
@@ -1430,7 +1365,7 @@ void BossMo_Tentacle(BossMo* this, PlayState* play) {
                 }
             }
             Math_ApproachF(&this->tentMaxAngle, 0.1f, 1.0f, 0.01f);
-            Math_ApproachF(&this->tentSpeed, 960.0f * chaosAnimRate, 1.0f, 30.0f * chaosAnimRate);
+            Math_ApproachF(&this->tentSpeed, 960.0f, 1.0f, 30.0f);
             if (this->timers[0] >= 30) {
                 Math_ApproachS(&this->actor.shape.rot.y, this->actor.yawTowardsPlayer, 5, 0xC8);
             }
@@ -1451,7 +1386,7 @@ void BossMo_Tentacle(BossMo* this, PlayState* play) {
                         this->fwork[MO_TENT_SWING_SIZE_X] = 0;
                         this->fwork[MO_TENT_SWING_RATE_Z] = 0;
                         this->fwork[MO_TENT_SWING_RATE_X] = 0;
-                        this->timers[0] = BossMo_ChaosTimer(this, 30, 15, 10);
+                        this->timers[0] = 30;
                     }
                 }
                 if (this->timers[0] == 4) {
@@ -1462,7 +1397,7 @@ void BossMo_Tentacle(BossMo* this, PlayState* play) {
                     this->fwork[MO_TENT_SWING_SIZE_X] = 0;
                     this->fwork[MO_TENT_SWING_RATE_Z] = 0;
                     this->fwork[MO_TENT_SWING_RATE_X] = 0;
-                    this->timers[0] = BossMo_ChaosTimer(this, 30, 15, 10);
+                    this->timers[0] = 30;
                 }
             }
             if (this->work[MO_TENT_ACTION_STATE] == MO_TENT_GRAB) {
@@ -1591,7 +1526,7 @@ void BossMo_Tentacle(BossMo* this, PlayState* play) {
             Math_ApproachF(&this->cutScale, 0.0, 1.0f, 0.2f);
             if ((this->meltIndex >= 41) || (this->timers[0] == 0)) {
                 this->work[MO_TENT_ACTION_STATE] = MO_TENT_RETREAT;
-                this->timers[0] = BossMo_ChaosTimer(this, 75, 25, 25);
+                this->timers[0] = 75;
                 this->tentMaxAngle = 0.005f;
                 this->tentSpeed = 50.0f;
                 this->fwork[MO_TENT_SWING_SIZE_X] = 7000.0f;
@@ -1625,7 +1560,7 @@ void BossMo_Tentacle(BossMo* this, PlayState* play) {
             }
             Math_ApproachF(&this->fwork[MO_TENT_MAX_STRETCH], 0, 0.5f, 0.02f);
             Math_ApproachF(&this->tentMaxAngle, 0.5f, 1.0f, 0.01);
-            Math_ApproachF(&this->tentSpeed, 320.0f * chaosAnimRate, 1.0f, 50.0f * chaosAnimRate);
+            Math_ApproachF(&this->tentSpeed, 320.0f, 1.0f, 50.0f);
             if (this->timers[0] == 0) {
                 this->actor.flags &= ~ACTOR_FLAG_ATTENTION_ENABLED;
                 Math_ApproachF(&this->baseAlpha, 0.0, 1.0f, 5.0f);
@@ -2958,7 +2893,6 @@ void BossMo_UpdateCore(Actor* thisx, PlayState* play) {
     f32 tent1WaterMod = (tent1 != NULL) ? tent1->waterLevelMod : 0.0f;
     f32 tent2WaterMod = (tent2 != NULL) ? tent2->waterLevelMod : 0.0f;
     f32 targetWaterLevel;
-    s16 chaosStep;
 
     if (this->work[MO_TENT_ACTION_STATE] == MO_CORE_DEFEATED) {
         if (this->work[MO_CORE_SHORT_5] > 0) {
@@ -2983,17 +2917,15 @@ void BossMo_UpdateCore(Actor* thisx, PlayState* play) {
     BossMoFightManager_SubmitWaterLevel(core, play, targetWaterLevel);
     this->actor.flags |= ACTOR_FLAG_HOOKSHOT_PULLS_ACTOR;
     this->actor.focus.pos = this->actor.world.pos;
-    BossMo_UpdateChaos(core);
-    chaosStep = BossMo_CalcChaosStep(this);
-    this->work[MO_TENT_VAR_TIMER] += chaosStep;
+    this->work[MO_TENT_VAR_TIMER]++;
 
     if (this->work[MO_CORE_DMG_FLASH_TIMER] != 0) {
         this->work[MO_CORE_DMG_FLASH_TIMER]--;
     }
     if (this->work[MO_TENT_INVINC_TIMER] != 0) {
-    this->work[MO_TENT_INVINC_TIMER]--;
+        this->work[MO_TENT_INVINC_TIMER]--;
     }
-    this->work[MO_TENT_MOVE_TIMER] += chaosStep;
+    this->work[MO_TENT_MOVE_TIMER]++;
 
     for (i = 0; i < ARRAY_COUNT(this->timers); i++) {
         if (this->timers[i] != 0) {
@@ -3026,7 +2958,6 @@ void BossMo_UpdateTent(Actor* thisx, PlayState* play) {
     f32 phi_f0;
     BossMo* core = BossMo_GetCore(this);
     BossMoEffect* effects = BossMo_GetEffects(this);
-    s16 chaosStep;
 
     if ((this == core->tent2) && (this->tent2KillTimer != 0)) {
         this->tent2KillTimer++;
@@ -3044,15 +2975,14 @@ void BossMo_UpdateTent(Actor* thisx, PlayState* play) {
     osSyncPrintf("MO : Move mode = <%d>\n", this->work[MO_TENT_ACTION_STATE]);
     Math_ApproachS(&player->actor.shape.rot.x, 0, 5, 0x3E8);
     Math_ApproachS(&player->actor.shape.rot.z, 0, 5, 0x3E8);
-    chaosStep = BossMo_CalcChaosStep(this);
-    this->work[MO_TENT_VAR_TIMER] += chaosStep;
-    this->sfxTimer += chaosStep;
-    this->work[MO_TENT_MOVE_TIMER] += chaosStep;
-    this->widthIndex += chaosStep;
-    while (this->widthIndex >= 300) {
-        this->widthIndex -= 300;
+    this->work[MO_TENT_VAR_TIMER]++;
+    this->sfxTimer++;
+    this->work[MO_TENT_MOVE_TIMER]++;
+    this->widthIndex++;
+    if (this->widthIndex >= 300) {
+        this->widthIndex = 0;
     }
-    this->pulsePhase -= 3000 * chaosStep;
+    this->pulsePhase -= 3000;
     index = this->widthIndex;
     this->tentWidth[index] = (Math_SinS(this->pulsePhase) * this->tentPulse) + (1.0f + this->tentPulse);
     for (i = 0; i < 41; i++) {
