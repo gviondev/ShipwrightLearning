@@ -56,8 +56,9 @@ void BossMo_Unknown(void);
 static BossMo* BossMo_GetCore(BossMo* this);
 static BossMoEffect* BossMo_GetEffects(BossMo* this);
 static void BossMoFightManager_ReportDeathComplete(BossMo* core, PlayState* play, Vec3f* pos);
+static void BossMo_SpawnBlueWarp(PlayState* play);
 
-static const Vec3f sMorphaWarpPos = { 100.0f, -280.0f, 0.0f };
+static const Vec3f sMorphaWarpPos = { 0.0f, -280.0f, 0.0f };
 
 void BossMo_SpawnRipple(BossMoEffect* effect, Vec3f* pos, f32 scale, f32 maxScale, s16 maxAlpha, s16 partLimit,
                         u8 type);
@@ -666,8 +667,7 @@ static void BossMoFightManager_ReportDeathComplete(BossMo* core, PlayState* play
     if ((sBossMoFightManager.activeCoreCount != 0) &&
         (sBossMoFightManager.completedDeaths >= sBossMoFightManager.activeCoreCount)) {
         if (GameInteractor_Should(VB_SPAWN_BLUE_WARP, true, core)) {
-            Actor_Spawn(&play->actorCtx, play, ACTOR_DOOR_WARP1, sMorphaWarpPos.x, sMorphaWarpPos.y,
-                        sMorphaWarpPos.z, 0, 0, 0, WARP_DUNGEON_ADULT, true);
+            BossMo_SpawnBlueWarp(play);
         }
 
         if (GameInteractor_Should(VB_SPAWN_HEART_CONTAINER, true)) {
@@ -955,7 +955,7 @@ void BossMo_Init(Actor* thisx, PlayState* play2) {
         this->actor.world.pos.z = initialSpawnPos.z;
         this->fwork[MO_TENT_SWING_SIZE_X] = 5.0f;
         this->drawActor = true;
-        this->actor.colChkInfo.health = 1;
+        this->actor.colChkInfo.health = 10;
         this->actor.colChkInfo.mass = 0;
         this->actor.params = 0;
         Actor_SetScale(&this->actor, 0.01f);
@@ -964,8 +964,7 @@ void BossMo_Init(Actor* thisx, PlayState* play2) {
             if (Flags_GetClear(play, play->roomCtx.curRoom.num)) {
             Actor_Kill(&this->actor);
             if (GameInteractor_Should(VB_SPAWN_BLUE_WARP, true, this)) {
-                Actor_Spawn(&play->actorCtx, play, ACTOR_DOOR_WARP1, sMorphaWarpPos.x, sMorphaWarpPos.y,
-                            sMorphaWarpPos.z, 0, 0, 0, WARP_DUNGEON_ADULT, true);
+                BossMo_SpawnBlueWarp(play);
             }
             if (GameInteractor_Should(VB_SPAWN_HEART_CONTAINER, true)) {
                 Actor_Spawn(&play->actorCtx, play, ACTOR_ITEM_B_HEART, -200.0f, -280.0f, 0.0f, 0, 0, 0, 0, true);
@@ -1026,6 +1025,16 @@ void BossMo_Init(Actor* thisx, PlayState* play2) {
         Collider_SetJntSph(play, &this->tentCollider, &this->actor, &sJntSphInit, this->tentElements);
         this->tentMaxAngle = 1.0f;
     }
+}
+
+static void BossMo_SpawnBlueWarp(PlayState* play) {
+
+ Actor* blueWarp = Actor_Spawn(&play->actorCtx, play, ACTOR_DOOR_WARP1, sMorphaWarpPos.x,  sMorphaWarpPos.y, sMorphaWarpPos.z, 0, 0, 0,
+                WARP_DUNGEON_ADULT, true);
+
+    blueWarp->world.pos.y = MO_WATER_LEVEL(play) + 10.0f;
+    blueWarp ->world.pos.x = sMorphaWarpPos.x;
+    blueWarp ->world.pos.z = sMorphaWarpPos.z;
 }
 
 void BossMo_Destroy(Actor* thisx, PlayState* play) {
