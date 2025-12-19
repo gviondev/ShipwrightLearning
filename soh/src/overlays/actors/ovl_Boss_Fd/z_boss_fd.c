@@ -586,13 +586,13 @@ void BossFd_Fly(BossFd* this, PlayState* play) {
                     this->targetPosition.y = sHoleLocations[this->holeIndex].y + 200.0f + 50.0f;
                     this->targetPosition.z = sHoleLocations[this->holeIndex].z;
                     this->fwork[BFD_TURN_RATE] = 0.0f;
-                    this->fwork[BFD_TURN_RATE_MAX] = 1000.0f;
+                    this->fwork[BFD_TURN_RATE_MAX] = 1400.0f;
                     if (this->introState != BFD_CS_NONE) {
-                        this->timers[0] = 10050;
+                        this->timers[0] = 8050;
                     } else {
-                        this->timers[0] = 20;
+                        this->timers[0] = 12;
                     }
-                    this->fwork[BFD_FLY_WOBBLE_AMP] = 100.0f;
+                    this->fwork[BFD_FLY_WOBBLE_AMP] = 140.0f;
                     this->work[BFD_ACTION_STATE] = BOSSFD_FLY_HOLE;
 
                     if (this->work[BFD_START_ATTACK]) {
@@ -600,9 +600,9 @@ void BossFd_Fly(BossFd* this, PlayState* play) {
                         this->work[BFD_FLY_COUNT]++;
                         if (this->work[BFD_FLY_COUNT] & 1) {
                             this->work[BFD_ACTION_STATE] = BOSSFD_FLY_CHASE;
-                            this->timers[0] = 300;
-                            this->fwork[BFD_TURN_RATE_MAX] = 900.0f;
-                            this->fwork[BFD_TARGET_Y_OFFSET] = 300.0f;
+                            this->timers[0] = 240;
+                            this->fwork[BFD_TURN_RATE_MAX] = 1200.0f;
+                            this->fwork[BFD_TARGET_Y_OFFSET] = 330.0f;
                             this->work[BFD_UNK_234] = this->work[BFD_UNK_236] = 0;
                         } else {
                             this->work[BFD_ACTION_STATE] = BOSSFD_FLY_CEILING;
@@ -651,28 +651,28 @@ void BossFd_Fly(BossFd* this, PlayState* play) {
             }
             break;
         case BOSSFD_FLY_CEILING:
-            this->fwork[BFD_FLY_SPEED] = 8;
+            this->fwork[BFD_FLY_SPEED] = 10;
             this->targetPosition.x = 0.0f;
             this->targetPosition.y = 700.0f;
             this->targetPosition.z = -300.0f;
-            this->fwork[BFD_FLY_WOBBLE_AMP] = 200.0f;
-            this->fwork[BFD_TURN_RATE_MAX] = 3000.0f;
+            this->fwork[BFD_FLY_WOBBLE_AMP] = 240.0f;
+            this->fwork[BFD_TURN_RATE_MAX] = 3600.0f;
             if (this->actor.world.pos.y > 700.0f) {
                 this->work[BFD_ACTION_STATE] = BOSSFD_DROP_ROCKS;
-                this->timers[0] = 25;
-                this->timers[2] = 150;
+                this->timers[0] = 20;
+                this->timers[2] = 120;
                 this->work[BFD_CEILING_TARGET] = 0;
             }
             break;
         case BOSSFD_DROP_ROCKS:
-            this->fwork[BFD_FLY_SPEED] = 8;
-            this->fwork[BFD_FLY_WOBBLE_AMP] = 200.0f;
-            this->fwork[BFD_TURN_RATE_MAX] = 10000.0f;
+            this->fwork[BFD_FLY_SPEED] = 10;
+            this->fwork[BFD_FLY_WOBBLE_AMP] = 240.0f;
+            this->fwork[BFD_TURN_RATE_MAX] = 12000.0f;
             this->targetPosition.x = sCeilingTargets[this->work[BFD_CEILING_TARGET]].x;
             this->targetPosition.y = sCeilingTargets[this->work[BFD_CEILING_TARGET]].y + 900.0f;
             this->targetPosition.z = sCeilingTargets[this->work[BFD_CEILING_TARGET]].z;
             if (this->timers[0] == 0) {
-                this->timers[0] = 25;
+                this->timers[0] = 18;
                 this->work[BFD_CEILING_TARGET]++;
                 if (this->work[BFD_CEILING_TARGET] >= 6) {
                     this->work[BFD_CEILING_TARGET] = 0;
@@ -702,7 +702,7 @@ void BossFd_Fly(BossFd* this, PlayState* play) {
             break;
         case BOSSFD_FLY_CHASE:
             this->actor.flags |= ACTOR_FLAG_SFX_FOR_PLAYER_BODY_HIT;
-            temp_y = Math_SinS(this->work[BFD_MOVE_TIMER] * 2396.0f) * 30.0f + this->fwork[BFD_TARGET_Y_OFFSET];
+            temp_y = Math_SinS(this->work[BFD_MOVE_TIMER] * 2396.0f) * 40.0f + this->fwork[BFD_TARGET_Y_OFFSET];
             this->targetPosition.x = player->actor.world.pos.x;
             this->targetPosition.y = player->actor.world.pos.y + temp_y + 30.0f;
             this->targetPosition.z = player->actor.world.pos.z;
@@ -719,7 +719,7 @@ void BossFd_Fly(BossFd* this, PlayState* play) {
                 this->timers[0] = 0;
                 this->work[BFD_START_ATTACK] = false;
             } else {
-                Math_ApproachF(&this->fwork[BFD_TARGET_Y_OFFSET], 50.0, 1.0f, 2.0f);
+                Math_ApproachF(&this->fwork[BFD_TARGET_Y_OFFSET], 70.0f, 1.0f, 3.0f);
             }
             break;
         case BOSSFD_DEATH_START:
