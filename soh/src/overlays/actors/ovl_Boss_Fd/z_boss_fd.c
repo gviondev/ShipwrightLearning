@@ -22,7 +22,7 @@
      ACTOR_FLAG_DRAW_CULLING_DISABLED)
 
 #define BOSSFD_LOW_CIRCLE_RADIUS_DEFAULT 600.0f
-#define BOSSFD_LOW_CIRCLE_HEIGHT_DEFAULT 10.0f
+#define BOSSFD_LOW_CIRCLE_HEIGHT_DEFAULT -20.0f
 #define BOSSFD_LOW_CIRCLE_TIMER 1600
 #define BOSSFD_LOW_CIRCLE_SPEED_DEFAULT 24.0f
 
@@ -993,14 +993,19 @@ void BossFd_Fly(BossFd* this, PlayState* play) {
         f32 padB4;
         f32 padB0;
         f32 padAC;
+        f32 minFlyHeight = 110.0f;
 
         Math_ApproachS(&this->actor.world.rot.y, angleToTarget, 0xA, this->fwork[BFD_TURN_RATE]);
 
+        if (this->work[BFD_ACTION_STATE] == BOSSFD_FLY_LOW_CIRCLE) {
+            minFlyHeight = sHoleLocations[1].y + BOSSFD_LOW_CIRCLE_HEIGHT_DEFAULT;
+        }
+
         if (((this->work[BFD_ACTION_STATE] == BOSSFD_FLY_CHASE) ||
              (this->work[BFD_ACTION_STATE] == BOSSFD_FLY_LOW_CIRCLE)) &&
-            (this->actor.world.pos.y < 110.0f) && (pitchToTarget < 0)) {
+            (this->actor.world.pos.y < minFlyHeight) && (pitchToTarget < 0)) {
             pitchToTarget = 0;
-            Math_ApproachF(&this->actor.world.pos.y, 110.0f, 1.0f, 5.0f);
+            Math_ApproachF(&this->actor.world.pos.y, minFlyHeight, 1.0f, 5.0f);
         }
 
         Math_ApproachS(&this->actor.world.rot.x, pitchToTarget, 0xA, this->fwork[BFD_TURN_RATE]);
