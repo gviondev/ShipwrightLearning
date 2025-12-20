@@ -21,6 +21,15 @@
     (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_HOSTILE | ACTOR_FLAG_UPDATE_CULLING_DISABLED | \
      ACTOR_FLAG_DRAW_CULLING_DISABLED)
 
+#define BOSSFD_LOW_CIRCLE_RADIUS_DEFAULT 600.0f
+#define BOSSFD_LOW_CIRCLE_HEIGHT_DEFAULT 10.0f
+#define BOSSFD_LOW_CIRCLE_TIMER 1600
+#define BOSSFD_LOW_CIRCLE_SPEED_DEFAULT 24.0f
+
+// Reuse unused work indices to track the circular flight path angle and direction
+#define BOSSFD_LOW_CIRCLE_ANGLE_IDX BFD_UNK_234
+#define BOSSFD_LOW_CIRCLE_DIR_IDX BFD_UNK_236
+
 typedef enum {
     /* 0 */ INTRO_FLY_EMERGE,
     /* 1 */ INTRO_FLY_HOLE,
@@ -600,14 +609,26 @@ void BossFd_Fly(BossFd* this, PlayState* play) {
                     if (this->work[BFD_START_ATTACK]) {
                         this->work[BFD_START_ATTACK] = false;
                         this->work[BFD_FLY_COUNT]++;
-                        if (this->work[BFD_FLY_COUNT] & 1) {
-                            this->work[BFD_ACTION_STATE] = BOSSFD_FLY_CHASE;
-                            this->timers[0] = aggressiveTuning ? 240 : 300;
-                            this->fwork[BFD_TURN_RATE_MAX] = aggressiveTuning ? 1200.0f : 900.0f;
-                            this->fwork[BFD_TARGET_Y_OFFSET] = aggressiveTuning ? 330.0f : 300.0f;
-                            this->work[BFD_UNK_234] = this->work[BFD_UNK_236] = 0;
-                        } else {
-                            this->work[BFD_ACTION_STATE] = BOSSFD_FLY_CEILING;
+                        switch (this->work[BFD_FLY_COUNT] % 3) {
+                            case 0:
+                                this->work[BFD_ACTION_STATE] = BOSSFD_FLY_CHASE;
+                                this->timers[0] = aggressiveTuning ? 240 : 300;
+                                this->fwork[BFD_TURN_RATE_MAX] = aggressiveTuning ? 1200.0f : 900.0f;
+                                this->fwork[BFD_TARGET_Y_OFFSET] = aggressiveTuning ? 330.0f : 300.0f;
+                                this->work[BOSSFD_LOW_CIRCLE_ANGLE_IDX] = this->work[BOSSFD_LOW_CIRCLE_DIR_IDX] = 0;
+                                break;
+                            case 1:
+                                this->work[BFD_ACTION_STATE] = BOSSFD_FLY_LOW_CIRCLE;
+                                this->timers[0] = BOSSFD_LOW_CIRCLE_TIMER;
+                                this->fwork[BFD_FLY_SPEED] = BOSSFD_LOW_CIRCLE_SPEED_DEFAULT;
+                                this->fwork[BFD_TURN_RATE_MAX] = 1600.0f;
+                                this->work[BOSSFD_LOW_CIRCLE_ANGLE_IDX] = (s16)Rand_ZeroFloat(0x8000);
+                                this->work[BOSSFD_LOW_CIRCLE_DIR_IDX] = (Rand_ZeroOne() < 0.5f) ? 1 : -1;
+                                this->fwork[BFD_FLY_WOBBLE_AMP] = 80.0f;
+                                break;
+                            default:
+                                this->work[BFD_ACTION_STATE] = BOSSFD_FLY_CEILING;
+                                break;
                         }
                     }
                 }
@@ -726,6 +747,34 @@ void BossFd_Fly(BossFd* this, PlayState* play) {
                                aggressiveTuning ? 3.0f : 2.0f);
             }
             break;
+        case BOSSFD_FLY_LOW_CIRCLE: {
+            Vec3f circleCenter = sHoleLocations[1];
+            f32 radius = BOSSFD_LOW_CIRCLE_RADIUS_DEFAULT;
+            f32 heightOffset = BOSSFD_LOW_CIRCLE_HEIGHT_DEFAULT;
+            f32 angleRadians = (this->work[BOSSFD_LOW_CIRCLE_ANGLE_IDX] / (f32)0x8000) * M_PI;
+            f32 tangentialSpeed = this->fwork[BFD_FLY_SPEED];
+            f32 angularStep;
+            s16 angleStep;
+
+            sp1CF = true;
+            radius = CLAMP_MIN(radius, 120.0f);
+            tangentialSpeed = CLAMP_MIN(tangentialSpeed, 1.0f);
+            this->fwork[BFD_FLY_WOBBLE_AMP] = 60.0f;
+            this->fwork[BFD_TURN_RATE_MAX] = 1600.0f;
+
+            this->targetPosition.x = circleCenter.x + sinf(angleRadians) * radius;
+            this->targetPosition.z = circleCenter.z + cosf(angleRadians) * radius;
+            this->targetPosition.y = circleCenter.y + heightOffset;
+
+            angularStep = (tangentialSpeed / radius) * (0x8000 / M_PI);
+            angleStep = (s16)CLAMP(angularStep, 0x20, 0x600);
+            this->work[BOSSFD_LOW_CIRCLE_ANGLE_IDX] += this->work[BOSSFD_LOW_CIRCLE_DIR_IDX] * angleStep;
+            if ((this->timers[0] == 0) || (this->work[BFD_DAMAGE_FLASH_TIMER] != 0)) {
+                this->work[BFD_ACTION_STATE] = BOSSFD_FLY_MAIN;
+                this->timers[0] = 0;
+            }
+            break;
+        }
         case BOSSFD_DEATH_START:
             if (sqrtf(SQ(dx) + SQ(dz)) < 50.0f) {
                 this->timers[0] = 0;
@@ -948,7 +997,7 @@ void BossFd_Fly(BossFd* this, PlayState* play) {
         Math_ApproachS(&this->actor.world.rot.y, angleToTarget, 0xA, this->fwork[BFD_TURN_RATE]);
 
         if (((this->work[BFD_ACTION_STATE] == BOSSFD_FLY_CHASE) ||
-             (this->work[BFD_ACTION_STATE] == BOSSFD_FLY_UNUSED)) &&
+             (this->work[BFD_ACTION_STATE] == BOSSFD_FLY_LOW_CIRCLE)) &&
             (this->actor.world.pos.y < 110.0f) && (pitchToTarget < 0)) {
             pitchToTarget = 0;
             Math_ApproachF(&this->actor.world.pos.y, 110.0f, 1.0f, 5.0f);
