@@ -22,9 +22,17 @@
      ACTOR_FLAG_DRAW_CULLING_DISABLED)
 
 #define BOSSFD_LOW_CIRCLE_RADIUS_DEFAULT 600.0f
-#define BOSSFD_LOW_CIRCLE_HEIGHT_DEFAULT -20.0f
+#define BOSSFD_LOW_CIRCLE_HEIGHT_DEFAULT -10.0f
 #define BOSSFD_LOW_CIRCLE_TIMER 1600
 #define BOSSFD_LOW_CIRCLE_SPEED_DEFAULT 24.0f
+#define BOSSFD_LOW_CIRCLE_ROCK_TIMER 480
+#define BOSSFD_LOW_CIRCLE_ROCK_INTERVAL 8
+#define BOSSFD_LOW_CIRCLE_ROCK_DEBRIS_COUNT 16
+#define BOSSFD_LOW_CIRCLE_ROCK_HEIGHT 1150.0f
+#define BOSSFD_LOW_CIRCLE_FOG_PULSE_RATE 0x800
+#define BOSSFD_FOG_MODE_ERUPTION_IN 11
+#define BOSSFD_FOG_MODE_ERUPTION 12
+#define BOSSFD_FOG_MODE_ERUPTION_OUT 13
 
 // Reuse unused work indices to track the circular flight path angle and direction
 #define BOSSFD_LOW_CIRCLE_ANGLE_IDX BFD_UNK_234
@@ -625,6 +633,13 @@ void BossFd_Fly(BossFd* this, PlayState* play) {
                                 this->work[BOSSFD_LOW_CIRCLE_ANGLE_IDX] = (s16)Rand_ZeroFloat(0x8000);
                                 this->work[BOSSFD_LOW_CIRCLE_DIR_IDX] = (Rand_ZeroOne() < 0.5f) ? 1 : -1;
                                 this->fwork[BFD_FLY_WOBBLE_AMP] = 80.0f;
+                                this->work[BFD_ROCK_TIMER] = BOSSFD_LOW_CIRCLE_ROCK_TIMER;
+                                this->fogMode = BOSSFD_FOG_MODE_ERUPTION_IN;
+                                play->envCtx.blendIndoorLights = true;
+                                play->envCtx.unk_BE = play->envCtx.unk_BD;
+                                play->envCtx.unk_BD = 3;
+                                play->envCtx.unk_D8 = 0.0f;
+                                play->envCtx.unk_DC = 0;
                                 break;
                             default:
                                 this->work[BFD_ACTION_STATE] = BOSSFD_FLY_CEILING;
@@ -757,6 +772,17 @@ void BossFd_Fly(BossFd* this, PlayState* play) {
             s16 angleStep;
 
             sp1CF = true;
+            if ((this->fogMode != BOSSFD_FOG_MODE_ERUPTION_IN) && (this->fogMode != BOSSFD_FOG_MODE_ERUPTION)) {
+                this->fogMode = BOSSFD_FOG_MODE_ERUPTION_IN;
+                play->envCtx.blendIndoorLights = true;
+                play->envCtx.unk_BE = play->envCtx.unk_BD;
+                play->envCtx.unk_BD = 3;
+                play->envCtx.unk_D8 = 0.0f;
+                play->envCtx.unk_DC = 0;
+            }
+            if (this->work[BFD_ROCK_TIMER] == 0) {
+                this->work[BFD_ROCK_TIMER] = BOSSFD_LOW_CIRCLE_ROCK_TIMER;
+            }
             radius = CLAMP_MIN(radius, 120.0f);
             tangentialSpeed = CLAMP_MIN(tangentialSpeed, 1.0f);
             this->fwork[BFD_FLY_WOBBLE_AMP] = 60.0f;
@@ -1151,6 +1177,30 @@ void BossFd_Effects(BossFd* this, PlayState* play) {
         play->envCtx.unk_DC = 2;
         play->envCtx.unk_BD = 1;
         play->envCtx.unk_BE = 0;
+    } else if (this->fogMode == BOSSFD_FOG_MODE_ERUPTION_IN) {
+        play->envCtx.unk_BF = 0;
+        play->envCtx.unk_DC = 0;
+        play->envCtx.unk_BD = 3;
+        Math_ApproachF(&play->envCtx.unk_D8, 1.0f, 1.0f, 0.05f);
+        if (play->envCtx.unk_D8 >= 0.99f) {
+            this->fogMode = BOSSFD_FOG_MODE_ERUPTION;
+        }
+    } else if (this->fogMode == BOSSFD_FOG_MODE_ERUPTION) {
+        play->envCtx.unk_BF = 0;
+        play->envCtx.unk_DC = 0;
+        play->envCtx.unk_BD = 3;
+        Math_ApproachF(&play->envCtx.unk_D8,
+                       0.9f + 0.05f * Math_SinS(this->work[BFD_VAR_TIMER] * BOSSFD_LOW_CIRCLE_FOG_PULSE_RATE), 1.0f,
+                       0.02f);
+    } else if (this->fogMode == BOSSFD_FOG_MODE_ERUPTION_OUT) {
+        play->envCtx.unk_BF = 0;
+        play->envCtx.unk_DC = 0;
+        play->envCtx.unk_BE = 3;
+        play->envCtx.unk_BD = 1;
+        Math_ApproachF(&play->envCtx.unk_D8, 1.0f, 1.0f, 0.05f);
+        if (play->envCtx.unk_D8 >= 0.99f) {
+            this->fogMode = 1;
+        }
     } else if (this->fogMode == 3) {
         play->envCtx.unk_BF = 0;
         play->envCtx.unk_DC = 2;
@@ -1394,6 +1444,13 @@ void BossFd_Update(Actor* thisx, PlayState* play) {
     if (this->work[BFD_INVINC_TIMER] != 0) {
         this->work[BFD_INVINC_TIMER]--;
     }
+    if ((this->work[BFD_ACTION_STATE] != BOSSFD_FLY_LOW_CIRCLE) &&
+        ((this->fogMode == BOSSFD_FOG_MODE_ERUPTION) || (this->fogMode == BOSSFD_FOG_MODE_ERUPTION_IN))) {
+        this->fogMode = BOSSFD_FOG_MODE_ERUPTION_OUT;
+        play->envCtx.blendIndoorLights = true;
+        play->envCtx.unk_D8 = 0.0f;
+        play->envCtx.unk_DC = 0;
+    }
     if (this->work[BFD_ACTION_STATE] < BOSSFD_DEATH_START) {
         if (this->work[BFD_INVINC_TIMER] == 0) {
             BossFd_CollisionCheck(this, play);
@@ -1425,24 +1482,46 @@ void BossFd_Update(Actor* thisx, PlayState* play) {
     Math_ApproachF(&this->fwork[BFD_MANE_COLOR_LEFT], lManeGlow, 1.0f, 16.0f);
 
     if (this->work[BFD_ROCK_TIMER] != 0) {
-        this->work[BFD_ROCK_TIMER]--;
-        if ((this->work[BFD_ROCK_TIMER] % 16) == 0) {
-            EnVbBall* bossFdRock = (EnVbBall*)Actor_SpawnAsChild(
-                &play->actorCtx, &this->actor, play, ACTOR_EN_VB_BALL, this->actor.world.pos.x, 1000.0f,
-                this->actor.world.pos.z, 0, 0, (s16)Rand_ZeroFloat(50.0f) + 130, 100);
+        bool allowRocks = (this->work[BFD_ACTION_STATE] == BOSSFD_FLY_LOW_CIRCLE) ||
+                          (this->work[BFD_ACTION_STATE] == BOSSFD_DROP_ROCKS);
 
-            if (bossFdRock != NULL) {
-                for (i = 0; i < 10; i++) {
-                    Vec3f debrisVel = { 0.0f, 0.0f, 0.0f };
-                    Vec3f debrisAccel = { 0.0f, -1.0f, 0.0f };
-                    Vec3f debrisPos;
+        if (!allowRocks) {
+            this->work[BFD_ROCK_TIMER] = 0;
+        } else {
+            s16 rockInterval =
+                (this->work[BFD_ACTION_STATE] == BOSSFD_FLY_LOW_CIRCLE) ? BOSSFD_LOW_CIRCLE_ROCK_INTERVAL : 16;
+            f32 rockHeight =
+                (this->work[BFD_ACTION_STATE] == BOSSFD_FLY_LOW_CIRCLE) ? BOSSFD_LOW_CIRCLE_ROCK_HEIGHT : 1000.0f;
+            s32 debrisCount =
+                (this->work[BFD_ACTION_STATE] == BOSSFD_FLY_LOW_CIRCLE) ? BOSSFD_LOW_CIRCLE_ROCK_DEBRIS_COUNT : 10;
+            f32 rockPosX = this->actor.world.pos.x;
+            f32 rockPosZ = this->actor.world.pos.z;
 
-                    debrisPos.x = Rand_CenteredFloat(300.0f) + bossFdRock->actor.world.pos.x;
-                    debrisPos.y = Rand_CenteredFloat(300.0f) + bossFdRock->actor.world.pos.y;
-                    debrisPos.z = Rand_CenteredFloat(300.0f) + bossFdRock->actor.world.pos.z;
+            this->work[BFD_ROCK_TIMER]--;
+            if ((this->work[BFD_ROCK_TIMER] % rockInterval) == 0) {
+                if (this->work[BFD_ACTION_STATE] == BOSSFD_FLY_LOW_CIRCLE) {
+                    u8 holeIndex = (u8)Rand_ZeroFloat(8.9f);
+                    rockPosX = sHoleLocations[holeIndex].x + Rand_CenteredFloat(120.0f);
+                    rockPosZ = sHoleLocations[holeIndex].z + Rand_CenteredFloat(120.0f);
+                }
 
-                    BossFd_SpawnDebris(this->effects, &debrisPos, &debrisVel, &debrisAccel,
-                                       (s16)Rand_ZeroFloat(15.0f) + 20);
+                EnVbBall* bossFdRock = (EnVbBall*)Actor_SpawnAsChild(
+                    &play->actorCtx, &this->actor, play, ACTOR_EN_VB_BALL, rockPosX, rockHeight, rockPosZ, 0, 0,
+                    (s16)Rand_ZeroFloat(50.0f) + 130, 100);
+
+                if (bossFdRock != NULL) {
+                    for (i = 0; i < debrisCount; i++) {
+                        Vec3f debrisVel = { 0.0f, 0.0f, 0.0f };
+                        Vec3f debrisAccel = { 0.0f, -0.5f, 0.0f };
+                        Vec3f debrisPos;
+
+                        debrisPos.x = Rand_CenteredFloat(300.0f) + bossFdRock->actor.world.pos.x;
+                        debrisPos.y = Rand_CenteredFloat(300.0f) + bossFdRock->actor.world.pos.y;
+                        debrisPos.z = Rand_CenteredFloat(300.0f) + bossFdRock->actor.world.pos.z;
+
+                        BossFd_SpawnDebris(this->effects, &debrisPos, &debrisVel, &debrisAccel,
+                                           (s16)Rand_ZeroFloat(15.0f) + 10);
+                    }
                 }
             }
         }
