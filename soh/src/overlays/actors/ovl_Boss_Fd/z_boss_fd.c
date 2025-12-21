@@ -24,11 +24,12 @@
 #define BOSSFD_LOW_CIRCLE_RADIUS_DEFAULT 600.0f
 #define BOSSFD_LOW_CIRCLE_HEIGHT_DEFAULT -10.0f
 #define BOSSFD_LOW_CIRCLE_TIMER 1600
-#define BOSSFD_LOW_CIRCLE_SPEED_DEFAULT 24.0f
+#define BOSSFD_LOW_CIRCLE_SPEED_DEFAULT 20.0f
 #define BOSSFD_LOW_CIRCLE_ROCK_TIMER 480
-#define BOSSFD_LOW_CIRCLE_ROCK_INTERVAL 8
+#define BOSSFD_LOW_CIRCLE_ROCK_INTERVAL 10
 #define BOSSFD_LOW_CIRCLE_ROCK_DEBRIS_COUNT 16
 #define BOSSFD_LOW_CIRCLE_ROCK_HEIGHT 1150.0f
+#define BOSSFD_LOW_CIRCLE_FIRE_INTERVAL 80
 #define BOSSFD_LOW_CIRCLE_FOG_PULSE_RATE 0x800
 #define BOSSFD_FOG_MODE_ERUPTION_IN 11
 #define BOSSFD_FOG_MODE_ERUPTION 12
@@ -633,7 +634,7 @@ void BossFd_Fly(BossFd* this, PlayState* play) {
                                 this->work[BOSSFD_LOW_CIRCLE_ANGLE_IDX] = (s16)Rand_ZeroFloat(0x8000);
                                 this->work[BOSSFD_LOW_CIRCLE_DIR_IDX] = (Rand_ZeroOne() < 0.5f) ? 1 : -1;
                                 this->fwork[BFD_FLY_WOBBLE_AMP] = 80.0f;
-                                this->work[BFD_ROCK_TIMER] = BOSSFD_LOW_CIRCLE_ROCK_TIMER;
+                                this->work[BFD_ROCK_TIMER] = BOSSFD_LOW_CIRCLE_ROCK_TIMER + Rand_ZeroFloat(30.0f);
                                 this->fogMode = BOSSFD_FOG_MODE_ERUPTION_IN;
                                 play->envCtx.blendIndoorLights = true;
                                 play->envCtx.unk_BE = play->envCtx.unk_BD;
@@ -795,6 +796,11 @@ void BossFd_Fly(BossFd* this, PlayState* play) {
             angularStep = (tangentialSpeed / radius) * (0x8000 / M_PI);
             angleStep = (s16)CLAMP(angularStep, 0x20, 0x600);
             this->work[BOSSFD_LOW_CIRCLE_ANGLE_IDX] += this->work[BOSSFD_LOW_CIRCLE_DIR_IDX] * angleStep;
+
+            if ((this->fireBreathTimer == 0) && ((this->timers[0] % BOSSFD_LOW_CIRCLE_FIRE_INTERVAL) == 0) &&
+                BossFd_IsFacingLink(this)) {
+                this->fireBreathTimer = 20;
+            }
             if ((this->timers[0] == 0) || (this->work[BFD_DAMAGE_FLASH_TIMER] != 0)) {
                 this->work[BFD_ACTION_STATE] = BOSSFD_FLY_MAIN;
                 this->timers[0] = 0;
