@@ -288,8 +288,10 @@ void EnVbBall_Update(Actor* thisx, PlayState* play2) {
         }
         if (this->collider.base.atFlags & AT_HIT) {
             Player* player = GET_PLAYER(play);
+            s16 yawToPlayer = Math_Vec3f_Yaw(&this->actor.world.pos, &player->actor.world.pos);
 
             this->collider.base.atFlags &= ~AT_HIT;
+            func_8002F6D4(play, &this->actor, 10.0f, yawToPlayer, 6.0f, 0);
             Audio_PlayActorSound2(&player->actor, NA_SE_PL_BODY_HIT);
         }
         Collider_UpdateCylinder(&this->actor, &this->collider);
