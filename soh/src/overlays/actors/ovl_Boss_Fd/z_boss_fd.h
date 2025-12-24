@@ -18,7 +18,7 @@ typedef enum {
     /*  51 */ BOSSFD_DROP_ROCKS,
     /* 100 */ BOSSFD_FLY_CHASE = 100,
     /* 101 */ BOSSFD_FLY_LOW_CIRCLE,
-    /* 102 */ BOSSFD_FLY_UNUSED,
+    /* 102 */ BOSSFD_FLY_GRAB,
     /* 200 */ BOSSFD_DEATH_START = 200,
     /* 201 */ BOSSFD_SKIN_BURN,
     /* 202 */ BOSSFD_BONES_FALL,
@@ -175,13 +175,19 @@ typedef struct BossFd {
     /* 0x13CC */ f32 jawOpening;
     /* 0x13D0 */ s16 bodyFallApart[18];
     /* 0x13F4 */ Vec3f headPos;
-    /* 0x1400 */ s16 introFlyState;
-    /* 0x1402 */ s16 introState;
-    /* 0x1404 */ s16 introCamera;
-    /* 0x1408 */ BossFdCam camData;
-    /* 0x1490 */ ColliderJntSph collider;
-    /* 0x14B0 */ ColliderJntSphElement elements[19];
-    /* 0x1970 */ BossFdEffect effects[180];
-} BossFd; // size = 0x43A0
+    /* 0x1400 */ Vec3s headRot;
+    /* 0x1408 */ Vec3f rightHandPos;
+    /* 0x1414 */ Vec3f rightHandForward;
+    /* 0x1420 */ Vec3f mouthForward;
+    /* 0x142C */ s16 grabTimer;
+    /* 0x142E */ u8 grabbingPlayer;
+    /* 0x1430 */ s16 introFlyState;
+    /* 0x1432 */ s16 introState;
+    /* 0x1434 */ s16 introCamera;
+    /* 0x1438 */ BossFdCam camData;
+    /* 0x14C0 */ ColliderJntSph collider;
+    /* 0x14E0 */ ColliderJntSphElement elements[19];
+    /* 0x19B0 */ BossFdEffect effects[180];
+} BossFd; // size = 0x43E0
 
 #endif

@@ -35,6 +35,18 @@
 #define BOSSFD_FOG_MODE_ERUPTION 12
 #define BOSSFD_FOG_MODE_ERUPTION_OUT 13
 
+#define BOSSFD_GRAB_HOLD_TIME 240
+#define BOSSFD_GRAB_APPROACH_RANGE 100.0f
+#define BOSSFD_GRAB_VERTICAL_RANGE 100.0f
+#define BOSSFD_GRAB_YAW_TOLERANCE 0x5000
+#define BOSSFD_GRAB_THROW_SPEED 16.0f
+#define BOSSFD_GRAB_THROW_LIFT 13.0f
+#define BOSSFD_GRAB_HOVER_OFFSET 70.0f
+#define BOSSFD_GRAB_SWAY_SCALE 6.0f
+#define BOSSFD_GRAB_MOUTH_FORWARD_OFFSET 60.0f
+#define BOSSFD_GRAB_MOUTH_UP_OFFSET -8.0f
+#define BOSSFD_GRAB_MOUTH_SIDE_OFFSET 6.0f
+
 // Reuse unused work indices to track the circular flight path angle and direction
 #define BOSSFD_LOW_CIRCLE_ANGLE_IDX BFD_UNK_234
 #define BOSSFD_LOW_CIRCLE_DIR_IDX BFD_UNK_236
@@ -242,6 +254,16 @@ void BossFd_Init(Actor* thisx, PlayState* play) {
         BossFd_SetupFly(this, play);
     }
 
+    this->grabbingPlayer = false;
+    this->grabTimer = 0;
+    this->rightHandPos = this->actor.world.pos;
+    this->rightHandForward.x = 0.0f;
+    this->rightHandForward.y = 0.0f;
+    this->rightHandForward.z = 0.0f;
+    this->mouthForward.x = 0.0f;
+    this->mouthForward.y = 0.0f;
+    this->mouthForward.z = 0.0f;
+
     if (Flags_GetClear(play, play->roomCtx.curRoom.num)) {
         Actor_Kill(&this->actor);
         Actor_SpawnAsChild(&play->actorCtx, &this->actor, play, ACTOR_DOOR_WARP1, 0.0f, 100.0f, 0.0f, 0, 0, 0,
@@ -263,6 +285,14 @@ void BossFd_Destroy(Actor* thisx, PlayState* play) {
     SkelAnime_Free(&this->skelAnimeRightArm, play);
     SkelAnime_Free(&this->skelAnimeLeftArm, play);
     Collider_DestroyJntSph(play, &this->collider);
+
+    if (this->grabbingPlayer) {
+        Player* player = GET_PLAYER(play);
+
+        if (player->actor.parent == &this->actor) {
+            player->actor.parent = NULL;
+        }
+    }
 }
 
 s32 BossFd_IsFacingLink(BossFd* this) {
@@ -294,6 +324,7 @@ void BossFd_Fly(BossFd* this, PlayState* play) {
     s16 i1;
     s16 i2;
     s16 i3;
+    s16 yawDiff;
     f32 dx;
     f32 dy;
     f32 dz;
@@ -307,6 +338,14 @@ void BossFd_Fly(BossFd* this, PlayState* play) {
     f32 temp;
     bool aggressiveTuning =
         (this->introState == BFD_CS_NONE) && (this->work[BFD_ACTION_STATE] < BOSSFD_DEATH_START);
+
+    if ((this->work[BFD_ACTION_STATE] != BOSSFD_FLY_GRAB) && this->grabbingPlayer) {
+        if (player->actor.parent == &this->actor) {
+            player->actor.parent = NULL;
+        }
+        this->grabbingPlayer = false;
+        this->grabTimer = 0;
+    }
 
     SkelAnime_Update(&this->skelAnimeHead);
     SkelAnime_Update(&this->skelAnimeRightArm);
@@ -618,7 +657,7 @@ void BossFd_Fly(BossFd* this, PlayState* play) {
                     if (this->work[BFD_START_ATTACK]) {
                         this->work[BFD_START_ATTACK] = false;
                         this->work[BFD_FLY_COUNT]++;
-                        switch (this->work[BFD_FLY_COUNT] % 3) {
+                        switch (this->work[BFD_FLY_COUNT] % 4) {
                             case 0:
                                 this->work[BFD_ACTION_STATE] = BOSSFD_FLY_CHASE;
                                 this->timers[0] = aggressiveTuning ? 240 : 300;
@@ -642,8 +681,17 @@ void BossFd_Fly(BossFd* this, PlayState* play) {
                                 play->envCtx.unk_D8 = 0.0f;
                                 play->envCtx.unk_DC = 0;
                                 break;
-                            default:
+                            case 2:
                                 this->work[BFD_ACTION_STATE] = BOSSFD_FLY_CEILING;
+                                break;
+                            default:
+                                this->work[BFD_ACTION_STATE] = BOSSFD_FLY_GRAB;
+                                this->timers[0] = aggressiveTuning ? 240 : 280;
+                                this->fwork[BFD_FLY_SPEED] = aggressiveTuning ? 11.0f : 9.0f;
+                                this->fwork[BFD_TURN_RATE_MAX] = aggressiveTuning ? 2200.0f : 1800.0f;
+                                this->fwork[BFD_FLY_WOBBLE_AMP] = 40.0f;
+                                this->grabTimer = 0;
+                                this->grabbingPlayer = false;
                                 break;
                         }
                     }
@@ -763,6 +811,113 @@ void BossFd_Fly(BossFd* this, PlayState* play) {
                                aggressiveTuning ? 3.0f : 2.0f);
             }
             break;
+        case BOSSFD_FLY_GRAB: {
+            Vec3f hoverTarget = player->actor.world.pos;
+            Vec3f mouthDir = this->mouthForward;
+            f32 forwardMag;
+            Vec3f leadOffset = { 0.0f, 0.0f, 0.0f };
+
+            sp1CF = true;
+            hoverTarget.y += BOSSFD_GRAB_HOVER_OFFSET - 20.0f;
+            leadOffset.x = player->actor.world.pos.x - this->actor.world.pos.x;
+            leadOffset.y = 0.0f;
+            leadOffset.z = player->actor.world.pos.z - this->actor.world.pos.z;
+            forwardMag = Math3D_Vec3fMagnitude(&leadOffset);
+            if (forwardMag > 1.0f) {
+                leadOffset.x = (leadOffset.x / forwardMag) * 30.0f;
+                leadOffset.z = (leadOffset.z / forwardMag) * 30.0f;
+            }
+            hoverTarget.x += leadOffset.x;
+            hoverTarget.z += leadOffset.z;
+            this->targetPosition = hoverTarget;
+            this->fwork[BFD_FLY_SPEED] = aggressiveTuning ? 12.0f : 10.0f;
+            this->fwork[BFD_FLY_WOBBLE_AMP] = 10.0f;
+            this->fwork[BFD_TURN_RATE_MAX] = aggressiveTuning ? 2800.0f : 2400.0f;
+
+            forwardMag = sqrtf(SQ(mouthDir.x) + SQ(mouthDir.y) + SQ(mouthDir.z));
+            if (forwardMag < 0.1f) {
+                mouthDir.x = Math_SinS(this->actor.world.rot.y) * 1000.0f;
+                mouthDir.y = 0.0f;
+                mouthDir.z = Math_CosS(this->actor.world.rot.y) * 1000.0f;
+                forwardMag = sqrtf(SQ(mouthDir.x) + SQ(mouthDir.y) + SQ(mouthDir.z));
+            }
+            mouthDir.x /= forwardMag;
+            mouthDir.y /= forwardMag;
+            mouthDir.z /= forwardMag;
+            if (!this->grabbingPlayer) {
+                if ((this->timers[0] == 0) || (player->actor.world.pos.y < 70.0f)) {
+                    this->work[BFD_ACTION_STATE] = BOSSFD_FLY_MAIN;
+                    this->work[BFD_START_ATTACK] = false;
+                    this->grabTimer = 0;
+                    break;
+                }
+
+                yawDiff = ABS(BINANG_SUB(this->actor.yawTowardsPlayer, this->actor.world.rot.y));
+
+                if ((fabsf(this->headPos.y - player->actor.world.pos.y) < BOSSFD_GRAB_VERTICAL_RANGE) &&
+                    (sqrtf(SQ(this->headPos.x - player->actor.world.pos.x) +
+                           SQ(this->headPos.z - player->actor.world.pos.z)) < BOSSFD_GRAB_APPROACH_RANGE) &&
+                    (yawDiff < BOSSFD_GRAB_YAW_TOLERANCE)) {
+                    if ((play->grabPlayer != NULL) && play->grabPlayer(play, player)) {
+                        player->actor.parent = &this->actor;
+                        player->av2.actionVar2 = 0xA;
+                        player->actor.shape.rot = this->headRot;
+                        player->actor.world.rot = this->headRot;
+                        this->grabbingPlayer = true;
+                        this->grabTimer = BOSSFD_GRAB_HOLD_TIME;
+                        player->actor.velocity.x = player->actor.velocity.y = player->actor.velocity.z = 0.0f;
+                        player->actor.speedXZ = 0.0f;
+                        Audio_PlayActorSound2(&player->actor, NA_SE_VO_LI_DAMAGE_S);
+                        this->work[BFD_STOP_FLAG] = false;
+                    }
+                }
+            } else {
+                Vec3f holdPos;
+                s16 throwYaw;
+
+                holdPos = this->headPos;
+                holdPos.x += mouthDir.x * BOSSFD_GRAB_MOUTH_FORWARD_OFFSET;
+                holdPos.y += mouthDir.y * BOSSFD_GRAB_MOUTH_FORWARD_OFFSET;
+                holdPos.z += mouthDir.z * BOSSFD_GRAB_MOUTH_FORWARD_OFFSET;
+                holdPos.y += BOSSFD_GRAB_MOUTH_UP_OFFSET;
+                holdPos.x += Math_CosS(this->headRot.y) * BOSSFD_GRAB_MOUTH_SIDE_OFFSET;
+                holdPos.z -= Math_SinS(this->headRot.y) * BOSSFD_GRAB_MOUTH_SIDE_OFFSET;
+                holdPos.y += (Math_SinS(this->work[BFD_MOVE_TIMER] * 0x900) * BOSSFD_GRAB_SWAY_SCALE);
+
+                Math_ApproachF(&player->actor.world.pos.x, holdPos.x, 0.5f, 20.0f);
+                Math_ApproachF(&player->actor.world.pos.y, holdPos.y, 0.5f, 20.0f);
+                Math_ApproachF(&player->actor.world.pos.z, holdPos.z, 0.5f, 20.0f);
+                player->actor.shape.rot = this->headRot;
+                player->actor.world.rot = player->actor.shape.rot;
+                player->actor.velocity.x = player->actor.velocity.y = player->actor.velocity.z = 0.0f;
+                player->actor.speedXZ = 0.0f;
+                player->av2.actionVar2 = 0xA;
+
+                if (this->grabTimer > 0) {
+                    this->grabTimer--;
+                    if ((this->grabTimer % 30) == 0) {
+                        Audio_PlayActorSound2(&player->actor, NA_SE_VO_LI_DAMAGE_S);
+                    }
+                }
+
+                if (this->grabTimer == 0) {
+                    Vec3f center = { 0.0f, 0.0f, 0.0f };
+
+                    throwYaw = Math_Vec3f_Yaw(&center, &holdPos);
+                    func_8002F6D4(play, &player->actor, BOSSFD_GRAB_THROW_SPEED, throwYaw, BOSSFD_GRAB_THROW_LIFT, 40);
+                    Audio_PlayActorSound2(&player->actor, NA_SE_VO_LI_FALL_L);
+                    player->av2.actionVar2 = 0x65;
+                    player->actor.parent = NULL;
+                    player->actor.shape.rot.z = 0;
+                    player->actor.world.rot.z = 0;
+                    this->grabbingPlayer = false;
+                    this->work[BFD_ACTION_STATE] = BOSSFD_FLY_MAIN;
+                    this->work[BFD_START_ATTACK] = false;
+                    this->timers[0] = aggressiveTuning ? 40 : 60;
+                }
+            }
+            break;
+        }
         case BOSSFD_FLY_LOW_CIRCLE: {
             Vec3f circleCenter = sHoleLocations[1];
             f32 radius = BOSSFD_LOW_CIRCLE_RADIUS_DEFAULT;
@@ -1127,6 +1282,24 @@ void BossFd_Fly(BossFd* this, PlayState* play) {
                 Math_ApproachF(&this->leftArmRot[i2].x, -phi_f20, 0.1f, 100.0f);
             }
         }
+
+        if (this->work[BFD_ACTION_STATE] == BOSSFD_FLY_GRAB) {
+            f32 reachRoot = this->grabbingPlayer ? -5000.0f : -3200.0f;
+            f32 reachMid = this->grabbingPlayer ? -3800.0f : -2000.0f;
+            f32 reachRoll = this->grabbingPlayer ? 2400.0f : 1200.0f;
+
+            Math_ApproachF(&this->rightArmRot[0].x, reachRoot, 0.2f, 300.0f);
+            Math_ApproachF(&this->rightArmRot[1].x, reachMid, 0.2f, 260.0f);
+            Math_ApproachF(&this->rightArmRot[2].x, reachMid * 0.5f, 0.2f, 220.0f);
+            Math_ApproachF(&this->rightArmRot[1].y, reachRoll, 0.2f, 220.0f);
+            Math_ApproachF(&this->rightArmRot[2].y, reachRoll * 0.5f, 0.2f, 200.0f);
+
+            Math_ApproachF(&this->leftArmRot[0].x, -reachRoot, 0.2f, 300.0f);
+            Math_ApproachF(&this->leftArmRot[1].x, -reachMid, 0.2f, 260.0f);
+            Math_ApproachF(&this->leftArmRot[2].x, -reachMid * 0.5f, 0.2f, 220.0f);
+            Math_ApproachF(&this->leftArmRot[1].y, -reachRoll, 0.2f, 220.0f);
+            Math_ApproachF(&this->leftArmRot[2].y, -reachRoll * 0.5f, 0.2f, 200.0f);
+        }
     }
 }
 
@@ -1254,7 +1427,10 @@ void BossFd_Effects(BossFd* this, PlayState* play) {
         this->work[BFD_BLINK_TIMER]--;
     }
 
-    if (this->work[BFD_ROAR_TIMER] != 0) {
+    if ((this->work[BFD_ACTION_STATE] == BOSSFD_FLY_GRAB) && this->grabbingPlayer) {
+        jawAngle = 8000.0f;
+        jawSpeed = 2000.0f;
+    } else if (this->work[BFD_ROAR_TIMER] != 0) {
         if (this->work[BFD_ROAR_TIMER] == 37) {
             Audio_PlaySoundGeneral(NA_SE_EN_VALVAISA_ROAR, &this->actor.projectedPos, 4, &gSfxDefaultFreqAndVolScale,
                                    &gSfxDefaultFreqAndVolScale, &gSfxDefaultReverb);
@@ -1833,6 +2009,19 @@ s32 BossFd_OverrideRightArmDraw(PlayState* play, s32 limbIndex, Gfx** dList, Vec
     return false;
 }
 
+s32 BossFd_PostRightArmDraw(PlayState* play, s32 limbIndex, Gfx** dList, Vec3s* rot, void* thisx) {
+    static Vec3f handRef = { 0.0f, 0.0f, 0.0f };
+    static Vec3f forwardRef = { 0.0f, 0.0f, 2000.0f };
+    BossFd* this = (BossFd*)thisx;
+
+    if (limbIndex == 3) {
+        Matrix_MultVec3f(&handRef, &this->rightHandPos);
+        Matrix_MultVec3f(&forwardRef, &this->rightHandForward);
+    }
+
+    return false;
+}
+
 s32 BossFd_OverrideLeftArmDraw(PlayState* play, s32 limbIndex, Gfx** dList, Vec3f* pos, Vec3s* rot, void* thisx) {
     BossFd* this = (BossFd*)thisx;
 
@@ -1952,11 +2141,17 @@ s32 BossFd_OverrideHeadDraw(PlayState* play, s32 limbIndex, Gfx** dList, Vec3f* 
 void BossFd_PostHeadDraw(PlayState* play, s32 limbIndex, Gfx** dList, Vec3s* rot, void* thisx) {
     static Vec3f targetMod = { 4500.0f, 0.0f, 0.0f };
     static Vec3f headMod = { 4000.0f, 0.0f, 0.0f };
+    static Vec3f forwardRef = { 0.0f, 0.0f, 2000.0f };
     BossFd* this = (BossFd*)thisx;
 
     if (limbIndex == 5) {
+        MtxF headMtx;
+
         Matrix_MultVec3f(&targetMod, &this->actor.focus.pos);
         Matrix_MultVec3f(&headMod, &this->headPos);
+        Matrix_MultVec3f(&forwardRef, &this->mouthForward);
+        Matrix_Get(&headMtx);
+        Matrix_MtxFToYXZRotS(&headMtx, &this->headRot, 0);
     }
 }
 
@@ -1999,7 +2194,7 @@ void BossFd_DrawBody(PlayState* play, BossFd* this) {
     Matrix_RotateX(-this->bodySegsRot[segIndex].x, MTXMODE_APPLY);
     Matrix_Translate(-13.0f, -5.0f, 13.0f, MTXMODE_APPLY);
     Matrix_Scale(this->actor.scale.x * 0.1f, this->actor.scale.y * 0.1f, this->actor.scale.z * 0.1f, MTXMODE_APPLY);
-    SkelAnime_DrawSkeletonOpa(play, &this->skelAnimeRightArm, BossFd_OverrideRightArmDraw, NULL, this);
+    SkelAnime_DrawSkeletonOpa(play, &this->skelAnimeRightArm, BossFd_OverrideRightArmDraw, BossFd_PostRightArmDraw, this);
     Matrix_Pop();
     osSyncPrintf("RH\n");
     Matrix_Push();
