@@ -36,15 +36,15 @@
 #define BOSSFD_FOG_MODE_ERUPTION_OUT 13
 
 #define BOSSFD_GRAB_HOLD_TIME 240
-#define BOSSFD_GRAB_APPROACH_RANGE 100.0f
+#define BOSSFD_GRAB_APPROACH_RANGE 110.0f
 #define BOSSFD_GRAB_VERTICAL_RANGE 100.0f
 #define BOSSFD_GRAB_YAW_TOLERANCE 0x5000
 #define BOSSFD_GRAB_THROW_SPEED 16.0f
 #define BOSSFD_GRAB_THROW_LIFT 13.0f
 #define BOSSFD_GRAB_HOVER_OFFSET 70.0f
 #define BOSSFD_GRAB_SWAY_SCALE 6.0f
-#define BOSSFD_GRAB_MOUTH_FORWARD_OFFSET 60.0f
-#define BOSSFD_GRAB_MOUTH_UP_OFFSET -8.0f
+#define BOSSFD_GRAB_MOUTH_FORWARD_OFFSET 40.0f
+#define BOSSFD_GRAB_MOUTH_UP_OFFSET -16.0f
 #define BOSSFD_GRAB_MOUTH_SIDE_OFFSET 6.0f
 
 // Reuse unused work indices to track the circular flight path angle and direction
@@ -862,7 +862,9 @@ void BossFd_Fly(BossFd* this, PlayState* play) {
                         player->actor.parent = &this->actor;
                         player->av2.actionVar2 = 0xA;
                         player->actor.shape.rot = this->headRot;
-                        player->actor.world.rot = this->headRot;
+                        player->actor.shape.rot.x = this->headRot.x + 0x4000;
+                        player->actor.shape.rot.z = 0;
+                        player->actor.world.rot = player->actor.shape.rot;
                         this->grabbingPlayer = true;
                         this->grabTimer = BOSSFD_GRAB_HOLD_TIME;
                         player->actor.velocity.x = player->actor.velocity.y = player->actor.velocity.z = 0.0f;
@@ -884,10 +886,10 @@ void BossFd_Fly(BossFd* this, PlayState* play) {
                 holdPos.z -= Math_SinS(this->headRot.y) * BOSSFD_GRAB_MOUTH_SIDE_OFFSET;
                 holdPos.y += (Math_SinS(this->work[BFD_MOVE_TIMER] * 0x900) * BOSSFD_GRAB_SWAY_SCALE);
 
-                Math_ApproachF(&player->actor.world.pos.x, holdPos.x, 0.5f, 20.0f);
-                Math_ApproachF(&player->actor.world.pos.y, holdPos.y, 0.5f, 20.0f);
-                Math_ApproachF(&player->actor.world.pos.z, holdPos.z, 0.5f, 20.0f);
+                Math_Vec3f_Copy(&player->actor.world.pos, &holdPos);
                 player->actor.shape.rot = this->headRot;
+                player->actor.shape.rot.x = this->headRot.x + 0x4000;
+                player->actor.shape.rot.z = 0;
                 player->actor.world.rot = player->actor.shape.rot;
                 player->actor.velocity.x = player->actor.velocity.y = player->actor.velocity.z = 0.0f;
                 player->actor.speedXZ = 0.0f;
