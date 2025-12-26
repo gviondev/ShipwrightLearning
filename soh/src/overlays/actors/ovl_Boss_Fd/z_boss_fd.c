@@ -46,6 +46,9 @@
 #define BOSSFD_GRAB_MOUTH_FORWARD_OFFSET 40.0f
 #define BOSSFD_GRAB_MOUTH_UP_OFFSET -16.0f
 #define BOSSFD_GRAB_MOUTH_SIDE_OFFSET 6.0f
+#define BOSSFD_GRAB_FIRE_INTERVAL 60
+#define BOSSFD_GRAB_ORBIT_RADIUS 220.0f
+#define BOSSFD_GRAB_ORBIT_HEIGHT 240.0f
 
 // Reuse unused work indices to track the circular flight path angle and direction
 #define BOSSFD_LOW_CIRCLE_ANGLE_IDX BFD_UNK_234
@@ -876,6 +879,17 @@ void BossFd_Fly(BossFd* this, PlayState* play) {
             } else {
                 Vec3f holdPos;
                 s16 throwYaw;
+                Vec3f orbitCenter = sHoleLocations[1];
+                s16 orbitAngle = this->work[BFD_MOVE_TIMER] * 0x180;
+                f32 orbitHeight =
+                    BOSSFD_GRAB_ORBIT_HEIGHT + (Math_SinS(this->work[BFD_MOVE_TIMER] * 0x400) * 40.0f);
+
+                this->targetPosition.x = orbitCenter.x + (Math_SinS(orbitAngle) * BOSSFD_GRAB_ORBIT_RADIUS);
+                this->targetPosition.z = orbitCenter.z + (Math_CosS(orbitAngle) * BOSSFD_GRAB_ORBIT_RADIUS);
+                this->targetPosition.y = orbitCenter.y + orbitHeight;
+                this->fwork[BFD_FLY_SPEED] = aggressiveTuning ? 13.0f : 11.0f;
+                this->fwork[BFD_FLY_WOBBLE_AMP] = 20.0f;
+                this->fwork[BFD_TURN_RATE_MAX] = aggressiveTuning ? 3000.0f : 2600.0f;
 
                 holdPos = this->headPos;
                 holdPos.x += mouthDir.x * BOSSFD_GRAB_MOUTH_FORWARD_OFFSET;
@@ -897,6 +911,12 @@ void BossFd_Fly(BossFd* this, PlayState* play) {
 
                 if (this->grabTimer > 0) {
                     this->grabTimer--;
+                    if ((this->grabTimer > 0) && ((this->grabTimer % BOSSFD_GRAB_FIRE_INTERVAL) == 0) &&
+                        (play->damagePlayer != NULL)) {
+                        this->fireBreathTimer = 20;
+                        play->damagePlayer(play, -4);
+                        Audio_PlayActorSound2(&player->actor, NA_SE_VO_LI_DAMAGE_S);
+                    }
                     if ((this->grabTimer % 30) == 0) {
                         Audio_PlayActorSound2(&player->actor, NA_SE_VO_LI_DAMAGE_S);
                     }
