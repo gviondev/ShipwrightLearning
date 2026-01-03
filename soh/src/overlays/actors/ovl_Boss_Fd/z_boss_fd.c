@@ -41,11 +41,12 @@
 #define BOSSFD_GRAB_YAW_TOLERANCE 0x5000
 #define BOSSFD_GRAB_THROW_SPEED 16.0f
 #define BOSSFD_GRAB_THROW_LIFT 13.0f
-#define BOSSFD_GRAB_HOVER_OFFSET 70.0f
+#define BOSSFD_GRAB_HOVER_OFFSET 70.0f                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     
 #define BOSSFD_GRAB_SWAY_SCALE 6.0f
 #define BOSSFD_GRAB_MOUTH_FORWARD_OFFSET 40.0f
-#define BOSSFD_GRAB_MOUTH_UP_OFFSET -16.0f
+#define BOSSFD_GRAB_MOUTH_UP_OFFSET 8.0f
 #define BOSSFD_GRAB_MOUTH_SIDE_OFFSET 6.0f
+#define BOSSFD_GRAB_WAIST_FOOT_OFFSET -48.0f
 #define BOSSFD_GRAB_FIRE_INTERVAL 60
 #define BOSSFD_GRAB_ORBIT_RADIUS 220.0f
 #define BOSSFD_GRAB_ORBIT_HEIGHT 240.0f
@@ -816,7 +817,6 @@ void BossFd_Fly(BossFd* this, PlayState* play) {
             break;
         case BOSSFD_FLY_GRAB: {
             Vec3f hoverTarget = player->actor.world.pos;
-            Vec3f mouthDir = this->mouthForward;
             f32 forwardMag;
             Vec3f leadOffset = { 0.0f, 0.0f, 0.0f };
 
@@ -837,16 +837,6 @@ void BossFd_Fly(BossFd* this, PlayState* play) {
             this->fwork[BFD_FLY_WOBBLE_AMP] = 10.0f;
             this->fwork[BFD_TURN_RATE_MAX] = aggressiveTuning ? 2800.0f : 2400.0f;
 
-            forwardMag = sqrtf(SQ(mouthDir.x) + SQ(mouthDir.y) + SQ(mouthDir.z));
-            if (forwardMag < 0.1f) {
-                mouthDir.x = Math_SinS(this->actor.world.rot.y) * 1000.0f;
-                mouthDir.y = 0.0f;
-                mouthDir.z = Math_CosS(this->actor.world.rot.y) * 1000.0f;
-                forwardMag = sqrtf(SQ(mouthDir.x) + SQ(mouthDir.y) + SQ(mouthDir.z));
-            }
-            mouthDir.x /= forwardMag;
-            mouthDir.y /= forwardMag;
-            mouthDir.z /= forwardMag;
             if (!this->grabbingPlayer) {
                 if ((this->timers[0] == 0) || (player->actor.world.pos.y < 70.0f)) {
                     this->work[BFD_ACTION_STATE] = BOSSFD_FLY_MAIN;
@@ -862,12 +852,23 @@ void BossFd_Fly(BossFd* this, PlayState* play) {
                            SQ(this->headPos.z - player->actor.world.pos.z)) < BOSSFD_GRAB_APPROACH_RANGE) &&
                     (yawDiff < BOSSFD_GRAB_YAW_TOLERANCE)) {
                     if ((play->grabPlayer != NULL) && play->grabPlayer(play, player)) {
+                        Vec3f waistOffsetWorld;
+
                         player->actor.parent = &this->actor;
                         player->av2.actionVar2 = 0xA;
                         player->actor.shape.rot = this->headRot;
                         player->actor.shape.rot.x = this->headRot.x + 0x4000;
                         player->actor.shape.rot.z = 0;
                         player->actor.world.rot = player->actor.shape.rot;
+                        waistOffsetWorld.x = player->bodyPartsPos[PLAYER_BODYPART_WAIST].x - player->actor.world.pos.x;
+                        waistOffsetWorld.y = player->bodyPartsPos[PLAYER_BODYPART_WAIST].y - player->actor.world.pos.y;
+                        waistOffsetWorld.z = player->bodyPartsPos[PLAYER_BODYPART_WAIST].z - player->actor.world.pos.z;
+                        Matrix_Push();
+                        Matrix_RotateZYX(-player->actor.shape.rot.x, -player->actor.shape.rot.y, -player->actor.shape.rot.z,
+                                         MTXMODE_NEW);
+                        Matrix_MultVec3f(&waistOffsetWorld, &this->grabbedWaistOffset);
+                        Matrix_Pop();
+                        this->grabbedWaistOffset.y -= BOSSFD_GRAB_WAIST_FOOT_OFFSET;
                         this->grabbingPlayer = true;
                         this->grabTimer = BOSSFD_GRAB_HOLD_TIME;
                         player->actor.velocity.x = player->actor.velocity.y = player->actor.velocity.z = 0.0f;
@@ -877,6 +878,7 @@ void BossFd_Fly(BossFd* this, PlayState* play) {
                     }
                 }
             } else {
+                Vec3f holdOffset;
                 Vec3f holdPos;
                 s16 throwYaw;
                 Vec3f orbitCenter = sHoleLocations[1];
@@ -891,20 +893,29 @@ void BossFd_Fly(BossFd* this, PlayState* play) {
                 this->fwork[BFD_FLY_WOBBLE_AMP] = 20.0f;
                 this->fwork[BFD_TURN_RATE_MAX] = aggressiveTuning ? 3000.0f : 2600.0f;
 
-                holdPos = this->headPos;
-                holdPos.x += mouthDir.x * BOSSFD_GRAB_MOUTH_FORWARD_OFFSET;
-                holdPos.y += mouthDir.y * BOSSFD_GRAB_MOUTH_FORWARD_OFFSET;
-                holdPos.z += mouthDir.z * BOSSFD_GRAB_MOUTH_FORWARD_OFFSET;
-                holdPos.y += BOSSFD_GRAB_MOUTH_UP_OFFSET;
-                holdPos.x += Math_CosS(this->headRot.y) * BOSSFD_GRAB_MOUTH_SIDE_OFFSET;
-                holdPos.z -= Math_SinS(this->headRot.y) * BOSSFD_GRAB_MOUTH_SIDE_OFFSET;
-                holdPos.y += (Math_SinS(this->work[BFD_MOVE_TIMER] * 0x900) * BOSSFD_GRAB_SWAY_SCALE);
+                Vec3f waistOffset;
 
-                Math_Vec3f_Copy(&player->actor.world.pos, &holdPos);
+                holdOffset.x = BOSSFD_GRAB_MOUTH_SIDE_OFFSET;
+                holdOffset.y = BOSSFD_GRAB_MOUTH_UP_OFFSET +
+                               (Math_SinS(this->work[BFD_MOVE_TIMER] * 0x900) * BOSSFD_GRAB_SWAY_SCALE);
+                holdOffset.z = BOSSFD_GRAB_MOUTH_FORWARD_OFFSET;
+                Matrix_Push();
+                Matrix_SetTranslateRotateYXZ(this->headPos.x, this->headPos.y, this->headPos.z, &this->headRot);
+                Matrix_MultVec3f(&holdOffset, &holdPos);
+                Matrix_Pop();
+
                 player->actor.shape.rot = this->headRot;
                 player->actor.shape.rot.x = this->headRot.x + 0x4000;
                 player->actor.shape.rot.z = 0;
                 player->actor.world.rot = player->actor.shape.rot;
+                Matrix_Push();
+                Matrix_RotateZYX(player->actor.shape.rot.x, player->actor.shape.rot.y, player->actor.shape.rot.z,
+                                 MTXMODE_NEW);
+                Matrix_MultVec3f(&this->grabbedWaistOffset, &waistOffset);
+                Matrix_Pop();
+                player->actor.world.pos.x = holdPos.x - waistOffset.x;
+                player->actor.world.pos.y = holdPos.y - waistOffset.y;
+                player->actor.world.pos.z = holdPos.z - waistOffset.z;
                 player->actor.velocity.x = player->actor.velocity.y = player->actor.velocity.z = 0.0f;
                 player->actor.speedXZ = 0.0f;
                 player->av2.actionVar2 = 0xA;

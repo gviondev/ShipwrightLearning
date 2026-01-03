@@ -179,15 +179,16 @@ typedef struct BossFd {
     /* 0x1408 */ Vec3f rightHandPos;
     /* 0x1414 */ Vec3f rightHandForward;
     /* 0x1420 */ Vec3f mouthForward;
-    /* 0x142C */ s16 grabTimer;
-    /* 0x142E */ u8 grabbingPlayer;
-    /* 0x1430 */ s16 introFlyState;
-    /* 0x1432 */ s16 introState;
-    /* 0x1434 */ s16 introCamera;
-    /* 0x1438 */ BossFdCam camData;
-    /* 0x14C0 */ ColliderJntSph collider;
-    /* 0x14E0 */ ColliderJntSphElement elements[19];
-    /* 0x19B0 */ BossFdEffect effects[180];
+    /* 0x142C */ Vec3f grabbedWaistOffset;
+    /* 0x1438 */ s16 grabTimer;
+    /* 0x143A */ u8 grabbingPlayer;
+    /* 0x143C */ s16 introFlyState;
+    /* 0x143E */ s16 introState;
+    /* 0x1440 */ s16 introCamera;
+    /* 0x1444 */ BossFdCam camData;
+    /* 0x14CC */ ColliderJntSph collider;
+    /* 0x14EC */ ColliderJntSphElement elements[19];
+    /* 0x19BC */ BossFdEffect effects[180];
 } BossFd; // size = 0x43E0
 
 #endif
