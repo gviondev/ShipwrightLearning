@@ -34,8 +34,8 @@
 #define BOSSFD_FOG_MODE_ERUPTION_IN 11
 #define BOSSFD_FOG_MODE_ERUPTION 12
 #define BOSSFD_FOG_MODE_ERUPTION_OUT 13
-#define BOSSFD_MAX_HEALTH 24
-#define BOSSFD_LOW_CIRCLE_HEALTH_THRESHOLD (BOSSFD_MAX_HEALTH / 4)
+#define BOSSFD_MAX_HEALTH 38
+#define BOSSFD_LOW_CIRCLE_HEALTH_THRESHOLD (BOSSFD_MAX_HEALTH / 8)
 
 #define BOSSFD_GRAB_HOLD_TIME 240
 #define BOSSFD_GRAB_APPROACH_RANGE 110.0f
@@ -110,7 +110,7 @@ static InitChainEntry sInitChain[] = {
 };
 
 static s16 BossFd_PickNextFlyAttack(BossFd* this) {
-    s16 candidates[4];
+    s16 candidates[5];
     s32 candidateCount = 0;
     s16 lastAttack = this->work[BFD_FLY_COUNT];
     s16 choice = BOSSFD_FLY_CHASE;
@@ -119,6 +119,7 @@ static s16 BossFd_PickNextFlyAttack(BossFd* this) {
     candidates[candidateCount++] = BOSSFD_FLY_CEILING;
     candidates[candidateCount++] = BOSSFD_FLY_GRAB;
     if (this->actor.colChkInfo.health < BOSSFD_LOW_CIRCLE_HEALTH_THRESHOLD) {
+        candidates[candidateCount++] = BOSSFD_FLY_LOW_CIRCLE;
         candidates[candidateCount++] = BOSSFD_FLY_LOW_CIRCLE;
     }
 
