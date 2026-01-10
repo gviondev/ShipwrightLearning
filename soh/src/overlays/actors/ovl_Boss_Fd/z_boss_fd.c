@@ -883,23 +883,15 @@ void BossFd_Fly(BossFd* this, PlayState* play) {
                            SQ(this->headPos.z - player->actor.world.pos.z)) < BOSSFD_GRAB_APPROACH_RANGE) &&
                     (yawDiff < BOSSFD_GRAB_YAW_TOLERANCE)) {
                     if ((play->grabPlayer != NULL) && play->grabPlayer(play, player)) {
-                        Vec3f waistOffsetWorld;
-
                         player->actor.parent = &this->actor;
                         player->av2.actionVar2 = 0xA;
                         player->actor.shape.rot = this->headRot;
                         player->actor.shape.rot.x = this->headRot.x + 0x4000;
                         player->actor.shape.rot.z = 0;
                         player->actor.world.rot = player->actor.shape.rot;
-                        waistOffsetWorld.x = player->bodyPartsPos[PLAYER_BODYPART_WAIST].x - player->actor.world.pos.x;
-                        waistOffsetWorld.y = player->bodyPartsPos[PLAYER_BODYPART_WAIST].y - player->actor.world.pos.y;
-                        waistOffsetWorld.z = player->bodyPartsPos[PLAYER_BODYPART_WAIST].z - player->actor.world.pos.z;
-                        Matrix_Push();
-                        Matrix_RotateZYX(-player->actor.shape.rot.x, -player->actor.shape.rot.y, -player->actor.shape.rot.z,
-                                         MTXMODE_NEW);
-                        Matrix_MultVec3f(&waistOffsetWorld, &this->grabbedWaistOffset);
-                        Matrix_Pop();
-                        this->grabbedWaistOffset.y -= BOSSFD_GRAB_WAIST_FOOT_OFFSET;
+                        this->grabbedWaistOffset.x = 0.0f;
+                        this->grabbedWaistOffset.y = -BOSSFD_GRAB_WAIST_FOOT_OFFSET;
+                        this->grabbedWaistOffset.z = 0.0f;
                         this->grabbingPlayer = true;
                         this->grabTimer = BOSSFD_GRAB_HOLD_TIME;
                         player->actor.velocity.x = player->actor.velocity.y = player->actor.velocity.z = 0.0f;
