@@ -208,6 +208,7 @@ void BossFd2_SetupEmerge(BossFd2* this, PlayState* play) {
     BossFd* bossFd = (BossFd*)this->actor.parent;
     s16 temp_rand;
     s8 health;
+    s16 emergeDelay;
 
     osSyncPrintf("UP INIT 1\n");
     Animation_PlayOnce(&this->skelAnime, &gHoleVolvagiaEmergeAnim);
@@ -218,19 +219,24 @@ void BossFd2_SetupEmerge(BossFd2* this, PlayState* play) {
     this->actor.world.pos.z = sHoleLocations[temp_rand].z;
     this->work[FD2_ACTION_STATE] = 0;
     osSyncPrintf("UP INIT 2\n");
-    this->timers[0] = 10;
+    emergeDelay = 6;
     if (bossFd != NULL) {
         health = bossFd->actor.colChkInfo.health;
         if (health >= 18) {
             this->work[FD2_FAKEOUT_COUNT] = 0;
+            emergeDelay = 6;
         } else if (health >= 12) {
             this->work[FD2_FAKEOUT_COUNT] = 1;
+            emergeDelay = 5;
         } else if (health >= 6) {
             this->work[FD2_FAKEOUT_COUNT] = 2;
+            emergeDelay = 4;
         } else {
             this->work[FD2_FAKEOUT_COUNT] = 3;
+            emergeDelay = 3;
         }
     }
+    this->timers[0] = emergeDelay;
 }
 
 void BossFd2_Emerge(BossFd2* this, PlayState* play) {
@@ -259,22 +265,25 @@ void BossFd2_Emerge(BossFd2* this, PlayState* play) {
                 this->actor.world.pos.y = -200.0f;
                 health = bossFd->actor.colChkInfo.health;
                 if (health == 24) {
-                    holeTime = 30;
-                } else if (health >= 18) {
-                    holeTime = 25;
-                } else if (health >= 12) {
                     holeTime = 20;
+                } else if (health >= 18) {
+                    holeTime = 16;
+                } else if (health >= 12) {
+                    holeTime = 12;
                 } else if (health >= 6) {
-                    holeTime = 10;
+                    holeTime = 8;
                 } else {
-                    holeTime = 5;
+                    holeTime = 4;
                 }
                 this->timers[0] = holeTime;
-                bossFd->timers[4] = this->timers[0] + 10;
+                bossFd->timers[4] = this->timers[0] + 6;
                 osSyncPrintf("UP 1.7 \n");
             }
             break;
         case 1:
+            if ((this->work[FD2_FAKEOUT_COUNT] == 0) && (this->timers[0] <= 4) && (this->skelAnime.playSpeed == 0.0f)) {
+                this->skelAnime.playSpeed = 1.0f;
+            }
             if (this->timers[0] == 0) {
                 if (this->work[FD2_FAKEOUT_COUNT] != 0) {
                     this->work[FD2_FAKEOUT_COUNT]--;
@@ -282,7 +291,16 @@ void BossFd2_Emerge(BossFd2* this, PlayState* play) {
                     this->actor.world.pos.x = sHoleLocations[i].x;
                     this->actor.world.pos.z = sHoleLocations[i].z;
                     this->work[FD2_ACTION_STATE] = 0;
-                    this->timers[0] = 10;
+                    health = bossFd->actor.colChkInfo.health;
+                    if (health >= 18) {
+                        this->timers[0] = 6;
+                    } else if (health >= 12) {
+                        this->timers[0] = 5;
+                    } else if (health >= 6) {
+                        this->timers[0] = 4;
+                    } else {
+                        this->timers[0] = 3;
+                    }
                 } else {
                     this->skelAnime.playSpeed = 1.0f;
                     this->fwork[FD2_END_FRAME] = Animation_GetLastFrame(&gHoleVolvagiaEmergeAnim);
