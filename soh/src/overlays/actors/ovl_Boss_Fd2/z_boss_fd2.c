@@ -608,11 +608,15 @@ void BossFd2_Vulnerable(BossFd2* this, PlayState* play) {
             if (Animation_OnFrame(&this->skelAnime, this->fwork[FD2_END_FRAME])) {
                 Animation_MorphToLoop(&this->skelAnime, &gHoleVolvagiaVulnerableAnim, -5.0f);
                 this->work[FD2_ACTION_STATE] = 1;
-                this->timers[0] = 60;
+                this->timers[0] = 45;
             }
             break;
         case 1:
-            if ((this->work[FD2_VAR_TIMER] & 0xF) == 0xF) {
+            if (this->actor.xzDistToPlayer < 120.0f) {
+                BossFd2_SetupClawSwipe(this, play);
+                break;
+            }
+            if ((this->work[FD2_VAR_TIMER] & 0x7) == 0x7) {
                 Audio_PlayActorSound2(&this->actor, NA_SE_EN_VALVAISA_KNOCKOUT);
             }
             if (this->timers[0] == 0) {
