@@ -31,6 +31,12 @@ typedef enum {
     /* 2 */ EYE_CLOSED
 } BossFd2EyeState;
 
+typedef enum {
+    /* 0 */ FD2_CHAIN_NONE,
+    /* 1 */ FD2_CHAIN_CLAW_SWIPE,
+    /* 2 */ FD2_CHAIN_BREATHE_FIRE
+} BossFd2ChainAction;
+
 void BossFd2_Init(Actor* thisx, PlayState* play);
 void BossFd2_Destroy(Actor* thisx, PlayState* play);
 void BossFd2_Update(Actor* thisx, PlayState* play);
@@ -341,23 +347,26 @@ void BossFd2_SetupIdle(BossFd2* this, PlayState* play) {
     osSyncPrintf("UP INIT 1\n");
     Animation_PlayLoop(&this->skelAnime, &gHoleVolvagiaTurnAnim);
     this->actionFunc = BossFd2_Idle;
+    this->work[FD2_UNUSED_4] = FD2_CHAIN_NONE;
     health = bossFd->actor.colChkInfo.health;
     if (health == 24) {
-        idleTime = 50;
+        idleTime = 40;
     } else if (health >= 18) {
-        idleTime = 40;
+        idleTime = 32;
     } else if (health >= 12) {
-        idleTime = 40;
+        idleTime = 32;
     } else if (health >= 6) {
-        idleTime = 30;
+        idleTime = 24;
     } else {
-        idleTime = 20;
+        idleTime = 16;
     }
     this->timers[0] = idleTime;
 }
 
 void BossFd2_Idle(BossFd2* this, PlayState* play) {
+    BossFd* bossFd = (BossFd*)this->actor.parent;
     s16 prevToLink;
+    s8 health;
 
     SkelAnime_Update(&this->skelAnime);
     prevToLink = this->work[FD2_TURN_TO_LINK];
@@ -372,9 +381,16 @@ void BossFd2_Idle(BossFd2* this, PlayState* play) {
         Animation_MorphToLoop(&this->skelAnime, &gHoleVolvagiaIdleAnim, -5.0f);
     }
     if (this->timers[0] == 0) {
+        health = bossFd->actor.colChkInfo.health;
         if (this->actor.xzDistToPlayer < 200.0f) {
+            if ((health <= 12) && (Rand_ZeroOne() < 0.2f)) {
+                this->work[FD2_UNUSED_4] = FD2_CHAIN_BREATHE_FIRE;
+            }
             BossFd2_SetupClawSwipe(this, play);
         } else {
+            if ((health <= 12) && (Rand_ZeroOne() < 0.3f)) {
+                this->work[FD2_UNUSED_4] = FD2_CHAIN_CLAW_SWIPE;
+            }
             BossFd2_SetupBreatheFire(this, play);
         }
     }
@@ -435,7 +451,12 @@ void BossFd2_BreatheFire(BossFd2* this, PlayState* play) {
 
     SkelAnime_Update(&this->skelAnime);
     if (Animation_OnFrame(&this->skelAnime, this->fwork[FD2_END_FRAME])) {
-        BossFd2_SetupBurrow(this, play);
+        if (this->work[FD2_UNUSED_4] == FD2_CHAIN_CLAW_SWIPE) {
+            this->work[FD2_UNUSED_4] = FD2_CHAIN_NONE;
+            BossFd2_SetupClawSwipe(this, play);
+        } else {
+            BossFd2_SetupBurrow(this, play);
+        }
     }
     if ((25.0f <= this->skelAnime.curFrame) && (this->skelAnime.curFrame < 70.0f)) {
         if (this->skelAnime.curFrame == 25.0f) {
@@ -535,7 +556,12 @@ void BossFd2_ClawSwipe(BossFd2* this, PlayState* play) {
         Audio_PlayActorSound2(&this->actor, NA_SE_EN_VALVAISA_SW_NAIL);
     }
     if (Animation_OnFrame(&this->skelAnime, this->fwork[FD2_END_FRAME])) {
-        BossFd2_SetupBurrow(this, play);
+        if (this->work[FD2_UNUSED_4] == FD2_CHAIN_BREATHE_FIRE) {
+            this->work[FD2_UNUSED_4] = FD2_CHAIN_NONE;
+            BossFd2_SetupBreatheFire(this, play);
+        } else {
+            BossFd2_SetupBurrow(this, play);
+        }
     }
 }
 
