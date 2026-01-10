@@ -878,8 +878,9 @@ void BossFd_Fly(BossFd* this, PlayState* play) {
                     }
                 }
             } else {
-                Vec3f holdOffset;
                 Vec3f holdPos;
+                Vec3f holdForwardOffset = { 0.0f, 0.0f, 35.0f };
+                Vec3f holdForwardWorld;
                 s16 throwYaw;
                 Vec3f orbitCenter = sHoleLocations[1];
                 s16 orbitAngle = this->work[BFD_MOVE_TIMER] * 0x180;
@@ -895,14 +896,15 @@ void BossFd_Fly(BossFd* this, PlayState* play) {
 
                 Vec3f waistOffset;
 
-                holdOffset.x = BOSSFD_GRAB_MOUTH_SIDE_OFFSET;
-                holdOffset.y = BOSSFD_GRAB_MOUTH_UP_OFFSET +
-                               (Math_SinS(this->work[BFD_MOVE_TIMER] * 0x900) * BOSSFD_GRAB_SWAY_SCALE);
-                holdOffset.z = BOSSFD_GRAB_MOUTH_FORWARD_OFFSET;
+                holdPos = this->headPos;
                 Matrix_Push();
-                Matrix_SetTranslateRotateYXZ(this->headPos.x, this->headPos.y, this->headPos.z, &this->headRot);
-                Matrix_MultVec3f(&holdOffset, &holdPos);
+                Matrix_RotateY((this->actor.world.rot.y / (f32)0x8000) * M_PI, MTXMODE_NEW);
+                Matrix_RotateX(((-this->actor.world.rot.x / (f32)0x8000) * M_PI) + 0.3f, MTXMODE_APPLY);
+                Matrix_MultVec3f(&holdForwardOffset, &holdForwardWorld);
                 Matrix_Pop();
+                holdPos.x += holdForwardWorld.x;
+                holdPos.y += holdForwardWorld.y;
+                holdPos.z += holdForwardWorld.z;
 
                 player->actor.shape.rot = this->headRot;
                 player->actor.shape.rot.x = this->headRot.x + 0x4000;
