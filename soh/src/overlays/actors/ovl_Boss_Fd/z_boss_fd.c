@@ -34,6 +34,8 @@
 #define BOSSFD_FOG_MODE_ERUPTION_IN 11
 #define BOSSFD_FOG_MODE_ERUPTION 12
 #define BOSSFD_FOG_MODE_ERUPTION_OUT 13
+#define BOSSFD_MAX_HEALTH 24
+#define BOSSFD_LOW_CIRCLE_HEALTH_THRESHOLD (BOSSFD_MAX_HEALTH / 4)
 
 #define BOSSFD_GRAB_HOLD_TIME 240
 #define BOSSFD_GRAB_APPROACH_RANGE 110.0f
@@ -106,6 +108,36 @@ static InitChainEntry sInitChain[] = {
     ICHAIN_F32_DIV1000(gravity, 0, ICHAIN_CONTINUE),
     ICHAIN_F32(targetArrowOffset, 0, ICHAIN_STOP),
 };
+
+static s16 BossFd_PickNextFlyAttack(BossFd* this) {
+    s16 candidates[4];
+    s32 candidateCount = 0;
+    s16 lastAttack = this->work[BFD_FLY_COUNT];
+    s16 choice = BOSSFD_FLY_CHASE;
+
+    candidates[candidateCount++] = BOSSFD_FLY_CHASE;
+    candidates[candidateCount++] = BOSSFD_FLY_CEILING;
+    candidates[candidateCount++] = BOSSFD_FLY_GRAB;
+    if (this->actor.colChkInfo.health < BOSSFD_LOW_CIRCLE_HEALTH_THRESHOLD) {
+        candidates[candidateCount++] = BOSSFD_FLY_LOW_CIRCLE;
+    }
+
+    if (candidateCount == 1) {
+        choice = candidates[0];
+    } else {
+        s32 attempts;
+
+        for (attempts = 0; attempts < 3; attempts++) {
+            choice = candidates[(s32)Rand_ZeroFloat(candidateCount)];
+            if (choice != lastAttack) {
+                break;
+            }
+        }
+    }
+
+    this->work[BFD_FLY_COUNT] = choice;
+    return choice;
+}
 
 void BossFd_SpawnEmber(BossFdEffect* effect, Vec3f* position, Vec3f* velocity, Vec3f* acceleration, f32 scale) {
     s16 i;
@@ -250,7 +282,7 @@ void BossFd_Init(Actor* thisx, PlayState* play) {
         }
     }
 
-    this->actor.colChkInfo.health = 24;
+    this->actor.colChkInfo.health = BOSSFD_MAX_HEALTH;
     this->skinSegments = 18;
     if (this->introState == BFD_CS_NONE) {
         this->actionFunc = BossFd_Wait;
@@ -660,16 +692,15 @@ void BossFd_Fly(BossFd* this, PlayState* play) {
 
                     if (this->work[BFD_START_ATTACK]) {
                         this->work[BFD_START_ATTACK] = false;
-                        this->work[BFD_FLY_COUNT]++;
-                        switch (this->work[BFD_FLY_COUNT] % 4) {
-                            case 0:
+                        switch (BossFd_PickNextFlyAttack(this)) {
+                            case BOSSFD_FLY_CHASE:
                                 this->work[BFD_ACTION_STATE] = BOSSFD_FLY_CHASE;
                                 this->timers[0] = aggressiveTuning ? 240 : 300;
                                 this->fwork[BFD_TURN_RATE_MAX] = aggressiveTuning ? 1200.0f : 900.0f;
                                 this->fwork[BFD_TARGET_Y_OFFSET] = aggressiveTuning ? 330.0f : 300.0f;
                                 this->work[BOSSFD_LOW_CIRCLE_ANGLE_IDX] = this->work[BOSSFD_LOW_CIRCLE_DIR_IDX] = 0;
                                 break;
-                            case 1:
+                            case BOSSFD_FLY_LOW_CIRCLE:
                                 this->work[BFD_ACTION_STATE] = BOSSFD_FLY_LOW_CIRCLE;
                                 this->timers[0] = BOSSFD_LOW_CIRCLE_TIMER;
                                 this->fwork[BFD_FLY_SPEED] = BOSSFD_LOW_CIRCLE_SPEED_DEFAULT;
@@ -685,7 +716,7 @@ void BossFd_Fly(BossFd* this, PlayState* play) {
                                 play->envCtx.unk_D8 = 0.0f;
                                 play->envCtx.unk_DC = 0;
                                 break;
-                            case 2:
+                            case BOSSFD_FLY_CEILING:
                                 this->work[BFD_ACTION_STATE] = BOSSFD_FLY_CEILING;
                                 break;
                             default:
