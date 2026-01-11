@@ -21,7 +21,7 @@ static ColliderJntSphElementInit sJntSphElementsInit[9] = {
             BUMP_NONE,
             OCELEM_ON,
         },
-        { 18, { { 4000, 0, 0 }, 13 }, 100 },
+        { 18, { { 4000, 0, 0 }, 16 }, 100 },
     },
     {
         {
@@ -32,7 +32,7 @@ static ColliderJntSphElementInit sJntSphElementsInit[9] = {
             BUMP_NONE,
             OCELEM_ON,
         },
-        { 19, { { 3000, 0, 0 }, 13 }, 100 },
+        { 19, { { 3000, 0, 0 }, 16 }, 100 },
     },
     {
         {
@@ -43,7 +43,7 @@ static ColliderJntSphElementInit sJntSphElementsInit[9] = {
             BUMP_NONE,
             OCELEM_ON,
         },
-        { 20, { { 4000, 0, 0 }, 15 }, 100 },
+        { 20, { { 4000, 0, 0 }, 18 }, 100 },
     },
     {
         {
@@ -54,7 +54,7 @@ static ColliderJntSphElementInit sJntSphElementsInit[9] = {
             BUMP_NONE,
             OCELEM_ON,
         },
-        { 24, { { 4000, 0, 0 }, 13 }, 100 },
+        { 24, { { 4000, 0, 0 }, 16 }, 100 },
     },
     {
         {
@@ -65,7 +65,7 @@ static ColliderJntSphElementInit sJntSphElementsInit[9] = {
             BUMP_NONE,
             OCELEM_ON,
         },
-        { 25, { { 3000, 0, 0 }, 13 }, 100 },
+        { 25, { { 3000, 0, 0 }, 16 }, 100 },
     },
     {
         {
@@ -76,7 +76,7 @@ static ColliderJntSphElementInit sJntSphElementsInit[9] = {
             BUMP_NONE,
             OCELEM_ON,
         },
-        { 26, { { 3500, 1500, 0 }, 15 }, 100 },
+        { 26, { { 3500, 1500, 0 }, 18 }, 100 },
     },
     {
         {
@@ -87,7 +87,7 @@ static ColliderJntSphElementInit sJntSphElementsInit[9] = {
             BUMP_NONE,
             OCELEM_ON,
         },
-        { 17, { { 0, 0, 0 }, 26 }, 100 },
+        { 17, { { 0, 0, 0 }, 30 }, 100 },
     },
     {
         {
@@ -98,7 +98,7 @@ static ColliderJntSphElementInit sJntSphElementsInit[9] = {
             BUMP_NONE,
             OCELEM_ON,
         },
-        { 30, { { 0, 0, 0 }, 17 }, 100 },
+        { 30, { { 0, 0, 0 }, 20 }, 100 },
     },
 };
 

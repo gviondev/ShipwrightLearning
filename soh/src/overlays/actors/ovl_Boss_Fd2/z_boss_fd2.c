@@ -458,13 +458,13 @@ void BossFd2_BreatheFire(BossFd2* this, PlayState* play) {
             BossFd2_SetupBurrow(this, play);
         }
     }
-    if ((25.0f <= this->skelAnime.curFrame) && (this->skelAnime.curFrame < 70.0f)) {
+    if ((25.0f <= this->skelAnime.curFrame) && (this->skelAnime.curFrame < 85.0f)) {
         if (this->skelAnime.curFrame == 25.0f) {
             play->envCtx.unk_D8 = 0.0f;
         }
         Audio_PlayActorSound2(&this->actor, NA_SE_EN_VALVAISA_FIRE - SFX_FLAG);
-        if (this->skelAnime.curFrame > 50) {
-            breathOpacity = (70.0f - this->skelAnime.curFrame) * 12.0f;
+        if (this->skelAnime.curFrame > 65) {
+            breathOpacity = (85.0f - this->skelAnime.curFrame) * 12.0f;
         } else {
             breathOpacity = 255;
         }
@@ -505,6 +505,7 @@ void BossFd2_BreatheFire(BossFd2* this, PlayState* play) {
         spawnPos = this->headPos;
 
         tempY = ((this->actor.shape.rot.y + this->headRot.y) / (f32)0x8000) * M_PI;
+        tempY += 0.06f * Math_SinS(this->work[FD2_VAR_TIMER] * 0x400);
         tempX = ((this->headRot.x / (f32)0x8000) * M_PI) + 1.0f / 2;
         Matrix_RotateY(tempY, MTXMODE_NEW);
         Matrix_RotateX(tempX, MTXMODE_APPLY);
