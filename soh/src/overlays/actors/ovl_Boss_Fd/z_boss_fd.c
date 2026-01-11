@@ -57,6 +57,9 @@
 #define BOSSFD_LOW_CIRCLE_ANGLE_IDX BFD_UNK_234
 #define BOSSFD_LOW_CIRCLE_DIR_IDX BFD_UNK_236
 
+#define BOSSFD_HEAD_GRAB_RADIUS_DEFAULT 20
+#define BOSSFD_HEAD_GRAB_RADIUS_CHASE 5
+
 typedef enum {
     /* 0 */ INTRO_FLY_EMERGE,
     /* 1 */ INTRO_FLY_HOLE,
@@ -1670,6 +1673,9 @@ void BossFd_Update(Actor* thisx, PlayState* play) {
     this->work[BFD_VAR_TIMER]++;
     this->work[BFD_MOVE_TIMER]++;
     this->actionFunc(this, play);
+
+    this->collider.elements[0].dim.modelSphere.radius =
+        (this->work[BFD_ACTION_STATE] == BOSSFD_FLY_CHASE) ? BOSSFD_HEAD_GRAB_RADIUS_CHASE : BOSSFD_HEAD_GRAB_RADIUS_DEFAULT;
 
     for (i = 0; i < ARRAY_COUNT(this->timers); i++) {
         if (this->timers[i] != 0) {
