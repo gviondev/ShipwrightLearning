@@ -270,7 +270,7 @@ void BossFd2_Emerge(BossFd2* this, PlayState* play) {
                 this->work[FD2_HOLE_COUNTER]++;
                 this->actor.world.pos.y = -200.0f;
                 health = bossFd->actor.colChkInfo.health;
-                if (health == 24) {
+                if (health == 48) {
                     holeTime = 20;
                 } else if (health >= 18) {
                     holeTime = 16;
@@ -349,7 +349,7 @@ void BossFd2_SetupIdle(BossFd2* this, PlayState* play) {
     this->actionFunc = BossFd2_Idle;
     this->work[FD2_UNUSED_4] = FD2_CHAIN_NONE;
     health = bossFd->actor.colChkInfo.health;
-    if (health == 24) {
+    if (health == 48) {
         idleTime = 40;
     } else if (health >= 18) {
         idleTime = 32;
@@ -418,7 +418,7 @@ void BossFd2_Burrow(BossFd2* this, PlayState* play) {
     } else {
         Math_ApproachF(&this->actor.world.pos.y, -100.0f, 1.0f, 10.0f);
         if (this->timers[0] == 0) {
-            if ((this->work[FD2_HOLE_COUNTER] >= 3) && ((s8)bossFd->actor.colChkInfo.health < 24)) {
+            if ((this->work[FD2_HOLE_COUNTER] >= 3) && ((s8)bossFd->actor.colChkInfo.health < 48)) {
                 this->work[FD2_HOLE_COUNTER] = 0;
                 this->actionFunc = BossFd2_Wait;
                 bossFd->handoffSignal = FD2_SIGNAL_FLY;
