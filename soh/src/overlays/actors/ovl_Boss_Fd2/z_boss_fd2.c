@@ -228,13 +228,13 @@ void BossFd2_SetupEmerge(BossFd2* this, PlayState* play) {
     emergeDelay = 6;
     if (bossFd != NULL) {
         health = bossFd->actor.colChkInfo.health;
-        if (health >= 18) {
+        if (health >= 42) {
             this->work[FD2_FAKEOUT_COUNT] = 0;
             emergeDelay = 6;
-        } else if (health >= 12) {
+        } else if (health >= 32) {
             this->work[FD2_FAKEOUT_COUNT] = 1;
             emergeDelay = 5;
-        } else if (health >= 6) {
+        } else if (health >= 24) {
             this->work[FD2_FAKEOUT_COUNT] = 2;
             emergeDelay = 4;
         } else {
