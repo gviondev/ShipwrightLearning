@@ -3,17 +3,13 @@
 #ifdef __cplusplus
 
 #include <thread>
-#ifdef ENABLE_REMOTE_CONTROL
 #include <SDL2/SDL_net.h>
-#endif
 #include <nlohmann/json.hpp>
 
 class Network {
   private:
-#ifdef ENABLE_REMOTE_CONTROL
     IPaddress networkAddress;
     TCPsocket networkSocket;
-#endif
     std::thread receiveThread;
     std::string receivedData;
 
@@ -44,6 +40,7 @@ class Network {
     virtual void OnIncomingJson(nlohmann::json payload);
     virtual void OnConnected();
     virtual void OnDisconnected();
+    virtual void ProcessOutgoingPackets();
     void SendDataToRemote(const char* payload);
     virtual void SendJsonToRemote(nlohmann::json packet);
 };

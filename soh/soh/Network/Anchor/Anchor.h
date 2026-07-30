@@ -3,7 +3,9 @@
 #ifdef __cplusplus
 
 #include "soh/Network/Network.h"
-#include <libultraship/libultraship.h>
+#include <libultraship/bridge/consolevariablebridge.h>
+#include <ship/window/gui/GuiWindow.h>
+#include <spdlog/spdlog.h>
 #include <queue>
 #include <mutex>
 
@@ -29,6 +31,7 @@ typedef struct {
     bool isSaveLoaded;
     bool isGameComplete;
     s16 sceneNum;
+    s8 curRoomNum;
     s32 entranceIndex;
 
     // Only available in PLAYER_UPDATE packets
@@ -76,6 +79,8 @@ class Anchor : public Network {
     bool isProcessingIncomingPacket = false;
     std::queue<nlohmann::json> incomingPacketQueue;
     std::mutex incomingPacketQueueMutex;
+    std::queue<nlohmann::json> outgoingPacketQueue;
+    std::mutex outgoingPacketQueueMutex;
 
     nlohmann::json PrepClientState();
     nlohmann::json PrepRoomState();
@@ -108,7 +113,7 @@ class Anchor : public Network {
 
   public:
     uint32_t ownClientId;
-    inline static const std::string clientVersion = (char*)gBuildVersion;
+    inline static const std::string clientVersion = (char*)gGitCommitHash;
 
     // Packet types //
     inline static const std::string ALL_CLIENT_STATE = "ALL_CLIENT_STATE";
@@ -143,6 +148,7 @@ class Anchor : public Network {
     void OnIncomingJson(nlohmann::json payload);
     void OnConnected();
     void OnDisconnected();
+    void ProcessOutgoingPackets();
     void DrawMenu();
     void ProcessIncomingPacketQueue();
     void SendJsonToRemote(nlohmann::json packet);

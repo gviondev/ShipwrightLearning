@@ -1,5 +1,5 @@
 #include "soh/Enhancements/game-interactor/GameInteractor.h"
-#include "soh/Enhancements/randomizer/context.h"
+#include "soh/Enhancements/randomizer/SeedContext.h"
 #include "soh/ShipInit.hpp"
 
 extern "C" {
@@ -41,6 +41,8 @@ void RegisterSkipIntro() {
             // Skip the intro cutscene for whatever the spawnEntrance is calculated to be.
             if (gSaveContext.entranceIndex == spawnEntrance) {
                 gSaveContext.cutsceneIndex = 0;
+                if (!IS_RANDO)
+                    gSaveContext.dayTime = 0x8000;
                 *should = false;
             }
         }

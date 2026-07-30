@@ -29,6 +29,10 @@ void GameInteractor_ExecuteOnGameFrameUpdate() {
     GameInteractor::Instance->ExecuteHooks<GameInteractor::OnGameFrameUpdate>();
 }
 
+void GameInteractor_ExecuteOnCameraState(PlayState* play) {
+    GameInteractor::Instance->ExecuteHooks<GameInteractor::OnCameraState>(play);
+}
+
 void GameInteractor_ExecuteOnItemReceiveHooks(GetItemEntry itemEntry) {
     GameInteractor::Instance->ExecuteHooks<GameInteractor::OnItemReceive>(itemEntry);
     GameInteractor::Instance->ExecuteHooksForFilter<GameInteractor::OnItemReceive>(itemEntry);
@@ -86,6 +90,14 @@ void GameInteractor_ExecuteOnSceneSpawnActors() {
     GameInteractor::Instance->ExecuteHooks<GameInteractor::OnSceneSpawnActors>();
 }
 
+void GameInteractor_ExecuteOnLinkSkeletonInit() {
+    GameInteractor::Instance->ExecuteHooks<GameInteractor::OnLinkSkeletonInit>();
+}
+
+void GameInteractor_ExecuteOnLinkEquipmentChange() {
+    GameInteractor::Instance->ExecuteHooks<GameInteractor::OnLinkEquipmentChange>();
+}
+
 void GameInteractor_ExecuteOnPlayerUpdate() {
     GameInteractor::Instance->ExecuteHooks<GameInteractor::OnPlayerUpdate>();
 }
@@ -104,10 +116,6 @@ void GameInteractor_ExecuteOnOcarinaSongAction() {
 
 void GameInteractor_ExecuteOnOcarinaNote(uint8_t note, float modulator, int8_t bend) {
     GameInteractor::Instance->ExecuteHooks<GameInteractor::OnOcarinaNote>(note, modulator, bend);
-}
-
-void GameInteractor_ExecuteOnCuccoOrChickenHatch() {
-    GameInteractor::Instance->ExecuteHooks<GameInteractor::OnCuccoOrChickenHatch>();
 }
 
 void GameInteractor_ExecuteOnShopSlotChangeHooks(uint8_t cursorIndex, int16_t price) {
@@ -193,6 +201,10 @@ void GameInteractor_ExecuteOnPlayerBonk() {
     GameInteractor::Instance->ExecuteHooks<GameInteractor::OnPlayerBonk>();
 }
 
+void GameInteractor_ExecuteOnPlayerSetModels(Player* player, u8 modelGroup) {
+    GameInteractor::Instance->ExecuteHooks<GameInteractor::OnPlayerSetModels>(player, modelGroup);
+}
+
 void GameInteractor_ExecuteOnPlayerHealthChange(int16_t amount) {
     GameInteractor::Instance->ExecuteHooks<GameInteractor::OnPlayerHealthChange>(amount);
 }
@@ -209,7 +221,7 @@ void GameInteractor_ExecuteOnPlayerFirstPersonControl(Player* player) {
     GameInteractor::Instance->ExecuteHooks<GameInteractor::OnPlayerFirstPersonControl>(player);
 }
 
-void GameInteractor_ExecuteOnPlayerShieldControl(float_t* sp50, float_t* sp54) {
+void GameInteractor_ExecuteOnPlayerShieldControl(float* sp50, float* sp54) {
     GameInteractor::Instance->ExecuteHooks<GameInteractor::OnPlayerShieldControl>(sp50, sp54);
 }
 
@@ -280,6 +292,10 @@ void GameInteractor_ExecuteOnInterfaceUpdate() {
 
 void GameInteractor_ExecuteOnKaleidoscopeUpdate(int16_t inDungeonScene) {
     GameInteractor::Instance->ExecuteHooks<GameInteractor::OnKaleidoscopeUpdate>(inDungeonScene);
+}
+
+void GameInteractor_ExecuteOnMinimapDrawCompassIcons() {
+    GameInteractor::Instance->ExecuteHooks<GameInteractor::OnMinimapDrawCompassIcons>();
 }
 
 // MARK: - Main Menu
@@ -361,6 +377,13 @@ void GameInteractor_RegisterOnAssetAltChange(void (*fn)(void)) {
 
 void GameInteractor_ExecuteOnKaleidoUpdate() {
     GameInteractor::Instance->ExecuteHooks<GameInteractor::OnKaleidoUpdate>();
+}
+
+// MARK: Messages
+void GameInteractor_ExecuteOnOpenText(uint16_t* textId, bool* loadFromMessageTable) {
+    GameInteractor::Instance->ExecuteHooks<GameInteractor::OnOpenText>(textId, loadFromMessageTable);
+    GameInteractor::Instance->ExecuteHooksForID<GameInteractor::OnOpenText>(*textId, textId, loadFromMessageTable);
+    GameInteractor::Instance->ExecuteHooksForFilter<GameInteractor::OnOpenText>(textId, loadFromMessageTable);
 }
 
 // Mark: Audio
