@@ -4,6 +4,7 @@
 #include "objects/object_efc_star_field/object_efc_star_field.h"
 
 #define FLAGS (ACTOR_FLAG_UPDATE_CULLING_DISABLED | ACTOR_FLAG_DRAW_CULLING_DISABLED)
+#define DODONGO_FIRE_ROCK_CAP 12
 
 void EnFireRock_Init(Actor* thisx, PlayState* play);
 void EnFireRock_Destroy(Actor* thisx, PlayState* play);
@@ -148,10 +149,13 @@ void EnFireRock_Init(Actor* thisx, PlayState* play) {
 
 void EnFireRock_Destroy(Actor* thisx, PlayState* play) {
     EnFireRock* this = (EnFireRock*)thisx;
+    Actor* parent = this->actor.parent;
 
-    if ((this->actor.parent != NULL) && (this->actor.parent == &this->spawner->actor)) {
-        EnEncount2* spawner = (EnEncount2*)this->actor.parent;
-        if ((spawner->actor.update != NULL) && (spawner->numSpawnedRocks > 0)) {
+    if ((parent != NULL) && (parent->update != NULL) && (parent->id == ACTOR_EN_ENCOUNT2) &&
+        (parent == (Actor*)this->spawner)) {
+        EnEncount2* spawner = (EnEncount2*)parent;
+
+        if (spawner->numSpawnedRocks > 0) {
             spawner->numSpawnedRocks--;
             osSyncPrintf("\n\n");
             // "☆☆☆☆☆ Number of spawned instances recovery ☆☆☆☆☆%d"
@@ -219,15 +223,41 @@ void EnFireRock_Fall(EnFireRock* this, PlayState* play) {
     }
 }
 
+static s32 EnFireRock_CountDodongoFamily(PlayState* play, Actor* bossParent) {
+    Actor* actor = play->actorCtx.actorLists[ACTORCAT_ENEMY].head;
+    s32 count = 0;
+
+    while (actor != NULL) {
+        if ((actor->update != NULL) && (actor->id == ACTOR_EN_FIRE_ROCK) && (actor->parent == bossParent)) {
+            EnFireRock* fireRock = (EnFireRock*)actor;
+
+            if ((fireRock->type == FIRE_ROCK_SPAWNED_FALLING1) ||
+                (fireRock->type == FIRE_ROCK_SPAWNED_FALLING2) ||
+                (fireRock->type == FIRE_ROCK_BROKEN_PIECE1) || (fireRock->type == FIRE_ROCK_BROKEN_PIECE2)) {
+                count++;
+            }
+        }
+        actor = actor->next;
+    }
+
+    return count;
+}
+
 /**
  * After the rock has already hit the ground and started rolling, spawn two more, giving the illusion of breaking into
  * two pieces.
  */
 void EnFireRock_SpawnMoreBrokenPieces(EnFireRock* this, PlayState* play) {
     EnFireRock* spawnedFireRock;
+    Actor* bossParent = NULL;
     s32 nextRockType;
     s32 i;
     s32 temp;
+
+    if ((this->actor.parent != NULL) && (this->actor.parent->update != NULL) &&
+        (this->actor.parent->id == ACTOR_BOSS_DODONGO)) {
+        bossParent = this->actor.parent;
+    }
 
     nextRockType = FIRE_ROCK_SPAWNED_FALLING1;
     switch (this->type) {
@@ -241,17 +271,27 @@ void EnFireRock_SpawnMoreBrokenPieces(EnFireRock* this, PlayState* play) {
 
     if (nextRockType != FIRE_ROCK_SPAWNED_FALLING1) {
         for (i = 0; i < 2; i++) {
+            if ((bossParent != NULL) && (EnFireRock_CountDodongoFamily(play, bossParent) >= DODONGO_FIRE_ROCK_CAP)) {
+                break;
+            }
+
             spawnedFireRock = (EnFireRock*)Actor_Spawn(
                 &play->actorCtx, play, ACTOR_EN_FIRE_ROCK, Rand_CenteredFloat(3.0f) + this->actor.world.pos.x,
                 Rand_CenteredFloat(3.0f) + (this->actor.world.pos.y + 10.0f),
                 Rand_CenteredFloat(3.0f) + this->actor.world.pos.z, 0, 0, 0, nextRockType);
             if (spawnedFireRock != NULL) {
+                if (bossParent != NULL) {
+                    spawnedFireRock->actor.parent = bossParent;
+                }
                 spawnedFireRock->actor.world.rot.y = this->actor.world.rot.y;
                 if (i == 0) {
                     spawnedFireRock->actor.shape.rot.y = this->actor.shape.rot.y;
                 }
                 spawnedFireRock->scale = this->scale - 0.01f;
             } else {
+                if (bossParent != NULL) {
+                    break;
+                }
                 osSyncPrintf(VT_FGCOL(YELLOW) "☆☆☆☆☆ イッパイデッス ☆☆☆☆☆ \n" VT_RST);
             }
         }

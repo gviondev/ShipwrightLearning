@@ -1468,6 +1468,33 @@ static void ApplyMigrationActions(const Migration* migrations) {
     }
 }
 
+static bool HasCVar(const char* name) {
+    return CVarGet(name) != nullptr;
+}
+
+static void MigrateDamageMultiplier(const char* oldName, const char* percentName) {
+    if (!HasCVar(oldName)) {
+        return;
+    }
+
+    if (!HasCVar(percentName)) {
+        int32_t exponent = CVarGetInteger(oldName, 0);
+        if (exponent < 0) {
+            exponent = 0;
+        } else if (exponent > 8) {
+            exponent = 8;
+        }
+
+        float percent = 100.0f * (1 << exponent);
+        if (percent > 5000.0f) {
+            percent = 5000.0f;
+        }
+        CVarSetFloat(percentName, percent);
+    }
+
+    CVarClear(oldName);
+}
+
 ConfigVersion1Updater::ConfigVersion1Updater() : ConfigVersionUpdater(1) {
 }
 ConfigVersion2Updater::ConfigVersion2Updater() : ConfigVersionUpdater(2) {
@@ -1481,6 +1508,8 @@ ConfigVersion5Updater::ConfigVersion5Updater() : ConfigVersionUpdater(5) {
 ConfigVersion6Updater::ConfigVersion6Updater() : ConfigVersionUpdater(6) {
 }
 ConfigVersion7Updater::ConfigVersion7Updater() : ConfigVersionUpdater(7) {
+}
+ConfigVersion8Updater::ConfigVersion8Updater() : ConfigVersionUpdater(8) {
 }
 
 void ConfigVersion1Updater::Update(Ship::Config* conf) {
@@ -1669,5 +1698,12 @@ void ConfigVersion7Updater::Update(Ship::Config* conf) {
 
     // Kakariko Gate setting removed; the gate opens when starting with an unshuffled letter
     CVarClear("gRandoSettings.KakarikoGate");
+}
+
+void ConfigVersion8Updater::Update(Ship::Config* conf) {
+    MigrateDamageMultiplier("gEnhancements.DamageMult", "gEnhancements.DamagePercent");
+    MigrateDamageMultiplier("gEnhancements.FallDamageMult", "gEnhancements.FallDamagePercent");
+    MigrateDamageMultiplier("gEnhancements.VoidDamageMult", "gEnhancements.VoidDamagePercent");
+    CVarSave();
 }
 } // namespace SOH

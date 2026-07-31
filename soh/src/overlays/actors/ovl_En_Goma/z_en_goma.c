@@ -36,6 +36,22 @@ void EnGoma_Debris(EnGoma* this, PlayState* play);
 void EnGoma_SpawnHatchDebris(EnGoma* this, PlayState* play2);
 void EnGoma_BossLimb(EnGoma* this, PlayState* play);
 
+static void EnGoma_ReportBossSlotDefeated(EnGoma* this) {
+    if ((this->actor.params >= 0) && (this->actor.params < 6)) {
+        Actor* parentActor = this->actor.parent;
+
+        if ((parentActor != NULL) && (parentActor->id == ACTOR_BOSS_GOMA)) {
+            BossGoma* parent = (BossGoma*)parentActor;
+
+            parent->childrenGohmaState[this->actor.params] = -1;
+            if (parent->actor.child == &this->actor) {
+                parent->actor.child = NULL;
+            }
+        }
+        this->actor.parent = NULL;
+    }
+}
+
 void EnGoma_SetupFlee(EnGoma* this);
 void EnGoma_SetupHatch(EnGoma* this, PlayState* play);
 void EnGoma_SetupHurt(EnGoma* this, PlayState* play);
@@ -182,6 +198,8 @@ void EnGoma_Init(Actor* thisx, PlayState* play) {
 
 void EnGoma_Destroy(Actor* thisx, PlayState* play) {
     EnGoma* this = (EnGoma*)thisx;
+
+    EnGoma_ReportBossSlotDefeated(this);
 
     if (this->actor.params < 10) {
         Collider_DestroyCylinder(play, &this->colCyl1);
@@ -427,11 +445,7 @@ void EnGoma_Dead(EnGoma* this, PlayState* play) {
     }
 
     if (this->actionTimer == 0 && Math_SmoothStepToF(&this->actor.scale.y, 0.0f, 0.5f, 0.00225f, 0.00001f) <= 0.001f) {
-        if (this->actor.params < 6) {
-            BossGoma* parent = (BossGoma*)this->actor.parent;
-
-            parent->childrenGohmaState[this->actor.params] = -1;
-        }
+        EnGoma_ReportBossSlotDefeated(this);
         Audio_PlaySoundGeneral(NA_SE_EN_EXTINCT, &this->actor.projectedPos, 4, &gSfxDefaultFreqAndVolScale,
                                &gSfxDefaultFreqAndVolScale, &gSfxDefaultReverb);
         Actor_Kill(&this->actor);
@@ -671,11 +685,7 @@ void EnGoma_UpdateHit(EnGoma* this, PlayState* play) {
                 }
             } else {
                 // die if still an egg
-                if (this->actor.params <= 5) { //! BossGoma only has 3 children
-                    BossGoma* parent = (BossGoma*)this->actor.parent;
-
-                    parent->childrenGohmaState[this->actor.params] = -1;
-                }
+                EnGoma_ReportBossSlotDefeated(this);
 
                 EnGoma_SpawnHatchDebris(this, play);
                 Actor_Kill(&this->actor);

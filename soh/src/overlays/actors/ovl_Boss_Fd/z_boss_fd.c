@@ -21,38 +21,85 @@
     (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_HOSTILE | ACTOR_FLAG_UPDATE_CULLING_DISABLED | \
      ACTOR_FLAG_DRAW_CULLING_DISABLED)
 
+// The arena and entrance platform top out at y = 100; keep the full body route above both.
 #define BOSSFD_LOW_CIRCLE_RADIUS_DEFAULT 600.0f
-#define BOSSFD_LOW_CIRCLE_HEIGHT_DEFAULT -10.0f
-#define BOSSFD_LOW_CIRCLE_TIMER 1200
-#define BOSSFD_LOW_CIRCLE_SPEED_DEFAULT 20.0f
-#define BOSSFD_LOW_CIRCLE_ROCK_TIMER 480
-#define BOSSFD_LOW_CIRCLE_ROCK_INTERVAL 10
-#define BOSSFD_LOW_CIRCLE_ROCK_DEBRIS_COUNT 16
+#define BOSSFD_LOW_CIRCLE_SAFE_HEIGHT 170.0f
+#define BOSSFD_LOW_CIRCLE_ENTRY_TIME 120
+#define BOSSFD_LOW_CIRCLE_TIMER 400
+#define BOSSFD_LOW_CIRCLE_SPEED_DEFAULT 11.0f
+#define BOSSFD_LOW_CIRCLE_ROCK_TIMER 180
+#define BOSSFD_LOW_CIRCLE_ROCK_INTERVAL 30
+#define BOSSFD_LOW_CIRCLE_ROCK_DEBRIS_COUNT 8
 #define BOSSFD_LOW_CIRCLE_ROCK_HEIGHT 1150.0f
-#define BOSSFD_LOW_CIRCLE_FIRE_INTERVAL 80
+#define BOSSFD_LOW_CIRCLE_FIRE_INTERVAL 60
 #define BOSSFD_LOW_CIRCLE_FOG_PULSE_RATE 0x800
 #define BOSSFD_FOG_MODE_ERUPTION_IN 11
 #define BOSSFD_FOG_MODE_ERUPTION 12
 #define BOSSFD_FOG_MODE_ERUPTION_OUT 13
-#define BOSSFD_MAX_HEALTH 54
-#define BOSSFD_LOW_CIRCLE_HEALTH_THRESHOLD (BOSSFD_MAX_HEALTH / 8)
+#define BOSSFD_LOW_CIRCLE_HEALTH_THRESHOLD BOSSFD_ENRAGED_HEALTH
 
-#define BOSSFD_GRAB_HOLD_TIME 240
-#define BOSSFD_GRAB_APPROACH_RANGE 80.0f
-#define BOSSFD_GRAB_VERTICAL_RANGE 80.0f
-#define BOSSFD_GRAB_YAW_TOLERANCE 0x5000
-#define BOSSFD_GRAB_THROW_SPEED 16.0f
-#define BOSSFD_GRAB_THROW_LIFT 13.0f
-#define BOSSFD_GRAB_HOVER_OFFSET 70.0f
-#define BOSSFD_GRAB_LEAD_DISTANCE 40.0f
-#define BOSSFD_GRAB_SWAY_SCALE 6.0f
-#define BOSSFD_GRAB_MOUTH_FORWARD_OFFSET 40.0f
-#define BOSSFD_GRAB_MOUTH_UP_OFFSET 8.0f
-#define BOSSFD_GRAB_MOUTH_SIDE_OFFSET 6.0f
-#define BOSSFD_GRAB_WAIST_FOOT_OFFSET -48.0f
-#define BOSSFD_GRAB_FIRE_INTERVAL 60
-#define BOSSFD_GRAB_ORBIT_RADIUS 220.0f
-#define BOSSFD_GRAB_ORBIT_HEIGHT 240.0f
+#define BOSSFD_ROCKFALL_EMPOWERED_HEALTH_THRESHOLD 36
+#define BOSSFD_ROCKFALL_STAGING_HEIGHT 650.0f
+#define BOSSFD_ROCKFALL_BARRAGE_HEIGHT 640.0f
+#define BOSSFD_ROCKFALL_ROCK_HEIGHT 1050.0f
+#define BOSSFD_ROCKFALL_CLIMB_TIME 80
+#define BOSSFD_ROCKFALL_WINDUP_TIME 40
+#define BOSSFD_ROCKFALL_CHARGE_TIME 35
+#define BOSSFD_ROCKFALL_FIRST_WAVE_DELAY 18
+#define BOSSFD_ROCKFALL_WAVE_INTERVAL 44
+#define BOSSFD_ROCKFALL_RETRY_TIME 4
+#define BOSSFD_ROCKFALL_BARRAGE_TIMEOUT 240
+#define BOSSFD_ROCKFALL_RECOVERY_TIME 80
+#define BOSSFD_ROCKFALL_BASE_WAVE_COUNT 3
+#define BOSSFD_ROCKFALL_EMPOWERED_WAVE_COUNT 4
+#define BOSSFD_ROCKFALL_ENRAGED_WAVE_COUNT 5
+#define BOSSFD_ROCKFALL_SPAWN_DEBRIS_COUNT 10
+#define BOSSFD_ROCKFALL_SHATTER_DEBRIS_COUNT 24
+#define BOSSFD_ROCKFALL_TEACHING_DISTANCE 170.0f
+#define BOSSFD_ROCKFALL_ARENA_FLOOR_MIN 70.0f
+#define BOSSFD_ROCKFALL_ARENA_FLOOR_MAX 130.0f
+
+#define BOSSFD_MAX_ACTIVE_ROCK_LOAD 14
+#define BOSSFD_ATTACK_LAST_MASK 0x00FF
+#define BOSSFD_ATTACK_SEEN_EMPOWERED_ROCKFALL 0x0200
+#define BOSSFD_ATTACK_SEEN_LOW_CIRCLE 0x0400
+
+#define BOSSFD_GRAB_STAGE_MIN_TIME 36
+#define BOSSFD_GRAB_STAGE_TIMEOUT 70
+#define BOSSFD_GRAB_ALIGN_MIN_TIME 8
+#define BOSSFD_GRAB_ALIGN_TIMEOUT 22
+#define BOSSFD_GRAB_ROAR_TIME 40
+#define BOSSFD_GRAB_LUNGE_TIME 38
+#define BOSSFD_GRAB_LUNGE_TRACK_TIME 6
+#define BOSSFD_GRAB_ASCENT_TIMEOUT 100
+#define BOSSFD_GRAB_RECOVERY_TIME 36
+#define BOSSFD_GRAB_FIRST_DAMAGE_DELAY 12
+#define BOSSFD_GRAB_DAMAGE_INTERVAL 20
+#define BOSSFD_GRAB_DAMAGE_BEATS 2
+#define BOSSFD_GRAB_DAMAGE_PER_BEAT 4
+#define BOSSFD_GRAB_STAGE_DISTANCE 240.0f
+#define BOSSFD_GRAB_STAGE_HEIGHT 90.0f
+#define BOSSFD_GRAB_STAGE_RANGE 70.0f
+#define BOSSFD_GRAB_STAGE_VERTICAL_RANGE 55.0f
+#define BOSSFD_GRAB_ALIGN_SPEED 3.0f
+#define BOSSFD_GRAB_ALIGN_YAW_TOLERANCE 0x1000
+#define BOSSFD_GRAB_BITE_POINT_HEIGHT 38.0f
+#define BOSSFD_GRAB_BITE_RADIUS 60.0f
+#define BOSSFD_GRAB_LUNGE_HEIGHT_MIN 135.0f
+#define BOSSFD_GRAB_LUNGE_OVERSHOOT 150.0f
+#define BOSSFD_GRAB_LUNGE_SPEED 14.0f
+#define BOSSFD_GRAB_ASCENT_SPEED 8.0f
+#define BOSSFD_GRAB_ASCENT_HEIGHT 520.0f
+#define BOSSFD_GRAB_ASCENT_CENTER_SCALE 0.72f
+#define BOSSFD_GRAB_ASCENT_FORWARD_DISTANCE 160.0f
+#define BOSSFD_GRAB_ASCENT_MAX_RADIUS 520.0f
+#define BOSSFD_GRAB_THROW_SPEED 13.0f
+#define BOSSFD_GRAB_THROW_LIFT 11.0f
+#define BOSSFD_GRAB_WAIST_FOOT_OFFSET -46.0f
+#define BOSSFD_GRAB_RECOVERY_SPEED 9.0f
+#define BOSSFD_GRAB_RECOVERY_DISTANCE 150.0f
+#define BOSSFD_GRAB_RECOVERY_RISE 80.0f
+#define BOSSFD_GRAB_RECOVERY_MAX_HEIGHT 540.0f
 
 // Reuse unused work indices to track the circular flight path angle and direction
 #define BOSSFD_LOW_CIRCLE_ANGLE_IDX BFD_UNK_234
@@ -77,6 +124,28 @@ typedef enum {
     /* 2 */ EYE_CLOSED
 } BossFdEyeState;
 
+typedef enum {
+    /* 0 */ BOSSFD_GRAB_STAGE,
+    /* 1 */ BOSSFD_GRAB_ALIGN,
+    /* 2 */ BOSSFD_GRAB_LUNGE,
+    /* 3 */ BOSSFD_GRAB_ASCEND,
+    /* 4 */ BOSSFD_GRAB_RECOVER
+} BossFdGrabPhase;
+
+typedef enum {
+    /* 0 */ BOSSFD_LOW_CIRCLE_RISE,
+    /* 1 */ BOSSFD_LOW_CIRCLE_ENTER,
+    /* 2 */ BOSSFD_LOW_CIRCLE_ORBIT
+} BossFdLowCirclePhase;
+
+typedef enum {
+    /* 0 */ BOSSFD_ROCKFALL_CLIMB,
+    /* 1 */ BOSSFD_ROCKFALL_WINDUP,
+    /* 2 */ BOSSFD_ROCKFALL_CHARGE,
+    /* 3 */ BOSSFD_ROCKFALL_BARRAGE,
+    /* 4 */ BOSSFD_ROCKFALL_RECOVER
+} BossFdRockfallPhase;
+
 void BossFd_Init(Actor* thisx, PlayState* play);
 void BossFd_Destroy(Actor* thisx, PlayState* play);
 void BossFd_Update(Actor* thisx, PlayState* play);
@@ -87,6 +156,7 @@ void BossFd_Fly(BossFd* this, PlayState* play);
 void BossFd_Wait(BossFd* this, PlayState* play);
 void BossFd_UpdateEffects(BossFd* this, PlayState* play);
 void BossFd_DrawBody(PlayState* play, BossFd* this);
+static bool BossFd_IsCombatActive(BossFd* this);
 
 const ActorInit Boss_Fd_InitVars = {
     ACTOR_BOSS_FD,
@@ -111,34 +181,150 @@ static InitChainEntry sInitChain[] = {
 };
 
 static s16 BossFd_PickNextFlyAttack(BossFd* this) {
-    s16 candidates[5];
+    s16 candidates[4];
+    s16 filteredCandidates[4];
     s32 candidateCount = 0;
-    s16 lastAttack = this->work[BFD_FLY_COUNT];
+    s32 filteredCount = 0;
+    s32 i;
+    s16 tracker = this->work[BFD_ATTACK_TRACKER];
+    s16 lastAttack = tracker & BOSSFD_ATTACK_LAST_MASK;
     s16 choice = BOSSFD_FLY_CHASE;
 
+    if ((this->actor.colChkInfo.health <= BOSSFD_LOW_CIRCLE_HEALTH_THRESHOLD) &&
+        !(tracker & BOSSFD_ATTACK_SEEN_LOW_CIRCLE)) {
+        choice = BOSSFD_FLY_LOW_CIRCLE;
+        goto selected;
+    }
+    if ((this->actor.colChkInfo.health <= BOSSFD_ROCKFALL_EMPOWERED_HEALTH_THRESHOLD) &&
+        !(tracker & BOSSFD_ATTACK_SEEN_EMPOWERED_ROCKFALL) && (lastAttack != BOSSFD_FLY_ROCKFALL)) {
+        choice = BOSSFD_FLY_ROCKFALL;
+        goto selected;
+    }
     candidates[candidateCount++] = BOSSFD_FLY_CHASE;
-    candidates[candidateCount++] = BOSSFD_FLY_CEILING;
+    candidates[candidateCount++] = BOSSFD_FLY_ROCKFALL;
     candidates[candidateCount++] = BOSSFD_FLY_GRAB;
-    if (this->actor.colChkInfo.health < BOSSFD_LOW_CIRCLE_HEALTH_THRESHOLD) {
-        candidates[candidateCount++] = BOSSFD_FLY_LOW_CIRCLE;
+    if (this->actor.colChkInfo.health <= BOSSFD_LOW_CIRCLE_HEALTH_THRESHOLD) {
         candidates[candidateCount++] = BOSSFD_FLY_LOW_CIRCLE;
     }
 
-    if (candidateCount == 1) {
-        choice = candidates[0];
-    } else {
-        s32 attempts;
-
-        for (attempts = 0; attempts < 3; attempts++) {
-            choice = candidates[(s32)Rand_ZeroFloat(candidateCount)];
-            if (choice != lastAttack) {
-                break;
-            }
+    for (i = 0; i < candidateCount; i++) {
+        if (candidates[i] != lastAttack) {
+            filteredCandidates[filteredCount++] = candidates[i];
         }
     }
+    if (filteredCount != 0) {
+        choice = filteredCandidates[(s32)Rand_ZeroFloat(filteredCount)];
+    } else {
+        choice = candidates[(s32)Rand_ZeroFloat(candidateCount)];
+    }
 
-    this->work[BFD_FLY_COUNT] = choice;
+selected:
+    tracker &= ~BOSSFD_ATTACK_LAST_MASK;
+    tracker |= choice;
+    if (choice == BOSSFD_FLY_LOW_CIRCLE) {
+        tracker |= BOSSFD_ATTACK_SEEN_LOW_CIRCLE;
+    }
+    this->work[BFD_ATTACK_TRACKER] = tracker;
     return choice;
+}
+
+static s32 BossFd_GetOwnedRockLoad(PlayState* play, BossFd* this) {
+    Actor* actor = play->actorCtx.actorLists[ACTORCAT_BOSS].head;
+    s32 load = 0;
+
+    while (actor != NULL) {
+        if ((actor->update != NULL) && (actor->id == ACTOR_EN_VB_BALL) && (actor->parent == &this->actor) &&
+            (actor->params < 200)) {
+            if (actor->params == 100) {
+                load += 7;
+            } else if (actor->params == 101) {
+                load += 3;
+            } else {
+                load++;
+            }
+        }
+        actor = actor->next;
+    }
+    return load;
+}
+
+static EnVbBall* BossFd_TrySpawnRock(BossFd* this, PlayState* play, f32 x, f32 y, f32 z, s16 scale, s16 params) {
+    s32 spawnLoad = (params == 100) ? 7 : ((params == 101) ? 3 : 1);
+
+    if ((BossFd_GetOwnedRockLoad(play, this) + spawnLoad) > BOSSFD_MAX_ACTIVE_ROCK_LOAD) {
+        return NULL;
+    }
+    return (EnVbBall*)Actor_SpawnAsChild(&play->actorCtx, &this->actor, play, ACTOR_EN_VB_BALL, x, y, z, 0, 0,
+                                         scale, params);
+}
+
+static void BossFd_SetupRockfall(BossFd* this) {
+    this->work[BFD_ATTACK_TRACKER] &= ~BOSSFD_ATTACK_LAST_MASK;
+    this->work[BFD_ATTACK_TRACKER] |= BOSSFD_FLY_ROCKFALL;
+    this->work[BFD_ACTION_STATE] = BOSSFD_FLY_ROCKFALL;
+    this->attackPhase = BOSSFD_ROCKFALL_CLIMB;
+    this->attackStep = 0;
+    this->timers[0] = BOSSFD_ROCKFALL_CLIMB_TIME;
+    this->timers[1] = 0;
+    this->timers[2] = 0;
+    this->targetPosition.x = 0.0f;
+    this->targetPosition.y = BOSSFD_ROCKFALL_STAGING_HEIGHT;
+    this->targetPosition.z = -220.0f;
+    this->fwork[BFD_FLY_SPEED] = 10.0f;
+    this->fwork[BFD_TURN_RATE_MAX] = 3200.0f;
+    this->fwork[BFD_FLY_WOBBLE_AMP] = 60.0f;
+    this->fwork[BFD_CEILING_BOUNCE] = 0.0f;
+    this->work[BFD_CEILING_TARGET] = 0;
+    this->work[BFD_ROCK_TIMER] = 0;
+    this->fireBreathTimer = 0;
+}
+
+static void BossFd_SetupRockfallRecovery(BossFd* this) {
+    this->attackPhase = BOSSFD_ROCKFALL_RECOVER;
+    this->timers[0] = BOSSFD_ROCKFALL_RECOVERY_TIME;
+    this->timers[1] = 0;
+    this->work[BFD_ROCK_TIMER] = 0;
+    this->targetPosition.x = 0.0f;
+    this->targetPosition.y = 360.0f;
+    this->targetPosition.z = 0.0f;
+}
+
+static bool BossFd_HasGroundForm(PlayState* play, BossFd* this) {
+    Actor* actor = play->actorCtx.actorLists[ACTORCAT_BOSS].head;
+
+    while (actor != NULL) {
+        if ((actor->update != NULL) && (actor->id == ACTOR_BOSS_FD2) && (actor->parent == &this->actor)) {
+            return true;
+        }
+        actor = actor->next;
+    }
+    return false;
+}
+
+static void BossFd_ClearCombatHazards(BossFd* this, PlayState* play) {
+    Actor* actor = play->actorCtx.actorLists[ACTORCAT_BOSS].head;
+    s32 i;
+
+    while (actor != NULL) {
+        Actor* next = actor->next;
+
+        if ((actor->update != NULL) && (actor->id == ACTOR_EN_VB_BALL) && (actor->parent == &this->actor) &&
+            (actor->params < 200)) {
+            EnVbBall* rock = (EnVbBall*)actor;
+
+            rock->collider.base.atFlags &= ~(AT_ON | AT_HIT | AT_BOUNCED);
+            Actor_Kill(actor);
+        }
+        actor = next;
+    }
+
+    for (i = 0; i < ARRAY_COUNT(this->effects); i++) {
+        if (this->effects[i].type == BFD_FX_FIRE_BREATH) {
+            this->effects[i].type = BFD_FX_NONE;
+        }
+    }
+    this->fireBreathTimer = 0;
+    this->work[BFD_ROCK_TIMER] = 0;
 }
 
 void BossFd_SpawnEmber(BossFdEffect* effect, Vec3f* position, Vec3f* velocity, Vec3f* acceleration, f32 scale) {
@@ -230,7 +416,7 @@ void BossFd_SetCameraSpeed(BossFd* this, f32 speedMod) {
 }
 
 void BossFd_UpdateCamera(BossFd* this, PlayState* play) {
-    if (this->introCamera != SUBCAM_FREE) {
+    if (this->introCamera > CAM_ID_MAIN) {
         Math_ApproachF(&this->camData.eye.x, this->camData.nextEye.x, this->camData.eyeMaxVel.x,
                        this->camData.eyeVel.x * this->camData.speedMod);
         Math_ApproachF(&this->camData.eye.y, this->camData.nextEye.y, this->camData.eyeMaxVel.y,
@@ -264,6 +450,7 @@ void BossFd_Init(Actor* thisx, PlayState* play) {
     SkelAnime_Init(play, &this->skelAnimeRightArm, &gVolvagiaRightArmSkel, &gVolvagiaRightArmEmergeAnim, NULL, NULL, 0);
     SkelAnime_Init(play, &this->skelAnimeLeftArm, &gVolvagiaLeftArmSkel, &gVolvagiaLeftArmEmergeAnim, NULL, NULL, 0);
     this->introState = BFD_CS_WAIT;
+    this->introCamera = SUBCAM_FREE;
     if (this->introState == BFD_CS_NONE) {
         Audio_QueueSeqCmd(SEQ_PLAYER_BGM_MAIN << 24 | NA_BGM_FIRE_BOSS);
     }
@@ -293,7 +480,15 @@ void BossFd_Init(Actor* thisx, PlayState* play) {
     }
 
     this->grabbingPlayer = false;
+    this->grabPlayerFloorWasDisabled = false;
+    this->grabTransitionedThisFrame = false;
     this->grabTimer = 0;
+    this->attackPhase = 0;
+    this->attackStep = 0;
+    this->attackTarget = this->actor.world.pos;
+    this->groundSpawnRetryTimer = 0;
+    this->hazardsCleared = false;
+    this->work[BFD_ATTACK_TRACKER] = 0;
     this->rightHandPos = this->actor.world.pos;
     this->rightHandForward.x = 0.0f;
     this->rightHandForward.y = 0.0f;
@@ -301,6 +496,9 @@ void BossFd_Init(Actor* thisx, PlayState* play) {
     this->mouthForward.x = 0.0f;
     this->mouthForward.y = 0.0f;
     this->mouthForward.z = 0.0f;
+    this->grabbedWaistOffset.x = 0.0f;
+    this->grabbedWaistOffset.y = 0.0f;
+    this->grabbedWaistOffset.z = 0.0f;
 
     if (Flags_GetClear(play, play->roomCtx.curRoom.num)) {
         Actor_Kill(&this->actor);
@@ -310,26 +508,396 @@ void BossFd_Init(Actor* thisx, PlayState* play) {
             Actor_Spawn(&play->actorCtx, play, ACTOR_ITEM_B_HEART, 0.0f, 100.0f, 200.0f, 0, 0, 0, 0);
         }
     } else {
-        Actor_SpawnAsChild(&play->actorCtx, &this->actor, play, ACTOR_BOSS_FD2, this->actor.world.pos.x,
-                           this->actor.world.pos.y, this->actor.world.pos.z, 0, 0, 0, this->introState);
+        if (Actor_SpawnAsChild(&play->actorCtx, &this->actor, play, ACTOR_BOSS_FD2, this->actor.world.pos.x,
+                               this->actor.world.pos.y, this->actor.world.pos.z, 0, 0, 0,
+                               this->introState) == NULL) {
+            this->groundSpawnRetryTimer = 1;
+        }
+    }
+}
+
+static Vec3f BossFd_GetGrabAnchor(BossFd* this) {
+    return this->headPos;
+}
+
+static f32 BossFd_GetHeadDrawOffset(BossFd* this, f32 speed) {
+    f32 offset;
+
+    if (this->work[BFD_ACTION_STATE] >= BOSSFD_SKULL_FALL) {
+        return -20.0f;
+    }
+
+    offset = -10.0f - ((speed - 5.0f) * 10.0f);
+    if (this->work[BFD_ACTION_STATE] == BOSSFD_FLY_GRAB) {
+        offset = CLAMP(offset, -70.0f, -20.0f);
+    }
+    return offset;
+}
+
+static Vec3f BossFd_GrabOffsetToLocal(Vec3f* offset, f32 pitch, f32 yaw) {
+    Vec3f yawSpace;
+    Vec3f local;
+    f32 sinPitch = sinf(pitch);
+    f32 cosPitch = cosf(pitch);
+    f32 sinYaw = sinf(yaw);
+    f32 cosYaw = cosf(yaw);
+
+    yawSpace.x = (offset->x * cosYaw) - (offset->z * sinYaw);
+    yawSpace.y = offset->y;
+    yawSpace.z = (offset->x * sinYaw) + (offset->z * cosYaw);
+    local.x = yawSpace.x;
+    local.y = (yawSpace.y * cosPitch) - (yawSpace.z * sinPitch);
+    local.z = (yawSpace.y * sinPitch) + (yawSpace.z * cosPitch);
+    return local;
+}
+
+static Vec3f BossFd_GrabOffsetToWorld(Vec3f* offset, f32 pitch, f32 yaw) {
+    Vec3f pitchSpace;
+    Vec3f world;
+    f32 sinPitch = sinf(pitch);
+    f32 cosPitch = cosf(pitch);
+    f32 sinYaw = sinf(yaw);
+    f32 cosYaw = cosf(yaw);
+
+    pitchSpace.x = offset->x;
+    pitchSpace.y = (offset->y * cosPitch) + (offset->z * sinPitch);
+    pitchSpace.z = (-offset->y * sinPitch) + (offset->z * cosPitch);
+    world.x = (pitchSpace.x * cosYaw) + (pitchSpace.z * sinYaw);
+    world.y = pitchSpace.y;
+    world.z = (-pitchSpace.x * sinYaw) + (pitchSpace.z * cosYaw);
+    return world;
+}
+
+static Vec3f BossFd_GetPostMoveGrabAnchor(BossFd* this) {
+    // Reproject the last rendered mouth through this frame's body-root pose so bite contact matches Draw.
+    s16 currentIndex = this->work[BFD_LEAD_BODY_SEG];
+    s16 previousIndex = (currentIndex + ARRAY_COUNT(this->bodySegsPos) - 1) % ARRAY_COUNT(this->bodySegsPos);
+    s16 beforePreviousIndex =
+        (previousIndex + ARRAY_COUNT(this->bodySegsPos) - 1) % ARRAY_COUNT(this->bodySegsPos);
+    Vec3f previousOffset = { this->headPos.x - this->bodySegsPos[previousIndex].x,
+                             this->headPos.y - this->bodySegsPos[previousIndex].y,
+                             this->headPos.z - this->bodySegsPos[previousIndex].z };
+    Vec3f localOffset = BossFd_GrabOffsetToLocal(&previousOffset, this->bodySegsRot[previousIndex].x,
+                                                 this->bodySegsRot[previousIndex].y);
+    Vec3f previousMovement = { this->bodySegsPos[previousIndex].x - this->bodySegsPos[beforePreviousIndex].x,
+                               this->bodySegsPos[previousIndex].y - this->bodySegsPos[beforePreviousIndex].y,
+                               this->bodySegsPos[previousIndex].z - this->bodySegsPos[beforePreviousIndex].z };
+    f32 previousSpeed = sqrtf(SQ(previousMovement.x) + SQ(previousMovement.y) + SQ(previousMovement.z));
+    f32 updateSpeedScale = R_UPDATE_RATE * 0.5f;
+    Vec3f currentOffset;
+    Vec3f anchor;
+
+    if (updateSpeedScale > 0.001f) {
+        // Body history stores scaled displacement, while the head draw offset consumes raw flight speed.
+        previousSpeed /= updateSpeedScale;
+    }
+    localOffset.z += BossFd_GetHeadDrawOffset(this, this->actor.speedXZ) -
+                     BossFd_GetHeadDrawOffset(this, previousSpeed);
+    currentOffset = BossFd_GrabOffsetToWorld(&localOffset, this->bodySegsRot[currentIndex].x,
+                                             this->bodySegsRot[currentIndex].y);
+    anchor.x = this->bodySegsPos[currentIndex].x + currentOffset.x;
+    anchor.y = this->bodySegsPos[currentIndex].y + currentOffset.y;
+    anchor.z = this->bodySegsPos[currentIndex].z + currentOffset.z;
+    return anchor;
+}
+
+static Vec3f BossFd_GetPlayerBitePoint(Player* player) {
+    Vec3f bitePoint = player->actor.world.pos;
+
+    bitePoint.y += BOSSFD_GRAB_BITE_POINT_HEIGHT;
+    return bitePoint;
+}
+
+static f32 BossFd_PointToSegmentDistSq(Vec3f* point, Vec3f* start, Vec3f* end) {
+    Vec3f segment = { end->x - start->x, end->y - start->y, end->z - start->z };
+    Vec3f toPoint = { point->x - start->x, point->y - start->y, point->z - start->z };
+    f32 segmentLengthSq = SQ(segment.x) + SQ(segment.y) + SQ(segment.z);
+    f32 t = 0.0f;
+    Vec3f closest;
+
+    if (segmentLengthSq > 0.001f) {
+        t = ((toPoint.x * segment.x) + (toPoint.y * segment.y) + (toPoint.z * segment.z)) / segmentLengthSq;
+        if (t < 0.0f) {
+            t = 0.0f;
+        } else if (t > 1.0f) {
+            t = 1.0f;
+        }
+    }
+    closest.x = start->x + (segment.x * t);
+    closest.y = start->y + (segment.y * t);
+    closest.z = start->z + (segment.z * t);
+    return SQ(point->x - closest.x) + SQ(point->y - closest.y) + SQ(point->z - closest.z);
+}
+
+static Vec3f BossFd_GetGrabStageTarget(BossFd* this, Player* player) {
+    Vec3f target = player->actor.world.pos;
+    f32 dx = this->actor.world.pos.x - player->actor.world.pos.x;
+    f32 dz = this->actor.world.pos.z - player->actor.world.pos.z;
+    f32 distance = sqrtf(SQ(dx) + SQ(dz));
+
+    if (distance < 1.0f) {
+        dx = -Math_SinS(this->actor.world.rot.y);
+        dz = -Math_CosS(this->actor.world.rot.y);
+        distance = 1.0f;
+    }
+    target.x += (dx / distance) * BOSSFD_GRAB_STAGE_DISTANCE;
+    target.y += BOSSFD_GRAB_STAGE_HEIGHT;
+    target.z += (dz / distance) * BOSSFD_GRAB_STAGE_DISTANCE;
+    return target;
+}
+
+static void BossFd_SetupGrabRecovery(BossFd* this) {
+    this->attackPhase = BOSSFD_GRAB_RECOVER;
+    this->attackStep = 0;
+    this->timers[0] = BOSSFD_GRAB_RECOVERY_TIME;
+    this->timers[1] = 0;
+    this->grabTimer = 0;
+    this->work[BFD_STOP_FLAG] = false;
+    this->attackTarget.x =
+        this->actor.world.pos.x + (Math_SinS(this->actor.world.rot.y) * BOSSFD_GRAB_RECOVERY_DISTANCE);
+    this->attackTarget.y = this->actor.world.pos.y + BOSSFD_GRAB_RECOVERY_RISE;
+    if (this->attackTarget.y > BOSSFD_GRAB_RECOVERY_MAX_HEIGHT) {
+        this->attackTarget.y = BOSSFD_GRAB_RECOVERY_MAX_HEIGHT;
+    }
+    this->attackTarget.z =
+        this->actor.world.pos.z + (Math_CosS(this->actor.world.rot.y) * BOSSFD_GRAB_RECOVERY_DISTANCE);
+    this->targetPosition = this->attackTarget;
+    this->fwork[BFD_FLY_SPEED] = BOSSFD_GRAB_RECOVERY_SPEED;
+    this->fwork[BFD_TURN_RATE_MAX] = 800.0f;
+    this->fwork[BFD_FLY_WOBBLE_AMP] = 25.0f;
+}
+
+static void BossFd_ReleasePlayer(BossFd* this, PlayState* play) {
+    Player* player = GET_PLAYER(play);
+    bool ownsPlayer = (player != NULL) && (player->actor.parent == &this->actor);
+    bool ownsOrphanedGrab =
+        (player != NULL) && this->grabbingPlayer && (player->actor.parent == NULL);
+
+    if (ownsPlayer || ownsOrphanedGrab) {
+        player->stateFlags2 &= ~PLAYER_STATE2_GRABBED_BY_ENEMY;
+        if (!this->grabPlayerFloorWasDisabled) {
+            player->stateFlags1 &= ~PLAYER_STATE1_FLOOR_DISABLED;
+        }
+        player->av2.actionVar2 = 0xC8;
+        if (ownsPlayer) {
+            player->actor.parent = NULL;
+        }
+        player->actor.shape.rot.x = 0;
+        player->actor.shape.rot.z = 0;
+        player->actor.world.rot.x = 0;
+        player->actor.world.rot.z = 0;
+    }
+    this->grabbingPlayer = false;
+    this->grabPlayerFloorWasDisabled = false;
+    this->grabTimer = 0;
+}
+
+static void BossFd_PositionGrabbedPlayer(BossFd* this, Player* player, Vec3f* grabAnchor) {
+    player->actor.world.pos = *grabAnchor;
+    player->actor.world.pos.y += BOSSFD_GRAB_WAIST_FOOT_OFFSET;
+    player->actor.prevPos = player->actor.world.pos;
+    player->actor.shape.rot.x = 0;
+    player->actor.shape.rot.y = this->actor.world.rot.y + 0x8000;
+    player->actor.shape.rot.z = 0;
+    player->actor.world.rot = player->actor.shape.rot;
+    player->linearVelocity = 0.0f;
+    player->actor.speedXZ = 0.0f;
+    player->actor.velocity.x = 0.0f;
+    player->actor.velocity.y = 0.0f;
+    player->actor.velocity.z = 0.0f;
+}
+
+static void BossFd_BeginGrabAlign(BossFd* this, Player* player) {
+    this->attackPhase = BOSSFD_GRAB_ALIGN;
+    this->timers[0] = BOSSFD_GRAB_ALIGN_TIMEOUT;
+    this->timers[1] = BOSSFD_GRAB_ALIGN_MIN_TIME;
+    this->targetPosition = BossFd_GetPlayerBitePoint(player);
+    this->actor.speedXZ = BOSSFD_GRAB_ALIGN_SPEED;
+    this->fwork[BFD_FLY_SPEED] = BOSSFD_GRAB_ALIGN_SPEED;
+    this->fwork[BFD_TURN_RATE] = 4000.0f;
+    this->fwork[BFD_TURN_RATE_MAX] = 4000.0f;
+    this->fwork[BFD_FLY_WOBBLE_AMP] = 0.0f;
+}
+
+static void BossFd_UpdateGrabLungeTarget(BossFd* this, Player* player) {
+    Vec3f grabAnchor = BossFd_GetGrabAnchor(this);
+    Vec3f bitePoint = BossFd_GetPlayerBitePoint(player);
+    Vec3f mouthOffset = { grabAnchor.x - this->actor.world.pos.x, grabAnchor.y - this->actor.world.pos.y,
+                         grabAnchor.z - this->actor.world.pos.z };
+    f32 directionX = bitePoint.x - grabAnchor.x;
+    f32 directionZ = bitePoint.z - grabAnchor.z;
+    f32 directionLength = sqrtf(SQ(directionX) + SQ(directionZ));
+
+    if (directionLength < 1.0f) {
+        directionX = Math_SinS(this->actor.world.rot.y);
+        directionZ = Math_CosS(this->actor.world.rot.y);
+    } else {
+        directionX /= directionLength;
+        directionZ /= directionLength;
+    }
+
+    this->attackTarget.x = bitePoint.x - mouthOffset.x + (directionX * BOSSFD_GRAB_LUNGE_OVERSHOOT);
+    this->attackTarget.y = bitePoint.y - mouthOffset.y;
+    if (this->attackTarget.y < BOSSFD_GRAB_LUNGE_HEIGHT_MIN) {
+        this->attackTarget.y = BOSSFD_GRAB_LUNGE_HEIGHT_MIN;
+    }
+    this->attackTarget.z = bitePoint.z - mouthOffset.z + (directionZ * BOSSFD_GRAB_LUNGE_OVERSHOOT);
+    this->targetPosition = this->attackTarget;
+}
+
+static void BossFd_BeginGrabLunge(BossFd* this, Player* player) {
+    BossFd_UpdateGrabLungeTarget(this, player);
+    this->attackPhase = BOSSFD_GRAB_LUNGE;
+    this->timers[0] = BOSSFD_GRAB_LUNGE_TIME;
+    this->timers[1] = 0;
+    this->grabTimer = BOSSFD_GRAB_LUNGE_TIME;
+    this->actor.speedXZ = BOSSFD_GRAB_LUNGE_SPEED;
+    this->fwork[BFD_FLY_SPEED] = BOSSFD_GRAB_LUNGE_SPEED;
+    this->fwork[BFD_TURN_RATE] = 1800.0f;
+    this->fwork[BFD_TURN_RATE_MAX] = 1800.0f;
+    this->fwork[BFD_FLY_WOBBLE_AMP] = 0.0f;
+    this->work[BFD_MANE_EMBERS_TIMER] = 20;
+    Audio_PlayActorSound2(&this->actor, NA_SE_EN_VALVAISA_SW_NAIL);
+}
+
+static bool BossFd_CapturePlayer(BossFd* this, PlayState* play, Player* player, Vec3f* grabAnchor) {
+    u8 floorWasDisabled;
+    f32 ascentTargetRadius;
+
+    if ((player->actor.parent != NULL) || (play->grabPlayer == NULL)) {
+        return false;
+    }
+    floorWasDisabled = (player->stateFlags1 & PLAYER_STATE1_FLOOR_DISABLED) != 0;
+    if (!play->grabPlayer(play, player)) {
+        return false;
+    }
+
+    player->actor.parent = &this->actor;
+    player->av2.actionVar2 = 0xA;
+    player->stateFlags1 |= PLAYER_STATE1_FLOOR_DISABLED;
+    this->grabPlayerFloorWasDisabled = floorWasDisabled;
+    this->grabbingPlayer = true;
+    this->grabTimer = BOSSFD_GRAB_ASCENT_TIMEOUT;
+    this->attackPhase = BOSSFD_GRAB_ASCEND;
+    this->attackStep = 0;
+    this->timers[0] = BOSSFD_GRAB_ASCENT_TIMEOUT;
+    this->timers[1] = BOSSFD_GRAB_FIRST_DAMAGE_DELAY;
+    this->attackTarget.x = (this->actor.world.pos.x * BOSSFD_GRAB_ASCENT_CENTER_SCALE) +
+                           (Math_SinS(this->actor.world.rot.y) * BOSSFD_GRAB_ASCENT_FORWARD_DISTANCE);
+    this->attackTarget.y = BOSSFD_GRAB_ASCENT_HEIGHT;
+    this->attackTarget.z = (this->actor.world.pos.z * BOSSFD_GRAB_ASCENT_CENTER_SCALE) +
+                           (Math_CosS(this->actor.world.rot.y) * BOSSFD_GRAB_ASCENT_FORWARD_DISTANCE);
+    ascentTargetRadius = sqrtf(SQ(this->attackTarget.x) + SQ(this->attackTarget.z));
+    if (ascentTargetRadius > BOSSFD_GRAB_ASCENT_MAX_RADIUS) {
+        this->attackTarget.x *= BOSSFD_GRAB_ASCENT_MAX_RADIUS / ascentTargetRadius;
+        this->attackTarget.z *= BOSSFD_GRAB_ASCENT_MAX_RADIUS / ascentTargetRadius;
+    }
+    this->targetPosition = this->attackTarget;
+    this->fwork[BFD_FLY_SPEED] = BOSSFD_GRAB_ASCENT_SPEED;
+    this->fwork[BFD_TURN_RATE] = 1000.0f;
+    this->fwork[BFD_TURN_RATE_MAX] = 1000.0f;
+    this->fwork[BFD_FLY_WOBBLE_AMP] = 10.0f;
+    this->work[BFD_STOP_FLAG] = false;
+    this->work[BFD_MANE_EMBERS_TIMER] = 30;
+    this->fogMode = 2;
+    this->grabbedWaistOffset.x = grabAnchor->x - this->actor.world.pos.x;
+    this->grabbedWaistOffset.y = grabAnchor->y - this->actor.world.pos.y;
+    this->grabbedWaistOffset.z = grabAnchor->z - this->actor.world.pos.z;
+    BossFd_PositionGrabbedPlayer(this, player, grabAnchor);
+    Actor_RequestQuakeWithSpeed(play, 1, 0x10, 0x2000);
+    Audio_PlayActorSound2(&player->actor, NA_SE_PL_BODY_HIT);
+    return true;
+}
+
+static void BossFd_ThrowGrabbedPlayer(BossFd* this, PlayState* play, Player* player) {
+    Vec3f center = { 0.0f, player->actor.world.pos.y, 0.0f };
+    s16 throwYaw;
+
+    if ((SQ(player->actor.world.pos.x) + SQ(player->actor.world.pos.z)) < SQ(40.0f)) {
+        throwYaw = this->actor.world.rot.y;
+    } else {
+        throwYaw = Math_Vec3f_Yaw(&player->actor.world.pos, &center);
+    }
+    BossFd_ReleasePlayer(this, play);
+    Actor_SetPlayerKnockbackLargeNoDamage(play, &this->actor, BOSSFD_GRAB_THROW_SPEED, throwYaw,
+                                           BOSSFD_GRAB_THROW_LIFT);
+    Audio_PlayActorSound2(&player->actor, NA_SE_VO_LI_FALL_L);
+    Actor_RequestQuakeWithSpeed(play, 1, 0x18, 0x2800);
+    BossFd_SetupGrabRecovery(this);
+}
+
+static void BossFd_UpdateGrabAfterMovement(BossFd* this, PlayState* play, Player* player) {
+    Vec3f previousGrabAnchor;
+    Vec3f grabAnchor;
+
+    if (this->work[BFD_ACTION_STATE] != BOSSFD_FLY_GRAB) {
+        return;
+    }
+    previousGrabAnchor = BossFd_GetGrabAnchor(this);
+    grabAnchor = BossFd_GetPostMoveGrabAnchor(this);
+
+    if ((this->attackPhase == BOSSFD_GRAB_LUNGE) && !this->grabbingPlayer) {
+        Vec3f bitePoint = BossFd_GetPlayerBitePoint(player);
+
+        if (!GameInteractor_SecondCollisionUpdate() &&
+            (BossFd_PointToSegmentDistSq(&bitePoint, &previousGrabAnchor, &grabAnchor) <
+             SQ(BOSSFD_GRAB_BITE_RADIUS))) {
+            BossFd_CapturePlayer(this, play, player, &grabAnchor);
+        }
+        if (!this->grabbingPlayer) {
+            if (this->timers[0] == 0) {
+                BossFd_SetupGrabRecovery(this);
+            }
+        }
+    } else if ((this->attackPhase == BOSSFD_GRAB_ASCEND) && this->grabbingPlayer) {
+        this->grabbedWaistOffset.x = grabAnchor.x - this->actor.world.pos.x;
+        this->grabbedWaistOffset.y = grabAnchor.y - this->actor.world.pos.y;
+        this->grabbedWaistOffset.z = grabAnchor.z - this->actor.world.pos.z;
+        BossFd_PositionGrabbedPlayer(this, player, &grabAnchor);
+        this->grabTimer = this->timers[0];
+
+        if ((this->attackStep < BOSSFD_GRAB_DAMAGE_BEATS) && (this->timers[1] == 0)) {
+            bool playerDied = false;
+
+            this->attackStep++;
+            if (play->damagePlayer != NULL) {
+                playerDied = play->damagePlayer(play, -BOSSFD_GRAB_DAMAGE_PER_BEAT);
+                Audio_PlayActorSound2(&player->actor, NA_SE_VO_LI_DAMAGE_S);
+                Actor_RequestQuakeWithSpeed(play, 1, 0x14, 0x2800);
+                this->work[BFD_MANE_EMBERS_TIMER] = 24;
+                this->fogMode = 2;
+            }
+            if (playerDied || !(player->stateFlags2 & PLAYER_STATE2_GRABBED_BY_ENEMY) ||
+                (player->actor.parent != &this->actor)) {
+                BossFd_ReleasePlayer(this, play);
+                BossFd_SetupGrabRecovery(this);
+                return;
+            }
+            if (this->attackStep < BOSSFD_GRAB_DAMAGE_BEATS) {
+                this->timers[1] = BOSSFD_GRAB_DAMAGE_INTERVAL;
+            }
+        }
+
+        if (((this->actor.world.pos.y >= BOSSFD_GRAB_ASCENT_HEIGHT) &&
+             (this->attackStep >= BOSSFD_GRAB_DAMAGE_BEATS)) ||
+            (this->timers[0] == 0)) {
+            BossFd_ThrowGrabbedPlayer(this, play, player);
+        }
     }
 }
 
 void BossFd_Destroy(Actor* thisx, PlayState* play) {
     s32 pad;
     BossFd* this = (BossFd*)thisx;
+    Player* player = GET_PLAYER(play);
 
     SkelAnime_Free(&this->skelAnimeHead, play);
     SkelAnime_Free(&this->skelAnimeRightArm, play);
     SkelAnime_Free(&this->skelAnimeLeftArm, play);
     Collider_DestroyJntSph(play, &this->collider);
 
-    if (this->grabbingPlayer) {
-        Player* player = GET_PLAYER(play);
-
-        if (player->actor.parent == &this->actor) {
-            player->actor.parent = NULL;
-        }
+    if (this->grabbingPlayer || ((player != NULL) && (player->actor.parent == &this->actor))) {
+        BossFd_ReleasePlayer(this, play);
     }
 }
 
@@ -345,6 +913,48 @@ void BossFd_SetupFly(BossFd* this, PlayState* play) {
     this->fwork[BFD_TURN_RATE_MAX] = 1000.0f;
 }
 
+static void BossFd_RelocateFlightHistory(BossFd* this, const Vec3f* position) {
+    Vec3f translation;
+    s16 i;
+
+    // BossFd_Wait teleports the flying form between holes; never let the trail bridge that discontinuity.
+    translation.x = position->x - this->actor.world.pos.x;
+    translation.y = position->y - this->actor.world.pos.y;
+    translation.z = position->z - this->actor.world.pos.z;
+    for (i = 0; i < ARRAY_COUNT(this->bodySegsPos); i++) {
+        this->bodySegsPos[i].x += translation.x;
+        this->bodySegsPos[i].y += translation.y;
+        this->bodySegsPos[i].z += translation.z;
+    }
+
+    for (i = 0; i < ARRAY_COUNT(this->centerMane.pos); i++) {
+        this->centerMane.pos[i].x += translation.x;
+        this->centerMane.pos[i].y += translation.y;
+        this->centerMane.pos[i].z += translation.z;
+        this->rightMane.pos[i].x += translation.x;
+        this->rightMane.pos[i].y += translation.y;
+        this->rightMane.pos[i].z += translation.z;
+        this->leftMane.pos[i].x += translation.x;
+        this->leftMane.pos[i].y += translation.y;
+        this->leftMane.pos[i].z += translation.z;
+    }
+    this->centerMane.head.x += translation.x;
+    this->centerMane.head.y += translation.y;
+    this->centerMane.head.z += translation.z;
+    this->rightMane.head.x += translation.x;
+    this->rightMane.head.y += translation.y;
+    this->rightMane.head.z += translation.z;
+    this->leftMane.head.x += translation.x;
+    this->leftMane.head.y += translation.y;
+    this->leftMane.head.z += translation.z;
+    this->headPos.x += translation.x;
+    this->headPos.y += translation.y;
+    this->headPos.z += translation.z;
+
+    this->actor.world.pos = *position;
+    this->actor.prevPos = *position;
+}
+
 static Vec3f sHoleLocations[] = {
     { 0.0f, 90.0f, -243.0f },    { 0.0f, 90.0f, 0.0f },    { 0.0f, 90.0f, 243.0f },
     { -243.0f, 90.0f, -243.0f }, { -243.0f, 90.0f, 0.0f }, { -243.0f, 90.0f, 243.0f },
@@ -356,13 +966,130 @@ static Vec3f sCeilingTargets[] = {
     { 0.0f, 900.0f, 243.0f },  { -243.0f, 900.0f, 100.0f }, { -243.0, 900.0f, -100.0f },
 };
 
+static const Vec3f sRockfallSafePoints[] = {
+    { -122.0f, 0.0f, -122.0f },
+    { -122.0f, 0.0f, 122.0f },
+    { 122.0f, 0.0f, 122.0f },
+    { 122.0f, 0.0f, -122.0f },
+};
+
+static s16 BossFd_GetRockfallWaveCount(BossFd* this) {
+    if (this->actor.colChkInfo.health <= BOSSFD_ENRAGED_HEALTH) {
+        return BOSSFD_ROCKFALL_ENRAGED_WAVE_COUNT;
+    }
+    if (this->actor.colChkInfo.health <= BOSSFD_ROCKFALL_EMPOWERED_HEALTH_THRESHOLD) {
+        return BOSSFD_ROCKFALL_EMPOWERED_WAVE_COUNT;
+    }
+    return BOSSFD_ROCKFALL_BASE_WAVE_COUNT;
+}
+
+static void BossFd_SpawnRockfallDebris(BossFd* this, Vec3f* origin, s32 count, f32 spread, f32 downwardSpeed) {
+    s32 i;
+
+    for (i = 0; i < count; i++) {
+        Vec3f position = { origin->x + Rand_CenteredFloat(spread), origin->y + Rand_CenteredFloat(spread * 0.25f),
+                           origin->z + Rand_CenteredFloat(spread) };
+        Vec3f velocity = { Rand_CenteredFloat(spread * 0.12f), -Rand_ZeroFloat(downwardSpeed) - 1.0f,
+                           Rand_CenteredFloat(spread * 0.12f) };
+        Vec3f acceleration = { 0.0f, -0.4f, 0.0f };
+
+        BossFd_SpawnDebris(this->effects, &position, &velocity, &acceleration, Rand_ZeroFloat(15.0f) + 15.0f);
+    }
+}
+
+static void BossFd_BeginRockfallBarrage(BossFd* this, PlayState* play) {
+    Vec3f shatterPosition = this->actor.world.pos;
+
+    this->attackPhase = BOSSFD_ROCKFALL_BARRAGE;
+    this->attackStep = 0;
+    this->timers[0] = BOSSFD_ROCKFALL_BARRAGE_TIMEOUT;
+    this->timers[1] = BOSSFD_ROCKFALL_FIRST_WAVE_DELAY;
+    this->work[BFD_CEILING_TARGET] = 0;
+    this->fwork[BFD_CEILING_BOUNCE] = -18384.0f;
+    this->work[BFD_MANE_EMBERS_TIMER] = 30;
+    this->fogMode = 2;
+
+    Audio_PlaySoundGeneral(NA_SE_EV_EXPLOSION, &this->actor.projectedPos, 4, &gSfxDefaultFreqAndVolScale,
+                           &gSfxDefaultFreqAndVolScale, &gSfxDefaultReverb);
+    Actor_RequestQuakeWithSpeed(play, 3, 0x18, 0x7530);
+    BossFd_SpawnRockfallDebris(this, &shatterPosition, BOSSFD_ROCKFALL_SHATTER_DEBRIS_COUNT, 80.0f, 10.0f);
+}
+
+static Vec3f BossFd_GetRockfallSafePointNear(Vec3f* position, f32 desiredDistance) {
+    Vec3f safePoint = sRockfallSafePoints[0];
+    f32 bestDistanceError = 100000.0f;
+    s32 i;
+
+    for (i = 0; i < ARRAY_COUNT(sRockfallSafePoints); i++) {
+        f32 distance = sqrtf(SQ(sRockfallSafePoints[i].x - position->x) +
+                             SQ(sRockfallSafePoints[i].z - position->z));
+        f32 distanceError = fabsf(distance - desiredDistance);
+
+        if (distanceError < bestDistanceError) {
+            bestDistanceError = distanceError;
+            safePoint = sRockfallSafePoints[i];
+        }
+    }
+    return safePoint;
+}
+
+static bool BossFd_IsRockfallLandingSafe(BossFd* this, PlayState* play, Vec3f* position) {
+    CollisionPoly* floorPoly;
+    s32 bgId;
+    Vec3f probePosition = *position;
+    f32 floorHeight;
+
+    probePosition.y = BOSSFD_ROCKFALL_BARRAGE_HEIGHT;
+    floorHeight = BgCheck_EntityRaycastFloor4(&play->colCtx, &floorPoly, &bgId, &this->actor, &probePosition);
+    return (floorHeight >= BOSSFD_ROCKFALL_ARENA_FLOOR_MIN) &&
+           (floorHeight <= BOSSFD_ROCKFALL_ARENA_FLOOR_MAX);
+}
+
+static bool BossFd_TrySpawnRockfallWave(BossFd* this, PlayState* play, Player* player) {
+    Vec3f spawnPosition;
+    EnVbBall* rock;
+    s32 wave = this->attackStep;
+    s16 scale = (s16)Rand_ZeroFloat(20.0f) + 155 + (wave * 5);
+
+    if (wave == 0) {
+        spawnPosition =
+            BossFd_GetRockfallSafePointNear(&player->actor.world.pos, BOSSFD_ROCKFALL_TEACHING_DISTANCE);
+    } else {
+        spawnPosition = player->actor.world.pos;
+        if (!BossFd_IsRockfallLandingSafe(this, play, &spawnPosition)) {
+            spawnPosition = BossFd_GetRockfallSafePointNear(&player->actor.world.pos, 0.0f);
+        }
+    }
+    spawnPosition.y = BOSSFD_ROCKFALL_ROCK_HEIGHT;
+
+    rock = BossFd_TrySpawnRock(this, play, spawnPosition.x, spawnPosition.y, spawnPosition.z, scale, 100);
+    if (rock == NULL) {
+        return false;
+    }
+
+    BossFd_SpawnRockfallDebris(this, &spawnPosition, BOSSFD_ROCKFALL_SPAWN_DEBRIS_COUNT, 40.0f, 5.0f);
+    if (this->actor.colChkInfo.health <= BOSSFD_ROCKFALL_EMPOWERED_HEALTH_THRESHOLD) {
+        this->work[BFD_ATTACK_TRACKER] |= BOSSFD_ATTACK_SEEN_EMPOWERED_ROCKFALL;
+    }
+    this->attackStep++;
+    this->work[BFD_CEILING_TARGET] = (this->work[BFD_CEILING_TARGET] + 1) % ARRAY_COUNT(sCeilingTargets);
+    this->work[BFD_MANE_EMBERS_TIMER] = 18;
+
+    if (this->attackStep >= BossFd_GetRockfallWaveCount(this)) {
+        this->fogMode = 2;
+        BossFd_SetupRockfallRecovery(this);
+    } else {
+        this->timers[1] = BOSSFD_ROCKFALL_WAVE_INTERVAL;
+    }
+    return true;
+}
+
 void BossFd_Fly(BossFd* this, PlayState* play) {
     u8 sp1CF = false;
     u8 temp_rand;
     s16 i1;
     s16 i2;
     s16 i3;
-    s16 yawDiff;
     f32 dx;
     f32 dy;
     f32 dz;
@@ -370,19 +1097,39 @@ void BossFd_Fly(BossFd* this, PlayState* play) {
     f32 angleToTarget;
     f32 pitchToTarget;
     Vec3f* holePosition1;
-    f32 temp_y;
     f32 temp_x;
     f32 temp_z;
     f32 temp;
     bool aggressiveTuning =
         (this->introState == BFD_CS_NONE) && (this->work[BFD_ACTION_STATE] < BOSSFD_DEATH_START);
 
-    if ((this->work[BFD_ACTION_STATE] != BOSSFD_FLY_GRAB) && this->grabbingPlayer) {
-        if (player->actor.parent == &this->actor) {
-            player->actor.parent = NULL;
+    if ((this->actor.colChkInfo.health == 0) && (this->work[BFD_ACTION_STATE] == BOSSFD_FLY_GRAB)) {
+        if (this->grabbingPlayer || (player->actor.parent == &this->actor)) {
+            BossFd_ReleasePlayer(this, play);
         }
-        this->grabbingPlayer = false;
-        this->grabTimer = 0;
+        this->attackPhase = 0;
+        this->attackStep = 0;
+        this->timers[0] = 0;
+        this->work[BFD_ACTION_STATE] = BOSSFD_FLY_MAIN;
+        this->work[BFD_START_ATTACK] = false;
+        this->grabTransitionedThisFrame = true;
+    }
+    if (this->grabbingPlayer &&
+        ((player->actor.parent != &this->actor) || !(player->stateFlags2 & PLAYER_STATE2_GRABBED_BY_ENEMY))) {
+        BossFd_ReleasePlayer(this, play);
+        if (this->work[BFD_ACTION_STATE] == BOSSFD_FLY_GRAB) {
+            BossFd_SetupGrabRecovery(this);
+        }
+    }
+    if (!this->grabbingPlayer && (player->actor.parent == &this->actor)) {
+        BossFd_ReleasePlayer(this, play);
+        if (this->work[BFD_ACTION_STATE] == BOSSFD_FLY_GRAB) {
+            BossFd_SetupGrabRecovery(this);
+        }
+    }
+    if ((this->work[BFD_ACTION_STATE] != BOSSFD_FLY_GRAB) &&
+        (this->grabbingPlayer || (player->actor.parent == &this->actor))) {
+        BossFd_ReleasePlayer(this, play);
     }
 
     SkelAnime_Update(&this->skelAnimeHead);
@@ -425,8 +1172,12 @@ void BossFd_Fly(BossFd* this, PlayState* play) {
                     func_80064520(play, &play->csCtx);
                     Player_SetCsActionWithHaltedActors(play, &this->actor, 8);
                     this->introCamera = Play_CreateSubCamera(play);
-                    Play_ChangeCameraStatus(play, CAM_ID_MAIN, CAM_STAT_WAIT);
-                    Play_ChangeCameraStatus(play, this->introCamera, CAM_STAT_ACTIVE);
+                    if (this->introCamera > CAM_ID_MAIN) {
+                        Play_ChangeCameraStatus(play, CAM_ID_MAIN, CAM_STAT_WAIT);
+                        Play_ChangeCameraStatus(play, this->introCamera, CAM_STAT_ACTIVE);
+                    } else {
+                        this->introCamera = SUBCAM_FREE;
+                    }
                     player2->actor.world.pos.x = 380.0f;
                     player2->actor.world.pos.y = 100.0f;
                     player2->actor.world.pos.z = 0.0f;
@@ -642,11 +1393,14 @@ void BossFd_Fly(BossFd* this, PlayState* play) {
                 osSyncPrintf("this->timer[2] = %d\n", this->timers[2]);
                 osSyncPrintf("this->timer[5] = %d\n", this->timers[5]);
                 if (this->timers[2] == 0) {
-                    mainCam->eye = this->camData.eye;
-                    mainCam->eyeNext = this->camData.eye;
-                    mainCam->at = this->camData.at;
-                    func_800C08AC(play, this->introCamera, 0);
-                    this->introState = this->introFlyState = this->introCamera = BFD_CS_NONE;
+                    if (this->introCamera > CAM_ID_MAIN) {
+                        mainCam->eye = this->camData.eye;
+                        mainCam->eyeNext = this->camData.eye;
+                        mainCam->at = this->camData.at;
+                        func_800C08AC(play, this->introCamera, 0);
+                    }
+                    this->introState = this->introFlyState = BFD_CS_NONE;
+                    this->introCamera = SUBCAM_FREE;
                     func_80064534(play, &play->csCtx);
                     Player_SetCsActionWithHaltedActors(play, &this->actor, 7);
                     this->actionFunc = BossFd_Wait;
@@ -699,18 +1453,27 @@ void BossFd_Fly(BossFd* this, PlayState* play) {
                                 this->work[BFD_ACTION_STATE] = BOSSFD_FLY_CHASE;
                                 this->timers[0] = aggressiveTuning ? 240 : 300;
                                 this->fwork[BFD_TURN_RATE_MAX] = aggressiveTuning ? 1200.0f : 900.0f;
-                                this->fwork[BFD_TARGET_Y_OFFSET] = aggressiveTuning ? 330.0f : 300.0f;
-                                this->work[BOSSFD_LOW_CIRCLE_ANGLE_IDX] = this->work[BOSSFD_LOW_CIRCLE_DIR_IDX] = 0;
+                                this->targetPosition = player->actor.world.pos;
+                                this->targetPosition.y += 30.0f;
                                 break;
                             case BOSSFD_FLY_LOW_CIRCLE:
                                 this->work[BFD_ACTION_STATE] = BOSSFD_FLY_LOW_CIRCLE;
-                                this->timers[0] = BOSSFD_LOW_CIRCLE_TIMER;
+                                this->attackPhase = BOSSFD_LOW_CIRCLE_RISE;
+                                this->attackStep = 0;
+                                this->attackTarget = this->actor.world.pos;
+                                this->attackTarget.y = BOSSFD_LOW_CIRCLE_SAFE_HEIGHT;
+                                this->targetPosition = this->attackTarget;
+                                this->timers[0] = 0;
+                                this->timers[1] = BOSSFD_LOW_CIRCLE_ENTRY_TIME;
                                 this->fwork[BFD_FLY_SPEED] = BOSSFD_LOW_CIRCLE_SPEED_DEFAULT;
                                 this->fwork[BFD_TURN_RATE_MAX] = 1600.0f;
-                                this->work[BOSSFD_LOW_CIRCLE_ANGLE_IDX] = (s16)Rand_ZeroFloat(0x8000);
+                                this->work[BOSSFD_LOW_CIRCLE_ANGLE_IDX] =
+                                    (s16)(Math_FAtan2F(this->actor.world.pos.x - sHoleLocations[1].x,
+                                                      this->actor.world.pos.z - sHoleLocations[1].z) *
+                                          (0x8000 / M_PI));
                                 this->work[BOSSFD_LOW_CIRCLE_DIR_IDX] = (Rand_ZeroOne() < 0.5f) ? 1 : -1;
-                                this->fwork[BFD_FLY_WOBBLE_AMP] = 80.0f;
-                                this->work[BFD_ROCK_TIMER] = BOSSFD_LOW_CIRCLE_ROCK_TIMER + Rand_ZeroFloat(30.0f);
+                                this->fwork[BFD_FLY_WOBBLE_AMP] = 0.0f;
+                                this->work[BFD_ROCK_TIMER] = 0;
                                 this->fogMode = BOSSFD_FOG_MODE_ERUPTION_IN;
                                 play->envCtx.blendIndoorLights = true;
                                 play->envCtx.unk_BE = play->envCtx.unk_BD;
@@ -718,17 +1481,25 @@ void BossFd_Fly(BossFd* this, PlayState* play) {
                                 play->envCtx.unk_D8 = 0.0f;
                                 play->envCtx.unk_DC = 0;
                                 break;
-                            case BOSSFD_FLY_CEILING:
-                                this->work[BFD_ACTION_STATE] = BOSSFD_FLY_CEILING;
+                            case BOSSFD_FLY_ROCKFALL:
+                                BossFd_SetupRockfall(this);
                                 break;
+                            case BOSSFD_FLY_GRAB:
                             default:
                                 this->work[BFD_ACTION_STATE] = BOSSFD_FLY_GRAB;
-                                this->timers[0] = aggressiveTuning ? 240 : 280;
-                                this->fwork[BFD_FLY_SPEED] = aggressiveTuning ? 11.0f : 9.0f;
-                                this->fwork[BFD_TURN_RATE_MAX] = aggressiveTuning ? 2200.0f : 1800.0f;
-                                this->fwork[BFD_FLY_WOBBLE_AMP] = 40.0f;
+                                this->attackPhase = BOSSFD_GRAB_STAGE;
+                                this->attackStep = 0;
+                                this->timers[0] = BOSSFD_GRAB_STAGE_TIMEOUT;
+                                this->timers[1] = BOSSFD_GRAB_STAGE_MIN_TIME;
+                                this->fwork[BFD_FLY_SPEED] = 7.0f;
+                                this->fwork[BFD_TURN_RATE_MAX] = 2600.0f;
+                                this->fwork[BFD_FLY_WOBBLE_AMP] = 30.0f;
                                 this->grabTimer = 0;
                                 this->grabbingPlayer = false;
+                                this->grabPlayerFloorWasDisabled = false;
+                                this->work[BFD_STOP_FLAG] = false;
+                                this->work[BFD_ROAR_TIMER] = BOSSFD_GRAB_ROAR_TIME;
+                                this->work[BFD_MANE_EMBERS_TIMER] = BOSSFD_GRAB_ROAR_TIME;
                                 break;
                         }
                     }
@@ -774,216 +1545,222 @@ void BossFd_Fly(BossFd* this, PlayState* play) {
                 }
             }
             break;
-        case BOSSFD_FLY_CEILING:
-            this->fwork[BFD_FLY_SPEED] = aggressiveTuning ? 10 : 8;
-            this->targetPosition.x = 0.0f;
-            this->targetPosition.y = 700.0f;
-            this->targetPosition.z = -300.0f;
-            this->fwork[BFD_FLY_WOBBLE_AMP] = aggressiveTuning ? 240.0f : 200.0f;
-            this->fwork[BFD_TURN_RATE_MAX] = aggressiveTuning ? 3600.0f : 3000.0f;
-            if (this->actor.world.pos.y > 700.0f) {
-                this->work[BFD_ACTION_STATE] = BOSSFD_DROP_ROCKS;
-                this->timers[0] = aggressiveTuning ? 20 : 25;
-                this->timers[2] = aggressiveTuning ? 120 : 150;
-                this->work[BFD_CEILING_TARGET] = 0;
+        case BOSSFD_FLY_ROCKFALL:
+            sp1CF = true;
+            if (((this->work[BFD_DAMAGE_FLASH_TIMER] != 0) || (player->actor.world.pos.y < 70.0f)) &&
+                (this->attackPhase != BOSSFD_ROCKFALL_RECOVER)) {
+                BossFd_SetupRockfallRecovery(this);
+            }
+
+            switch (this->attackPhase) {
+                case BOSSFD_ROCKFALL_CLIMB:
+                    this->targetPosition.x = 0.0f;
+                    this->targetPosition.y = BOSSFD_ROCKFALL_STAGING_HEIGHT;
+                    this->targetPosition.z = -220.0f;
+                    this->fwork[BFD_FLY_SPEED] = 10.0f;
+                    this->fwork[BFD_TURN_RATE_MAX] = 3200.0f;
+                    this->fwork[BFD_FLY_WOBBLE_AMP] = 60.0f;
+                    if ((this->actor.world.pos.y >= (BOSSFD_ROCKFALL_STAGING_HEIGHT - 55.0f)) ||
+                        (this->timers[0] == 0)) {
+                        this->attackPhase = BOSSFD_ROCKFALL_WINDUP;
+                        this->timers[0] = BOSSFD_ROCKFALL_WINDUP_TIME;
+                        this->work[BFD_ROAR_TIMER] = BOSSFD_ROCKFALL_WINDUP_TIME;
+                        this->work[BFD_MANE_EMBERS_TIMER] = BOSSFD_ROCKFALL_WINDUP_TIME;
+                    }
+                    break;
+                case BOSSFD_ROCKFALL_WINDUP:
+                    this->targetPosition.x = 0.0f;
+                    this->targetPosition.y = BOSSFD_ROCKFALL_STAGING_HEIGHT;
+                    this->targetPosition.z = 0.0f;
+                    this->fwork[BFD_FLY_SPEED] = 3.0f;
+                    this->fwork[BFD_TURN_RATE_MAX] = 3600.0f;
+                    this->fwork[BFD_FLY_WOBBLE_AMP] = 20.0f;
+                    if (this->timers[0] == 0) {
+                        this->attackPhase = BOSSFD_ROCKFALL_CHARGE;
+                        this->timers[0] = BOSSFD_ROCKFALL_CHARGE_TIME;
+                    }
+                    break;
+                case BOSSFD_ROCKFALL_CHARGE:
+                    this->targetPosition.x = 0.0f;
+                    this->targetPosition.y = 1400.0f;
+                    this->targetPosition.z = 0.0f;
+                    this->fwork[BFD_FLY_SPEED] = 14.0f;
+                    this->fwork[BFD_TURN_RATE_MAX] = 4200.0f;
+                    this->fwork[BFD_FLY_WOBBLE_AMP] = 0.0f;
+                    Actor_UpdateBgCheckInfo(play, &this->actor, 50.0f, 50.0f, 100.0f, 2);
+                    if ((this->actor.bgCheckFlags & 0x10) || (this->timers[0] == 0)) {
+                        BossFd_BeginRockfallBarrage(this, play);
+                    }
+                    break;
+                case BOSSFD_ROCKFALL_BARRAGE:
+                    this->targetPosition.x = sCeilingTargets[this->work[BFD_CEILING_TARGET]].x;
+                    this->targetPosition.y = BOSSFD_ROCKFALL_BARRAGE_HEIGHT;
+                    this->targetPosition.z = sCeilingTargets[this->work[BFD_CEILING_TARGET]].z;
+                    this->fwork[BFD_FLY_SPEED] = 9.0f;
+                    this->fwork[BFD_TURN_RATE_MAX] = 3600.0f;
+                    this->fwork[BFD_FLY_WOBBLE_AMP] = 70.0f;
+                    if (this->fwork[BFD_CEILING_BOUNCE] != 0.0f) {
+                        pitchToTarget = this->fwork[BFD_CEILING_BOUNCE];
+                        Math_ApproachZeroF(&this->fwork[BFD_CEILING_BOUNCE], 1.0f, 1000.0f);
+                    }
+                    if (this->timers[0] == 0) {
+                        BossFd_SetupRockfallRecovery(this);
+                    } else if ((this->timers[1] == 0) &&
+                               !BossFd_TrySpawnRockfallWave(this, play, player)) {
+                        this->timers[1] = BOSSFD_ROCKFALL_RETRY_TIME;
+                    }
+                    break;
+                case BOSSFD_ROCKFALL_RECOVER:
+                default:
+                    this->targetPosition.x = 0.0f;
+                    this->targetPosition.y = 360.0f;
+                    this->targetPosition.z = 0.0f;
+                    this->fwork[BFD_FLY_SPEED] = 10.0f;
+                    this->fwork[BFD_TURN_RATE_MAX] = 2600.0f;
+                    this->fwork[BFD_FLY_WOBBLE_AMP] = 50.0f;
+                    if (this->timers[0] == 0) {
+                        this->attackPhase = 0;
+                        this->attackStep = 0;
+                        this->work[BFD_ACTION_STATE] = BOSSFD_FLY_MAIN;
+                        this->work[BFD_START_ATTACK] = false;
+                        this->work[BFD_ROCK_TIMER] = 0;
+                    }
+                    break;
             }
             break;
-        case BOSSFD_DROP_ROCKS:
-            this->fwork[BFD_FLY_SPEED] = aggressiveTuning ? 10 : 8;
-            this->fwork[BFD_FLY_WOBBLE_AMP] = aggressiveTuning ? 240.0f : 200.0f;
-            this->fwork[BFD_TURN_RATE_MAX] = aggressiveTuning ? 12000.0f : 10000.0f;
-            this->targetPosition.x = sCeilingTargets[this->work[BFD_CEILING_TARGET]].x;
-            this->targetPosition.y = sCeilingTargets[this->work[BFD_CEILING_TARGET]].y + 900.0f;
-            this->targetPosition.z = sCeilingTargets[this->work[BFD_CEILING_TARGET]].z;
-            if (this->timers[0] == 0) {
-                this->timers[0] = aggressiveTuning ? 18 : 25;
-                this->work[BFD_CEILING_TARGET]++;
-                if (this->work[BFD_CEILING_TARGET] >= 6) {
-                    this->work[BFD_CEILING_TARGET] = 0;
-                }
-            }
-            Actor_UpdateBgCheckInfo(play, &this->actor, 50.0f, 50.0f, 100.0f, 2);
-            if (this->timers[1] == 0) {
-                osSyncPrintf("BGCHECKKKKKKKKKKKKKKKKKKKKKKK\n");
-                if (this->actor.bgCheckFlags & 0x10) {
-                    this->fwork[BFD_CEILING_BOUNCE] = -18384.0f;
-                    this->timers[1] = 10;
-                    Audio_PlaySoundGeneral(NA_SE_EV_EXPLOSION, &this->actor.projectedPos, 4,
-                                           &gSfxDefaultFreqAndVolScale, &gSfxDefaultFreqAndVolScale,
-                                           &gSfxDefaultReverb);
-                    Actor_RequestQuakeWithSpeed(play, 3, 0xA, 0x7530);
-                    this->work[BFD_ROCK_TIMER] = 300;
-                }
-            } else {
-                pitchToTarget = this->fwork[BFD_CEILING_BOUNCE];
-                Math_ApproachZeroF(&this->fwork[BFD_CEILING_BOUNCE], 1.0f, 1000.0f);
-            }
-            if (this->timers[2] == 0) {
-                this->work[BFD_ACTION_STATE] = BOSSFD_FLY_MAIN;
-                this->timers[0] = 0;
-                this->work[BFD_START_ATTACK] = false;
-            }
+        case BOSSFD_FLY_LEGACY_DROP_ROCKS:
+        case BOSSFD_FLY_LEGACY_METEOR:
+            BossFd_SetupRockfall(this);
             break;
         case BOSSFD_FLY_CHASE:
             this->actor.flags |= ACTOR_FLAG_SFX_FOR_PLAYER_BODY_HIT;
-            temp_y = Math_SinS(this->work[BFD_MOVE_TIMER] * 2396.0f) * (aggressiveTuning ? 40.0f : 30.0f) +
-                     this->fwork[BFD_TARGET_Y_OFFSET];
+            this->fwork[BFD_FLY_SPEED] = aggressiveTuning ? 9.0f : 7.0f;
             this->targetPosition.x = player->actor.world.pos.x;
-            this->targetPosition.y = player->actor.world.pos.y + temp_y + 30.0f;
+            this->targetPosition.y = player->actor.world.pos.y + 30.0f;
             this->targetPosition.z = player->actor.world.pos.z;
             this->fwork[BFD_FLY_WOBBLE_AMP] = 0.0f;
-            if (((this->timers[0] % 64) == 0) && (this->timers[0] < 450)) {
+            if ((this->timers[0] > 0) && ((this->timers[0] % 64) == 0) && (this->timers[0] < 450)) {
                 this->work[BFD_ROAR_TIMER] = 40;
                 if (BossFd_IsFacingLink(this)) {
-                    this->fireBreathTimer = 20;
+                    this->fireBreathTimer = 30;
                 }
             }
             if ((this->work[BFD_DAMAGE_FLASH_TIMER] != 0) || (this->timers[0] == 0) ||
                 (player->actor.world.pos.y < 70.0f)) {
                 this->work[BFD_ACTION_STATE] = BOSSFD_FLY_MAIN;
                 this->timers[0] = 0;
+                this->fireBreathTimer = 0;
                 this->work[BFD_START_ATTACK] = false;
-            } else {
-                Math_ApproachF(&this->fwork[BFD_TARGET_Y_OFFSET], aggressiveTuning ? 70.0f : 50.0f, 1.0f,
-                               aggressiveTuning ? 3.0f : 2.0f);
             }
             break;
         case BOSSFD_FLY_GRAB: {
-            Vec3f hoverTarget = player->actor.world.pos;
-            f32 forwardMag;
-            Vec3f leadOffset = { 0.0f, 0.0f, 0.0f };
+            Vec3f stageTarget;
+            Vec3f bitePoint;
+            f32 distanceToStage;
+            f32 alignDx;
+            f32 alignDy;
+            f32 alignDz;
+            s32 alignYawError;
 
             sp1CF = true;
-            hoverTarget.y += BOSSFD_GRAB_HOVER_OFFSET - 20.0f;
-            leadOffset.x = player->actor.world.pos.x - this->actor.world.pos.x;
-            leadOffset.y = 0.0f;
-            leadOffset.z = player->actor.world.pos.z - this->actor.world.pos.z;
-            forwardMag = Math3D_Vec3fMagnitude(&leadOffset);
-            if (forwardMag > 1.0f) {
-                leadOffset.x = (leadOffset.x / forwardMag) * BOSSFD_GRAB_LEAD_DISTANCE;
-                leadOffset.z = (leadOffset.z / forwardMag) * BOSSFD_GRAB_LEAD_DISTANCE;
+            this->work[BFD_STOP_FLAG] = false;
+            if ((this->work[BFD_DAMAGE_FLASH_TIMER] != 0) && (this->attackPhase != BOSSFD_GRAB_RECOVER)) {
+                if (this->grabbingPlayer) {
+                    BossFd_ReleasePlayer(this, play);
+                }
+                BossFd_SetupGrabRecovery(this);
+            } else if (!this->grabbingPlayer && (player->actor.world.pos.y < 70.0f)) {
+                BossFd_SetupGrabRecovery(this);
             }
-            hoverTarget.x += leadOffset.x;
-            hoverTarget.z += leadOffset.z;
-            this->targetPosition = hoverTarget;
-            this->fwork[BFD_FLY_SPEED] = aggressiveTuning ? 13.0f : 11.0f;
-            this->fwork[BFD_FLY_WOBBLE_AMP] = 10.0f;
-            this->fwork[BFD_TURN_RATE_MAX] = aggressiveTuning ? 2800.0f : 2400.0f;
-
-            if (!this->grabbingPlayer) {
-                if ((this->timers[0] == 0) || (player->actor.world.pos.y < 70.0f)) {
-                    this->work[BFD_ACTION_STATE] = BOSSFD_FLY_MAIN;
-                    this->work[BFD_START_ATTACK] = false;
-                    this->grabTimer = 0;
+            switch (this->attackPhase) {
+                case BOSSFD_GRAB_STAGE:
+                    stageTarget = BossFd_GetGrabStageTarget(this, player);
+                    this->targetPosition = stageTarget;
+                    this->fwork[BFD_FLY_SPEED] = 7.0f;
+                    this->fwork[BFD_TURN_RATE_MAX] = 2600.0f;
+                    this->fwork[BFD_FLY_WOBBLE_AMP] = 30.0f;
+                    distanceToStage = sqrtf(SQ(stageTarget.x - this->actor.world.pos.x) +
+                                            SQ(stageTarget.z - this->actor.world.pos.z));
+                    if (((this->timers[1] == 0) && (distanceToStage < BOSSFD_GRAB_STAGE_RANGE) &&
+                         (fabsf(stageTarget.y - this->actor.world.pos.y) < BOSSFD_GRAB_STAGE_VERTICAL_RANGE)) ||
+                        (this->timers[0] == 0)) {
+                        BossFd_BeginGrabAlign(this, player);
+                    }
                     break;
-                }
-
-                yawDiff = ABS(BINANG_SUB(this->actor.yawTowardsPlayer, this->actor.world.rot.y));
-
-                if ((fabsf(this->headPos.y - player->actor.world.pos.y) < BOSSFD_GRAB_VERTICAL_RANGE) &&
-                    (sqrtf(SQ(this->headPos.x - player->actor.world.pos.x) +
-                           SQ(this->headPos.z - player->actor.world.pos.z)) < BOSSFD_GRAB_APPROACH_RANGE) &&
-                    (yawDiff < BOSSFD_GRAB_YAW_TOLERANCE)) {
-                    if ((play->grabPlayer != NULL) && play->grabPlayer(play, player)) {
-                        player->actor.parent = &this->actor;
-                        player->av2.actionVar2 = 0xA;
-                        player->actor.shape.rot = this->headRot;
-                        player->actor.shape.rot.x = this->headRot.x + 0x4000;
-                        player->actor.shape.rot.z = 0;
-                        player->actor.world.rot = player->actor.shape.rot;
-                        this->grabbedWaistOffset.x = 0.0f;
-                        this->grabbedWaistOffset.y = -BOSSFD_GRAB_WAIST_FOOT_OFFSET;
-                        this->grabbedWaistOffset.z = 0.0f;
-                        this->grabbingPlayer = true;
-                        this->grabTimer = BOSSFD_GRAB_HOLD_TIME;
-                        player->actor.velocity.x = player->actor.velocity.y = player->actor.velocity.z = 0.0f;
-                        player->actor.speedXZ = 0.0f;
-                        Audio_PlayActorSound2(&player->actor, NA_SE_VO_LI_DAMAGE_S);
-                        this->work[BFD_STOP_FLAG] = false;
+                case BOSSFD_GRAB_ALIGN:
+                    bitePoint = BossFd_GetPlayerBitePoint(player);
+                    alignDx = bitePoint.x - this->actor.world.pos.x;
+                    alignDy = bitePoint.y - this->actor.world.pos.y;
+                    alignDz = bitePoint.z - this->actor.world.pos.z;
+                    this->targetPosition = bitePoint;
+                    this->fwork[BFD_FLY_SPEED] = BOSSFD_GRAB_ALIGN_SPEED;
+                    this->fwork[BFD_TURN_RATE_MAX] = 4000.0f;
+                    this->fwork[BFD_FLY_WOBBLE_AMP] = 0.0f;
+                    angleToTarget = (s16)(Math_FAtan2F(alignDx, alignDz) * (0x8000 / M_PI));
+                    pitchToTarget =
+                        (s16)(Math_FAtan2F(alignDy, sqrtf(SQ(alignDx) + SQ(alignDz))) * (0x8000 / M_PI));
+                    alignYawError = (s16)(angleToTarget - this->actor.world.rot.y);
+                    if (alignYawError < 0) {
+                        alignYawError = -alignYawError;
                     }
-                }
-            } else {
-                Vec3f holdPos;
-                Vec3f holdForwardOffset = { 0.0f, 0.0f, 35.0f };
-                Vec3f holdForwardWorld;
-                s16 throwYaw;
-                Vec3f orbitCenter = sHoleLocations[1];
-                s16 orbitAngle = this->work[BFD_MOVE_TIMER] * 0x180;
-                f32 orbitHeight =
-                    BOSSFD_GRAB_ORBIT_HEIGHT + (Math_SinS(this->work[BFD_MOVE_TIMER] * 0x400) * 40.0f);
-
-                this->targetPosition.x = orbitCenter.x + (Math_SinS(orbitAngle) * BOSSFD_GRAB_ORBIT_RADIUS);
-                this->targetPosition.z = orbitCenter.z + (Math_CosS(orbitAngle) * BOSSFD_GRAB_ORBIT_RADIUS);
-                this->targetPosition.y = orbitCenter.y + orbitHeight;
-                this->fwork[BFD_FLY_SPEED] = aggressiveTuning ? 13.0f : 11.0f;
-                this->fwork[BFD_FLY_WOBBLE_AMP] = 20.0f;
-                this->fwork[BFD_TURN_RATE_MAX] = aggressiveTuning ? 3000.0f : 2600.0f;
-
-                Vec3f waistOffset;
-
-                holdPos = this->headPos;
-                Matrix_Push();
-                Matrix_RotateY((this->actor.world.rot.y / (f32)0x8000) * M_PI, MTXMODE_NEW);
-                Matrix_RotateX(((-this->actor.world.rot.x / (f32)0x8000) * M_PI) + 0.3f, MTXMODE_APPLY);
-                Matrix_MultVec3f(&holdForwardOffset, &holdForwardWorld);
-                Matrix_Pop();
-                holdPos.x += holdForwardWorld.x;
-                holdPos.y += holdForwardWorld.y;
-                holdPos.z += holdForwardWorld.z;
-
-                player->actor.shape.rot = this->headRot;
-                player->actor.shape.rot.x = this->headRot.x + 0x4000;
-                player->actor.shape.rot.z = 0;
-                player->actor.world.rot = player->actor.shape.rot;
-                Matrix_Push();
-                Matrix_RotateZYX(player->actor.shape.rot.x, player->actor.shape.rot.y, player->actor.shape.rot.z,
-                                 MTXMODE_NEW);
-                Matrix_MultVec3f(&this->grabbedWaistOffset, &waistOffset);
-                Matrix_Pop();
-                player->actor.world.pos.x = holdPos.x - waistOffset.x;
-                player->actor.world.pos.y = holdPos.y - waistOffset.y;
-                player->actor.world.pos.z = holdPos.z - waistOffset.z;
-                player->actor.velocity.x = player->actor.velocity.y = player->actor.velocity.z = 0.0f;
-                player->actor.speedXZ = 0.0f;
-                player->av2.actionVar2 = 0xA;
-
-                if (this->grabTimer > 0) {
-                    this->grabTimer--;
-                    if ((this->grabTimer > 0) && ((this->grabTimer % BOSSFD_GRAB_FIRE_INTERVAL) == 0) &&
-                        (play->damagePlayer != NULL)) {
-                        this->fireBreathTimer = 20;
-                        play->damagePlayer(play, -4);
-                        Audio_PlayActorSound2(&player->actor, NA_SE_VO_LI_DAMAGE_S);
+                    if ((this->timers[1] == 0) && (alignYawError < BOSSFD_GRAB_ALIGN_YAW_TOLERANCE)) {
+                        BossFd_BeginGrabLunge(this, player);
+                    } else if (this->timers[0] == 0) {
+                        BossFd_SetupGrabRecovery(this);
                     }
-                    if ((this->grabTimer % 30) == 0) {
-                        Audio_PlayActorSound2(&player->actor, NA_SE_VO_LI_DAMAGE_S);
+                    break;
+                case BOSSFD_GRAB_LUNGE:
+                    if (this->timers[0] > (BOSSFD_GRAB_LUNGE_TIME - BOSSFD_GRAB_LUNGE_TRACK_TIME)) {
+                        BossFd_UpdateGrabLungeTarget(this, player);
                     }
-                }
-
-                if (this->grabTimer == 0) {
-                    Vec3f center = { 0.0f, 0.0f, 0.0f };
-
-                    throwYaw = Math_Vec3f_Yaw(&center, &holdPos);
-                    func_8002F6D4(play, &player->actor, BOSSFD_GRAB_THROW_SPEED, throwYaw, BOSSFD_GRAB_THROW_LIFT, 40);
-                    Audio_PlayActorSound2(&player->actor, NA_SE_VO_LI_FALL_L);
-                    player->av2.actionVar2 = 0x65;
-                    player->actor.parent = NULL;
-                    player->actor.shape.rot.z = 0;
-                    player->actor.world.rot.z = 0;
-                    this->grabbingPlayer = false;
-                    this->work[BFD_ACTION_STATE] = BOSSFD_FLY_MAIN;
-                    this->work[BFD_START_ATTACK] = false;
-                    this->timers[0] = aggressiveTuning ? 40 : 60;
-                }
+                    this->targetPosition = this->attackTarget;
+                    this->fwork[BFD_FLY_SPEED] = BOSSFD_GRAB_LUNGE_SPEED;
+                    this->fwork[BFD_TURN_RATE_MAX] = 1800.0f;
+                    this->fwork[BFD_FLY_WOBBLE_AMP] = 0.0f;
+                    this->grabTimer = this->timers[0];
+                    break;
+                case BOSSFD_GRAB_ASCEND:
+                    if (!this->grabbingPlayer) {
+                        BossFd_SetupGrabRecovery(this);
+                        break;
+                    }
+                    this->targetPosition = this->attackTarget;
+                    Math_ApproachF(&this->actor.speedXZ, BOSSFD_GRAB_ASCENT_SPEED, 1.0f, 1.0f);
+                    this->fwork[BFD_FLY_SPEED] = BOSSFD_GRAB_ASCENT_SPEED;
+                    this->fwork[BFD_TURN_RATE_MAX] = 1000.0f;
+                    this->fwork[BFD_FLY_WOBBLE_AMP] = 10.0f;
+                    this->grabTimer = this->timers[0];
+                    break;
+                case BOSSFD_GRAB_RECOVER:
+                default:
+                    this->targetPosition = this->attackTarget;
+                    this->fwork[BFD_FLY_SPEED] = BOSSFD_GRAB_RECOVERY_SPEED;
+                    this->fwork[BFD_TURN_RATE_MAX] = 800.0f;
+                    this->fwork[BFD_FLY_WOBBLE_AMP] = 25.0f;
+                    if (this->timers[0] == 0) {
+                        this->attackPhase = 0;
+                        this->attackStep = 0;
+                        this->work[BFD_ACTION_STATE] = BOSSFD_FLY_MAIN;
+                        this->work[BFD_START_ATTACK] = false;
+                        this->grabTransitionedThisFrame = true;
+                    }
+                    break;
             }
             break;
         }
+        case BOSSFD_FLY_UNUSED_103:
+            this->fireBreathTimer = 0;
+            this->attackPhase = 0;
+            this->attackStep = 0;
+            this->work[BFD_ACTION_STATE] = BOSSFD_FLY_MAIN;
+            this->work[BFD_START_ATTACK] = false;
+            this->timers[0] = 0;
+            break;
         case BOSSFD_FLY_LOW_CIRCLE: {
             Vec3f circleCenter = sHoleLocations[1];
             f32 radius = BOSSFD_LOW_CIRCLE_RADIUS_DEFAULT;
-            f32 heightOffset = BOSSFD_LOW_CIRCLE_HEIGHT_DEFAULT;
             f32 angleRadians = (this->work[BOSSFD_LOW_CIRCLE_ANGLE_IDX] / (f32)0x8000) * M_PI;
-            f32 tangentialSpeed = this->fwork[BFD_FLY_SPEED];
+            f32 distanceToTarget;
             f32 angularStep;
             s16 angleStep;
 
@@ -996,29 +1773,58 @@ void BossFd_Fly(BossFd* this, PlayState* play) {
                 play->envCtx.unk_D8 = 0.0f;
                 play->envCtx.unk_DC = 0;
             }
-            if (this->work[BFD_ROCK_TIMER] == 0) {
-                this->work[BFD_ROCK_TIMER] = BOSSFD_LOW_CIRCLE_ROCK_TIMER;
-            }
             radius = CLAMP_MIN(radius, 120.0f);
-            tangentialSpeed = CLAMP_MIN(tangentialSpeed, 1.0f);
-            this->fwork[BFD_FLY_WOBBLE_AMP] = 60.0f;
+            this->fwork[BFD_FLY_SPEED] = BOSSFD_LOW_CIRCLE_SPEED_DEFAULT;
+            this->fwork[BFD_FLY_WOBBLE_AMP] =
+                (this->attackPhase == BOSSFD_LOW_CIRCLE_RISE) ? 0.0f : 60.0f;
             this->fwork[BFD_TURN_RATE_MAX] = 1600.0f;
 
-            this->targetPosition.x = circleCenter.x + sinf(angleRadians) * radius;
-            this->targetPosition.z = circleCenter.z + cosf(angleRadians) * radius;
-            this->targetPosition.y = circleCenter.y + heightOffset;
-
-            angularStep = (tangentialSpeed / radius) * (0x8000 / M_PI);
-            angleStep = (s16)CLAMP(angularStep, 0x20, 0x600);
-            this->work[BOSSFD_LOW_CIRCLE_ANGLE_IDX] += this->work[BOSSFD_LOW_CIRCLE_DIR_IDX] * angleStep;
-
-            if ((this->fireBreathTimer == 0) && ((this->timers[0] % BOSSFD_LOW_CIRCLE_FIRE_INTERVAL) == 0) &&
-                BossFd_IsFacingLink(this)) {
-                this->fireBreathTimer = 20;
+            if ((this->attackPhase == BOSSFD_LOW_CIRCLE_RISE) &&
+                (this->actor.world.pos.y >= BOSSFD_LOW_CIRCLE_SAFE_HEIGHT)) {
+                this->attackPhase = BOSSFD_LOW_CIRCLE_ENTER;
+                this->timers[1] = BOSSFD_LOW_CIRCLE_ENTRY_TIME;
             }
-            if ((this->timers[0] == 0) || (this->work[BFD_DAMAGE_FLASH_TIMER] != 0)) {
+
+            if (this->attackPhase == BOSSFD_LOW_CIRCLE_RISE) {
+                this->targetPosition = this->attackTarget;
+            } else {
+                this->targetPosition.x = circleCenter.x + sinf(angleRadians) * radius;
+                this->targetPosition.z = circleCenter.z + cosf(angleRadians) * radius;
+                this->targetPosition.y = BOSSFD_LOW_CIRCLE_SAFE_HEIGHT;
+            }
+
+            if (this->attackPhase == BOSSFD_LOW_CIRCLE_ENTER) {
+                distanceToTarget = sqrtf(SQ(this->targetPosition.x - this->actor.world.pos.x) +
+                                         SQ(this->targetPosition.z - this->actor.world.pos.z));
+                if (((distanceToTarget < 55.0f) &&
+                     (fabsf(this->actor.world.pos.y - BOSSFD_LOW_CIRCLE_SAFE_HEIGHT) < 25.0f)) ||
+                    (this->timers[1] == 0)) {
+                    this->attackPhase = BOSSFD_LOW_CIRCLE_ORBIT;
+                    this->work[BOSSFD_LOW_CIRCLE_ANGLE_IDX] =
+                        (s16)(Math_FAtan2F(this->actor.world.pos.x - circleCenter.x,
+                                          this->actor.world.pos.z - circleCenter.z) *
+                              (0x8000 / M_PI));
+                    this->timers[0] = BOSSFD_LOW_CIRCLE_TIMER;
+                    this->work[BFD_ROCK_TIMER] = BOSSFD_LOW_CIRCLE_ROCK_TIMER;
+                }
+            } else if (this->attackPhase == BOSSFD_LOW_CIRCLE_ORBIT) {
+                angularStep = (BOSSFD_LOW_CIRCLE_SPEED_DEFAULT / radius) * (0x8000 / M_PI);
+                angleStep = (s16)CLAMP(angularStep, 0x20, 0x600);
+                this->work[BOSSFD_LOW_CIRCLE_ANGLE_IDX] +=
+                    this->work[BOSSFD_LOW_CIRCLE_DIR_IDX] * angleStep;
+
+                if ((this->fireBreathTimer == 0) && (this->timers[0] > 0) &&
+                    ((this->timers[0] % BOSSFD_LOW_CIRCLE_FIRE_INTERVAL) == 0) && BossFd_IsFacingLink(this)) {
+                    this->fireBreathTimer = 26;
+                }
+            }
+            if (((this->attackPhase == BOSSFD_LOW_CIRCLE_ORBIT) && (this->timers[0] == 0)) ||
+                (this->work[BFD_DAMAGE_FLASH_TIMER] != 0)) {
                 this->work[BFD_ACTION_STATE] = BOSSFD_FLY_MAIN;
                 this->timers[0] = 0;
+                this->timers[1] = 0;
+                this->fireBreathTimer = 0;
+                this->attackStep = 0;
             }
             break;
         }
@@ -1241,11 +2047,13 @@ void BossFd_Fly(BossFd* this, PlayState* play) {
         f32 padB0;
         f32 padAC;
         f32 minFlyHeight = 110.0f;
+        bool enforceLowCircleHeight = (this->work[BFD_ACTION_STATE] == BOSSFD_FLY_LOW_CIRCLE) &&
+                                      (this->attackPhase != BOSSFD_LOW_CIRCLE_RISE);
 
         Math_ApproachS(&this->actor.world.rot.y, angleToTarget, 0xA, this->fwork[BFD_TURN_RATE]);
 
         if (this->work[BFD_ACTION_STATE] == BOSSFD_FLY_LOW_CIRCLE) {
-            minFlyHeight = sHoleLocations[1].y + BOSSFD_LOW_CIRCLE_HEIGHT_DEFAULT;
+            minFlyHeight = BOSSFD_LOW_CIRCLE_SAFE_HEIGHT;
         }
 
         if (((this->work[BFD_ACTION_STATE] == BOSSFD_FLY_CHASE) ||
@@ -1262,6 +2070,10 @@ void BossFd_Fly(BossFd* this, PlayState* play) {
             Actor_UpdateVelocityXYZ(&this->actor);
         }
         Actor_UpdatePos(&this->actor);
+        if (enforceLowCircleHeight && (this->actor.world.pos.y < BOSSFD_LOW_CIRCLE_SAFE_HEIGHT)) {
+            this->actor.world.pos.y = BOSSFD_LOW_CIRCLE_SAFE_HEIGHT;
+            this->actor.velocity.y = CLAMP_MIN(this->actor.velocity.y, 0.0f);
+        }
 
         this->work[BFD_LEAD_BODY_SEG]++;
         if (this->work[BFD_LEAD_BODY_SEG] >= 100) {
@@ -1344,9 +2156,19 @@ void BossFd_Fly(BossFd* this, PlayState* play) {
         }
 
         if (this->work[BFD_ACTION_STATE] == BOSSFD_FLY_GRAB) {
-            f32 reachRoot = this->grabbingPlayer ? -5000.0f : -3200.0f;
-            f32 reachMid = this->grabbingPlayer ? -3800.0f : -2000.0f;
-            f32 reachRoll = this->grabbingPlayer ? 2400.0f : 1200.0f;
+            f32 reachRoot = -2600.0f;
+            f32 reachMid = -1600.0f;
+            f32 reachRoll = 1000.0f;
+
+            if (this->attackPhase == BOSSFD_GRAB_LUNGE) {
+                reachRoot = -3600.0f;
+                reachMid = -2400.0f;
+                reachRoll = 1400.0f;
+            } else if ((this->attackPhase == BOSSFD_GRAB_ASCEND) && this->grabbingPlayer) {
+                reachRoot = -1800.0f;
+                reachMid = -1100.0f;
+                reachRoll = 700.0f;
+            }
 
             Math_ApproachF(&this->rightArmRot[0].x, reachRoot, 0.2f, 300.0f);
             Math_ApproachF(&this->rightArmRot[1].x, reachMid, 0.2f, 260.0f);
@@ -1361,22 +2183,44 @@ void BossFd_Fly(BossFd* this, PlayState* play) {
             Math_ApproachF(&this->leftArmRot[2].y, -reachRoll * 0.5f, 0.2f, 200.0f);
         }
     }
+    BossFd_UpdateGrabAfterMovement(this, play, player);
 }
 
 void BossFd_Wait(BossFd* this, PlayState* play) {
-    if (this->handoffSignal == FD2_SIGNAL_FLY) { // Set by BossFd2
+    if (this->groundSpawnRetryTimer > 0) {
+        this->groundSpawnRetryTimer--;
+    }
+    if ((this->actor.colChkInfo.health > 0) && (this->introState == BFD_CS_NONE) &&
+        (this->handoffSignal != FD2_SIGNAL_FLY) && (this->handoffSignal != FD2_SIGNAL_FLY_FROM_HOLE) &&
+        (this->handoffSignal != FD2_SIGNAL_DEATH) &&
+        (this->groundSpawnRetryTimer == 0) && !BossFd_HasGroundForm(play, this)) {
+        Actor* groundForm = Actor_SpawnAsChild(&play->actorCtx, &this->actor, play, ACTOR_BOSS_FD2,
+                                               this->actor.world.pos.x, this->actor.world.pos.y,
+                                               this->actor.world.pos.z, 0, 0, 0, BFD_CS_NONE);
+
+        this->groundSpawnRetryTimer = 30;
+        if (groundForm != NULL) {
+            this->handoffSignal = FD2_SIGNAL_NONE;
+        }
+    }
+
+    if ((this->handoffSignal == FD2_SIGNAL_FLY) ||
+        (this->handoffSignal == FD2_SIGNAL_FLY_FROM_HOLE)) { // Set by BossFd2
         u8 temp_rand;
+        bool useForcedHole = this->handoffSignal == FD2_SIGNAL_FLY_FROM_HOLE;
 
         this->handoffSignal = FD2_SIGNAL_NONE;
         BossFd_SetupFly(this, play);
-        do {
-            temp_rand = Rand_ZeroFloat(8.9f);
-        } while (temp_rand == this->holeIndex);
-        this->holeIndex = temp_rand;
+        if (!useForcedHole) {
+            do {
+                temp_rand = Rand_ZeroFloat(8.9f);
+            } while (temp_rand == this->holeIndex);
+            this->holeIndex = temp_rand;
+        }
         this->targetPosition.x = sHoleLocations[this->holeIndex].x;
         this->targetPosition.y = sHoleLocations[this->holeIndex].y - 200.0f;
         this->targetPosition.z = sHoleLocations[this->holeIndex].z;
-        this->actor.world.pos = this->targetPosition;
+        BossFd_RelocateFlightHistory(this, &this->targetPosition);
 
         this->timers[0] = 10;
         this->work[BFD_ACTION_STATE] = BOSSFD_EMERGE;
@@ -1389,7 +2233,7 @@ void BossFd_Wait(BossFd* this, PlayState* play) {
         this->targetPosition.x = sHoleLocations[1].x;
         this->targetPosition.y = sHoleLocations[1].y - 200.0f;
         this->targetPosition.z = sHoleLocations[1].z;
-        this->actor.world.pos = this->targetPosition;
+        BossFd_RelocateFlightHistory(this, &this->targetPosition);
         this->timers[0] = 10;
         this->work[BFD_ACTION_STATE] = BOSSFD_EMERGE;
     }
@@ -1488,8 +2332,8 @@ void BossFd_Effects(BossFd* this, PlayState* play) {
     }
 
     if ((this->work[BFD_ACTION_STATE] == BOSSFD_FLY_GRAB) && this->grabbingPlayer) {
-        jawAngle = 8000.0f;
-        jawSpeed = 2000.0f;
+        jawAngle = 2000.0f;
+        jawSpeed = 2400.0f;
     } else if (this->work[BFD_ROAR_TIMER] != 0) {
         if (this->work[BFD_ROAR_TIMER] == 37) {
             Audio_PlaySoundGeneral(NA_SE_EN_VALVAISA_ROAR, &this->actor.projectedPos, 4, &gSfxDefaultFreqAndVolScale,
@@ -1497,6 +2341,11 @@ void BossFd_Effects(BossFd* this, PlayState* play) {
         }
         jawAngle = 6000.0f;
         jawSpeed = 1300.0f;
+    } else if ((this->work[BFD_ACTION_STATE] == BOSSFD_FLY_GRAB) &&
+               ((this->attackPhase == BOSSFD_GRAB_STAGE) || (this->attackPhase == BOSSFD_GRAB_ALIGN) ||
+                (this->attackPhase == BOSSFD_GRAB_LUNGE))) {
+        jawAngle = 7000.0f;
+        jawSpeed = 1800.0f;
     } else {
         jawAngle = (this->work[BFD_VAR_TIMER] & 0x10) ? 0.0f : 1000.0f;
         jawSpeed = 500.0f;
@@ -1631,7 +2480,7 @@ void BossFd_Effects(BossFd* this, PlayState* play) {
         }
     }
 
-    if ((this->actor.world.pos.y < 90.0f) || (700.0f < this->actor.world.pos.y) || (this->actionFunc == BossFd_Wait)) {
+    if (!BossFd_IsCombatActive(this)) {
         this->actor.flags &= ~ACTOR_FLAG_ATTENTION_ENABLED;
     } else {
         this->actor.flags |= ACTOR_FLAG_ATTENTION_ENABLED;
@@ -1659,6 +2508,40 @@ void BossFd_CollisionCheck(BossFd* this, PlayState* play) {
     }
 }
 
+static bool BossFd_IsCombatActive(BossFd* this) {
+    return (this->actor.colChkInfo.health > 0) && (this->actionFunc == BossFd_Fly) &&
+           (this->introState == BFD_CS_NONE) && (this->work[BFD_ACTION_STATE] < BOSSFD_DEATH_START) &&
+           (this->actor.world.pos.y >= 90.0f) && (this->actor.world.pos.y <= 700.0f);
+}
+
+static void BossFd_UpdateCollisionState(BossFd* this, PlayState* play) {
+    bool combatActive = BossFd_IsCombatActive(this);
+    s32 i;
+
+    if (combatActive && (this->work[BFD_ACTION_STATE] != BOSSFD_FLY_GRAB)) {
+        this->collider.base.atFlags |= AT_ON;
+    } else {
+        this->collider.base.atFlags &= ~(AT_ON | AT_HIT | AT_BOUNCED);
+        for (i = 0; i < ARRAY_COUNT(this->elements); i++) {
+            this->collider.elements[i].info.toucherFlags &= ~TOUCH_HIT;
+        }
+    }
+    if (combatActive) {
+        this->collider.base.acFlags |= AC_ON;
+    } else {
+        this->collider.base.acFlags &= ~(AC_ON | AC_HIT | AC_BOUNCED);
+        for (i = 0; i < ARRAY_COUNT(this->elements); i++) {
+            this->collider.elements[i].info.bumperFlags &= ~BUMP_HIT;
+        }
+    }
+    this->collider.base.ocFlags1 &= ~(OC1_ON | OC1_HIT);
+
+    if (this->work[BFD_ACTION_STATE] < BOSSFD_DEATH_START) {
+        CollisionCheck_SetAC(play, &play->colChkCtx, &this->collider.base);
+        CollisionCheck_SetAT(play, &play->colChkCtx, &this->collider.base);
+    }
+}
+
 void BossFd_Update(Actor* thisx, PlayState* play) {
     s32 pad;
     BossFd* this = (BossFd*)thisx;
@@ -1666,11 +2549,25 @@ void BossFd_Update(Actor* thisx, PlayState* play) {
     f32 rManeGlow;
     f32 lManeGlow;
     s16 i;
+    bool secondCollisionUpdate = GameInteractor_SecondCollisionUpdate();
+
+    if (secondCollisionUpdate &&
+        ((this->work[BFD_ACTION_STATE] == BOSSFD_FLY_GRAB) || this->grabTransitionedThisFrame)) {
+        return;
+    }
+    if (!secondCollisionUpdate) {
+        this->grabTransitionedThisFrame = false;
+    }
 
     osSyncPrintf("FD MOVE START \n");
     this->work[BFD_VAR_TIMER]++;
     this->work[BFD_MOVE_TIMER]++;
     this->actionFunc(this, play);
+
+    if ((this->actor.colChkInfo.health == 0) && !this->hazardsCleared) {
+        BossFd_ClearCombatHazards(this, play);
+        this->hazardsCleared = true;
+    }
 
     for (i = 0; i < ARRAY_COUNT(this->timers); i++) {
         if (this->timers[i] != 0) {
@@ -1694,12 +2591,11 @@ void BossFd_Update(Actor* thisx, PlayState* play) {
         play->envCtx.unk_DC = 0;
     }
     if (this->work[BFD_ACTION_STATE] < BOSSFD_DEATH_START) {
-        if (this->work[BFD_INVINC_TIMER] == 0) {
+        if (BossFd_IsCombatActive(this) && (this->work[BFD_INVINC_TIMER] == 0)) {
             BossFd_CollisionCheck(this, play);
         }
-        CollisionCheck_SetAC(play, &play->colChkCtx, &this->collider.base);
-        CollisionCheck_SetAT(play, &play->colChkCtx, &this->collider.base);
     }
+    BossFd_UpdateCollisionState(this, play);
 
     BossFd_Effects(this, play);
     this->fwork[BFD_TEX1_SCROLL_X] += 4.0f;
@@ -1724,35 +2620,21 @@ void BossFd_Update(Actor* thisx, PlayState* play) {
     Math_ApproachF(&this->fwork[BFD_MANE_COLOR_LEFT], lManeGlow, 1.0f, 16.0f);
 
     if (this->work[BFD_ROCK_TIMER] != 0) {
-        bool allowRocks = (this->work[BFD_ACTION_STATE] == BOSSFD_FLY_LOW_CIRCLE) ||
-                          (this->work[BFD_ACTION_STATE] == BOSSFD_DROP_ROCKS);
-
-        if (!allowRocks) {
+        if (this->work[BFD_ACTION_STATE] != BOSSFD_FLY_LOW_CIRCLE) {
             this->work[BFD_ROCK_TIMER] = 0;
         } else {
-            s16 rockInterval =
-                (this->work[BFD_ACTION_STATE] == BOSSFD_FLY_LOW_CIRCLE) ? BOSSFD_LOW_CIRCLE_ROCK_INTERVAL : 16;
-            f32 rockHeight =
-                (this->work[BFD_ACTION_STATE] == BOSSFD_FLY_LOW_CIRCLE) ? BOSSFD_LOW_CIRCLE_ROCK_HEIGHT : 1000.0f;
-            s32 debrisCount =
-                (this->work[BFD_ACTION_STATE] == BOSSFD_FLY_LOW_CIRCLE) ? BOSSFD_LOW_CIRCLE_ROCK_DEBRIS_COUNT : 10;
-            f32 rockPosX = this->actor.world.pos.x;
-            f32 rockPosZ = this->actor.world.pos.z;
-
             this->work[BFD_ROCK_TIMER]--;
-            if ((this->work[BFD_ROCK_TIMER] % rockInterval) == 0) {
-                if (this->work[BFD_ACTION_STATE] == BOSSFD_FLY_LOW_CIRCLE) {
-                    u8 holeIndex = (u8)Rand_ZeroFloat(8.9f);
-                    rockPosX = sHoleLocations[holeIndex].x + Rand_CenteredFloat(120.0f);
-                    rockPosZ = sHoleLocations[holeIndex].z + Rand_CenteredFloat(120.0f);
-                }
+            if ((this->work[BFD_ROCK_TIMER] % BOSSFD_LOW_CIRCLE_ROCK_INTERVAL) == 0) {
+                u8 holeIndex = (u8)Rand_ZeroFloat(8.9f);
+                f32 rockPosX = sHoleLocations[holeIndex].x + Rand_CenteredFloat(120.0f);
+                f32 rockPosZ = sHoleLocations[holeIndex].z + Rand_CenteredFloat(120.0f);
 
-                EnVbBall* bossFdRock = (EnVbBall*)Actor_SpawnAsChild(
-                    &play->actorCtx, &this->actor, play, ACTOR_EN_VB_BALL, rockPosX, rockHeight, rockPosZ, 0, 0,
-                    (s16)Rand_ZeroFloat(50.0f) + 130, 100);
+                EnVbBall* bossFdRock =
+                    BossFd_TrySpawnRock(this, play, rockPosX, BOSSFD_LOW_CIRCLE_ROCK_HEIGHT, rockPosZ,
+                                        (s16)Rand_ZeroFloat(50.0f) + 130, ENVBALL_ROCK_IMPACT);
 
                 if (bossFdRock != NULL) {
-                    for (i = 0; i < debrisCount; i++) {
+                    for (i = 0; i < BOSSFD_LOW_CIRCLE_ROCK_DEBRIS_COUNT; i++) {
                         Vec3f debrisVel = { 0.0f, 0.0f, 0.0f };
                         Vec3f debrisAccel = { 0.0f, -0.5f, 0.0f };
                         Vec3f debrisPos;
@@ -2327,9 +3209,11 @@ void BossFd_DrawBody(PlayState* play, BossFd* this) {
                     bones = (EnVbBall*)Actor_SpawnAsChild(&play->actorCtx, &this->actor, play, ACTOR_EN_VB_BALL, spE4.x,
                                                           spE4.y, spE4.z, spDC.x, spDC.y, spDC.z, i + 200);
 
-                    bones->actor.scale.x = this->actor.scale.x * temp_float;
-                    bones->actor.scale.y = this->actor.scale.y * spD4;
-                    bones->actor.scale.z = this->actor.scale.z * 0.1f;
+                    if (bones != NULL) {
+                        bones->actor.scale.x = this->actor.scale.x * temp_float;
+                        bones->actor.scale.y = this->actor.scale.y * spD4;
+                        bones->actor.scale.z = this->actor.scale.z * 0.1f;
+                    }
                 }
 
                 FrameInterpolation_RecordCloseChild();
@@ -2345,8 +3229,7 @@ void BossFd_DrawBody(PlayState* play, BossFd* this) {
     gDPPipeSync(POLY_OPA_DISP++);
     gDPSetEnvColor(POLY_OPA_DISP++, 255, 255, 255, (s8)this->fwork[BFD_HEAD_TEX2_ALPHA]);
     Matrix_Push();
-    temp_float =
-        (this->work[BFD_ACTION_STATE] >= BOSSFD_SKULL_FALL) ? -20.0f : -10.0f - ((this->actor.speedXZ - 5.0f) * 10.0f);
+    temp_float = BossFd_GetHeadDrawOffset(this, this->actor.speedXZ);
     segIndex = (this->work[BFD_LEAD_BODY_SEG] + sBodyIndex[0]) % 100;
     Matrix_Translate(this->bodySegsPos[segIndex].x, this->bodySegsPos[segIndex].y, this->bodySegsPos[segIndex].z,
                      MTXMODE_NEW);

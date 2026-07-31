@@ -806,6 +806,8 @@ s32 Collider_SetLinePoints(PlayState* play, OcLine* ocLine, Vec3f* a, Vec3f* b);
 s32 Collider_SetLine(PlayState* play, OcLine* dest, OcLine* src);
 s32 Collider_ResetLineOC(PlayState* play, OcLine* line);
 void CollisionCheck_InitContext(PlayState* play, CollisionCheckContext* colChkCtx);
+void CollisionCheck_ClearPlayerDamageRemainders(void);
+void CollisionCheck_ClearPlayerDamageRemainder(Actor* actor);
 void CollisionCheck_DestroyContext(PlayState* play, CollisionCheckContext* colChkCtx);
 void CollisionCheck_ClearContext(PlayState* play, CollisionCheckContext* colChkCtx);
 void CollisionCheck_EnableSAC(PlayState* play, CollisionCheckContext* colChkCtx);

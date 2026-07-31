@@ -17,11 +17,20 @@ typedef struct {
 
 static PlayerDamageRemainderEntry sPlayerDamageRemainders[PLAYER_DAMAGE_REMAINDER_CAPACITY];
 
+void CollisionCheck_ClearPlayerDamageRemainders(void) {
+    for (s32 i = 0; i < PLAYER_DAMAGE_REMAINDER_CAPACITY; i++) {
+        sPlayerDamageRemainders[i].actor = NULL;
+        sPlayerDamageRemainders[i].fractionalDamage = 0.0f;
+    }
+}
+
 static f32 CollisionCheck_GetPlayerDamagePercent(void) {
     f32 percent = CVarGetFloat(CVAR_PLAYER_DAMAGE_PERCENT_NAME, PLAYER_DAMAGE_PERCENT_DEFAULT);
     f32 clampedPercent = percent;
 
-    if (clampedPercent < PLAYER_DAMAGE_PERCENT_MIN) {
+    if (percent != percent) {
+        clampedPercent = PLAYER_DAMAGE_PERCENT_DEFAULT;
+    } else if (clampedPercent < PLAYER_DAMAGE_PERCENT_MIN) {
         clampedPercent = PLAYER_DAMAGE_PERCENT_MIN;
     } else if (clampedPercent > PLAYER_DAMAGE_PERCENT_MAX) {
         clampedPercent = PLAYER_DAMAGE_PERCENT_MAX;
@@ -35,7 +44,7 @@ static f32 CollisionCheck_GetPlayerDamagePercent(void) {
     return percent;
 }
 
-static void CollisionCheck_ClearPlayerDamageRemainder(Actor* actor) {
+void CollisionCheck_ClearPlayerDamageRemainder(Actor* actor) {
     for (s32 i = 0; i < PLAYER_DAMAGE_REMAINDER_CAPACITY; i++) {
         if (sPlayerDamageRemainders[i].actor == actor) {
             sPlayerDamageRemainders[i].actor = NULL;
@@ -55,7 +64,7 @@ static PlayerDamageRemainderEntry* CollisionCheck_GetPlayerDamageRemainderEntry(
             return entry;
         }
 
-        if ((entry->actor == NULL) || (entry->actor->colChkInfo.health == 0)) {
+        if (entry->actor == NULL) {
             if (freeEntry == NULL) {
                 freeEntry = entry;
             }
@@ -1135,6 +1144,8 @@ s32 Collider_ResetLineOC(PlayState* play, OcLine* line) {
  * Initializes CollisionCheckContext. Clears all collider arrays, disables SAC, and sets flags for drawing colliders.
  */
 void CollisionCheck_InitContext(PlayState* play, CollisionCheckContext* colChkCtx) {
+    CollisionCheck_ClearPlayerDamageRemainders();
+
     colChkCtx->sacFlags = 0;
     CollisionCheck_ClearContext(play, colChkCtx);
     AREG(21) = true;
@@ -3142,11 +3153,13 @@ void CollisionCheck_ApplyDamage(PlayState* play, CollisionCheckContext* colChkCt
     }
 
     if (!(collider->acFlags & AC_HARD)) {
-        collider->actor->colChkInfo.damage += damage;
+        s32 accumulatedDamage = collider->actor->colChkInfo.damage + (s32)damage;
+        collider->actor->colChkInfo.damage = CLAMP(accumulatedDamage, 0, 0xFF);
     }
 
     if (CVarGetInteger(CVAR_ENHANCEMENT("IvanCoopModeEnabled"), 0)) {
-        collider->actor->colChkInfo.damage *= GET_PLAYER(play)->ivanDamageMultiplier;
+        s32 coopDamage = collider->actor->colChkInfo.damage * GET_PLAYER(play)->ivanDamageMultiplier;
+        collider->actor->colChkInfo.damage = CLAMP(coopDamage, 0, 0xFF);
     }
 }
 

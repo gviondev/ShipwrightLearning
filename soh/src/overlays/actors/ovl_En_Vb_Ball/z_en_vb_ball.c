@@ -98,6 +98,7 @@ void EnVbBall_SpawnDebris(PlayState* play, BossFdEffect* effect, Vec3f* position
             effect->scale = scale / 1000.0f;
             effect->vFdFxRotX = Rand_ZeroFloat(100.0f);
             effect->vFdFxRotY = Rand_ZeroFloat(100.0f);
+            effect->epoch++;
             break;
         }
     }
@@ -115,6 +116,7 @@ void EnVbBall_SpawnDust(PlayState* play, BossFdEffect* effect, Vec3f* position, 
             effect->accel = *acceleration;
             effect->timer2 = 0;
             effect->scale = scale / 400.0f;
+            effect->epoch++;
             break;
         }
     }
@@ -165,11 +167,23 @@ void EnVbBall_UpdateBones(EnVbBall* this, PlayState* play) {
 void EnVbBall_Update(Actor* thisx, PlayState* play2) {
     PlayState* play = play2;
     EnVbBall* this = (EnVbBall*)thisx;
-    BossFd* bossFd = (BossFd*)this->actor.parent;
+    Actor* owner = this->actor.parent;
+    BossFd* bossFd;
     f32 radius;
     f32 pad2;
     s16 spawnNum;
     s16 i;
+
+    if ((owner == NULL) || (owner->update == NULL) || (owner->id != ACTOR_BOSS_FD)) {
+        if (this->actor.params < 200) {
+            this->collider.base.atFlags &= ~(AT_ON | AT_HIT | AT_BOUNCED);
+            this->collider.base.acFlags &= ~(AC_ON | AC_HIT | AC_BOUNCED);
+            this->collider.base.ocFlags1 &= ~(OC1_ON | OC1_HIT);
+        }
+        Actor_Kill(&this->actor);
+        return;
+    }
+    bossFd = (BossFd*)owner;
 
     this->unkTimer2++;
     if (this->unkTimer1 != 0) {
@@ -188,8 +202,16 @@ void EnVbBall_Update(Actor* thisx, PlayState* play2) {
         this->actor.world.pos.y -= radius;
         Actor_UpdateBgCheckInfo(play, &this->actor, 50.0f, 50.0f, 100.0f, 4);
         this->actor.world.pos.y += radius;
+        if (this->actor.world.pos.y < 50.0f) {
+            this->collider.base.atFlags &= ~(AT_ON | AT_HIT | AT_BOUNCED);
+            this->collider.base.acFlags &= ~(AC_ON | AC_HIT | AC_BOUNCED);
+            this->collider.base.ocFlags1 &= ~(OC1_ON | OC1_HIT);
+            Actor_Kill(&this->actor);
+            return;
+        }
         if ((this->actor.bgCheckFlags & BGCHECKFLAG_GROUND) && (this->actor.velocity.y <= 0.0f)) {
             if ((this->actor.params == 100) || (this->actor.params == 101)) {
+                this->collider.base.atFlags &= ~(AT_ON | AT_HIT | AT_BOUNCED);
                 Actor_Kill(&this->actor);
                 if (this->actor.params == 100) {
                     Actor_RequestQuakeAndRumble(&this->actor, play, 5, 0xA);
@@ -267,6 +289,12 @@ void EnVbBall_Update(Actor* thisx, PlayState* play2) {
                                        Rand_ZeroFloat(100.0f) + 350.0f);
                 }
             } else {
+                if (this->actor.params == ENVBALL_ROCK_IMPACT) {
+                    Audio_PlaySoundGeneral(NA_SE_EN_VALVAISA_ROCK, &this->actor.projectedPos, 4,
+                                           &gSfxDefaultFreqAndVolScale, &gSfxDefaultFreqAndVolScale,
+                                           &gSfxDefaultReverb);
+                    Actor_RequestQuakeAndRumble(&this->actor, play, 2, 4);
+                }
                 for (i = 0; i < 5; i++) {
                     Vec3f debrisVel2 = { 0.0f, 0.0f, 0.0f };
                     Vec3f debrisAcc2 = { 0.0f, -1.0f, 0.0f };
@@ -283,15 +311,17 @@ void EnVbBall_Update(Actor* thisx, PlayState* play2) {
                     EnVbBall_SpawnDebris(play, bossFd->effects, &debrisPos2, &debrisVel2, &debrisAcc2,
                                          (s16)Rand_ZeroFloat(12.0f) + 15);
                 }
+                this->collider.base.atFlags &= ~(AT_ON | AT_HIT | AT_BOUNCED);
                 Actor_Kill(&this->actor);
             }
+            return;
         }
         if (this->collider.base.atFlags & AT_HIT) {
             Player* player = GET_PLAYER(play);
             s16 yawToPlayer = Math_Vec3f_Yaw(&this->actor.world.pos, &player->actor.world.pos);
 
             this->collider.base.atFlags &= ~AT_HIT;
-            func_8002F6D4(play, &this->actor, 10.0f, yawToPlayer, 6.0f, 0);
+            Actor_SetPlayerKnockbackLarge(play, &this->actor, 10.0f, yawToPlayer, 6.0f, 0);
             Audio_PlayActorSound2(&player->actor, NA_SE_PL_BODY_HIT);
         }
         Collider_UpdateCylinder(&this->actor, &this->collider);

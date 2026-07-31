@@ -3492,6 +3492,8 @@ Actor* Actor_Delete(ActorContext* actorCtx, Actor* actor, PlayState* play) {
 
     player = GET_PLAYER(play);
 
+    CollisionCheck_ClearPlayerDamageRemainder(actor);
+
     // Execute before actor memory is freed
     GameInteractor_ExecuteOnActorDestroy(actor);
 

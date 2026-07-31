@@ -14,6 +14,9 @@ typedef void (*BossGanondrofActionFunc)(struct BossGanondrof*, PlayState*);
 #define GND_BOSSROOM_CENTER_X 14.0f
 #define GND_BOSSROOM_CENTER_Y -33.0f
 #define GND_BOSSROOM_CENTER_Z -3315.0f
+#define GND_MAX_HEALTH 50
+#define GND_HORSE_DISMOUNT_HEALTH 42
+#define GND_PHASE_TWO_HEALTH 25
 #define GND_FINAL_VOLLEY_CHANNEL_TIME 50
 
 typedef enum {
@@ -40,7 +43,7 @@ typedef enum {
 typedef enum {
     /*  0 */ GND_VARIANCE_TIMER,
     /*  1 */ GND_PORTAL_ACTIVE,
-    /*  2 */ GND_PORTAL_USED,
+    /*  2 */ GND_PORTAL_EXIT_INDEX,
     /*  3 */ GND_PORTAL_INDEX,
     /*  4 */ GND_UNKTIMER_1,
     /*  5 */ GND_UNKTIMER_2,
@@ -57,6 +60,7 @@ typedef enum {
     /* 16 */ GND_DEATH_ENV_TIMER,
     /* 17 */ GND_DEATH_SFX_TIMER,
     /* 18 */ GND_TRIPLE_SHOT_STAGE,
+    /* 19 */ GND_LAST_ATTACK,
     /* 20 */ GND_SHORT_COUNT = 20
 } BossGanondrofS16Var;
 
@@ -133,6 +137,12 @@ typedef struct BossGanondrof {
     /* 0x0580 */ u8 finalVolleyUsed;
     /* 0x0581 */ u8 finalVolleyCentering;
     /* 0x0588 */ Actor* finalVolleyChargeBall;
-} BossGanondrof; // size = 0x0590
+    /* 0x0590 */ Vec3f rewardHeartPos;
+    /* 0x059C */ u8 rewardState;
+    /* 0x059D */ u8 deathFinalized;
+    /* 0x059E */ u8 phaseTwoStarted;
+    /* 0x059F */ u8 pendingChargeIsPortal;
+    /* 0x05A0 */ Actor* activeVolleyBall;
+} BossGanondrof; // size = 0x05A8
 
 #endif

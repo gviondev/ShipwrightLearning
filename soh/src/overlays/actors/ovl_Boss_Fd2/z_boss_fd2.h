@@ -12,6 +12,7 @@ typedef enum {
     /* 0 */ FD2_SIGNAL_NONE,
     /* 1 */ FD2_SIGNAL_FLY,
     /* 2 */ FD2_SIGNAL_DEATH,
+    /* 3 */ FD2_SIGNAL_FLY_FROM_HOLE,
     /* 100 */ FD2_SIGNAL_GROUND = 100
 } BossFd2Signal;
 
@@ -44,14 +45,17 @@ typedef enum {
     /* 1 */ FD2_ACTION_STATE,
     /* 2 */ FD2_UNK_TIMER,
     /* 3 */ FD2_VAR_TIMER,
-    /* 4 */ FD2_UNUSED_4,
-    /* 5 */ FD2_UNUSED_5,
+    /* 4 */ FD2_CHAIN_ACTION,
+    /* 5 */ FD2_LAST_ATTACK,
     /* 6 */ FD2_BLINK_TIMER,
     /* 7 */ FD2_SCREAM_TIMER,
     /* 8 */ FD2_DAMAGE_FLASH_TIMER,
     /* 9 */ FD2_HOLE_COUNTER,
     /* 10 */ FD2_INVINC_TIMER,
     /* 11 */ FD2_FAKEOUT_COUNT,
+    /* 12 */ FD2_FIRE_PATTERN,
+    /* 13 */ FD2_FIRE_AIM_YAW,
+    /* 14 */ FD2_FIRE_AIM_PITCH,
     /* 19 */ FD2_SHORT_COUNT = 19
 } BossFd2S16Var;
 
@@ -88,6 +92,17 @@ typedef struct BossFd2 {
     /* 0x141C */ ColliderJntSph collider;
     /* 0x143C */ ColliderJntSphElement elements[9];
     /* 0x167C */ u32 epoch;
-} BossFd2; // size = 0x1680
+    /* appended */ Vec3f dragEntryPos;
+    /* appended */ Vec3f dragPlayerStartPos;
+    /* appended */ s16 dragExitHole;
+    /* appended */ u8 dragSequenceActive;
+    /* appended */ u8 draggingPlayer;
+    /* appended */ u8 dragPlayerFloorWasDisabled;
+    /* appended */ u8 dragDamageApplied;
+    /* appended */ u8 dragDamagePending;
+    /* appended */ u8 emergenceGrabPending;
+    /* appended */ u8 grabRetreatOnMiss;
+    /* appended */ u8 grabTransitionedThisFrame;
+} BossFd2;
 
 #endif

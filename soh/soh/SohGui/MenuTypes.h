@@ -76,7 +76,8 @@ using CVarVariant = std::variant<int32_t, const char*, float, Color_RGBA8, Color
 using OptionsVariant = std::variant<UIWidgets::ButtonOptions, UIWidgets::CheckboxOptions, UIWidgets::ComboboxOptions,
                                     UIWidgets::FloatSliderOptions, UIWidgets::IntSliderOptions, UIWidgets::TextOptions,
                                     UIWidgets::WidgetOptions, UIWidgets::WindowButtonOptions,
-                                    UIWidgets::ColorPickerOptions, UIWidgets::BtnSelectorOptions>;
+                                    UIWidgets::ColorPickerOptions, UIWidgets::BtnSelectorOptions,
+                                    UIWidgets::InputOptions>;
 
 // All the info needed for display and search of all widgets in the menu.
 // `name` is the label displayed,
@@ -140,6 +141,10 @@ struct WidgetInfo {
             case WIDGET_CVAR_BTN_SELECTOR:
                 options =
                     std::make_shared<UIWidgets::BtnSelectorOptions>(std::get<UIWidgets::BtnSelectorOptions>(options_));
+                break;
+            case WIDGET_INPUT:
+            case WIDGET_CVAR_INPUT:
+                options = std::make_shared<UIWidgets::InputOptions>(std::get<UIWidgets::InputOptions>(options_));
                 break;
             case WIDGET_SLIDER_INT:
             case WIDGET_CVAR_SLIDER_INT:

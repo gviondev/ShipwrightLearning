@@ -1,5 +1,6 @@
 ﻿#include "SohMenu.h"
 #include <soh/Enhancements/enhancementTypes.h>
+#include "soh/Enhancements/Difficulty/HyperSpeed.h"
 #include "soh/Enhancements/SwitchAge.h"
 #include <soh/Enhancements/game-interactor/GameInteractor.h>
 #include <soh/OTRGlobals.h>
@@ -85,28 +86,6 @@ static const std::map<int32_t, const char*> sleepingWaterfallOptions = {
     { WATERFALL_ALWAYS, "Always" },
     { WATERFALL_ONCE, "Once" },
     { WATERFALL_NEVER, "Never" },
-};
-
-static const std::map<int32_t, const char*> allPowers = {
-    { DAMAGE_VANILLA, "Vanilla (1x)" },      { DAMAGE_DOUBLE, "Double (2x)" },
-    { DAMAGE_QUADRUPLE, "Quadruple (4x)" },  { DAMAGE_OCTUPLE, "Octuple (8x)" },
-    { DAMAGE_FOOLISH, "Foolish (16x)" },     { DAMAGE_RIDICULOUS, "Ridiculous (32x)" },
-    { DAMAGE_MERCILESS, "Merciless (64x)" }, { DAMAGE_TORTURE, "Pure Torture (128x)" },
-    { DAMAGE_OHKO, "OHKO (256x)" },
-};
-
-static const std::map<int32_t, const char*> subPowers = {
-    { DAMAGE_VANILLA, "Vanilla (1x)" },      { DAMAGE_DOUBLE, "Double (2x)" },
-    { DAMAGE_QUADRUPLE, "Quadruple (4x)" },  { DAMAGE_OCTUPLE, "Octuple (8x)" },
-    { DAMAGE_FOOLISH, "Foolish (16x)" },     { DAMAGE_RIDICULOUS, "Ridiculous (32x)" },
-    { DAMAGE_MERCILESS, "Merciless (64x)" }, { DAMAGE_TORTURE, "Pure Torture (128x)" },
-};
-
-static const std::map<int32_t, const char*> subSubPowers = {
-    { DAMAGE_VANILLA, "Vanilla (1x)" },      { DAMAGE_DOUBLE, "Double (2x)" },
-    { DAMAGE_QUADRUPLE, "Quadruple (4x)" },  { DAMAGE_OCTUPLE, "Octuple (8x)" },
-    { DAMAGE_FOOLISH, "Foolish (16x)" },     { DAMAGE_RIDICULOUS, "Ridiculous (32x)" },
-    { DAMAGE_MERCILESS, "Merciless (64x)" },
 };
 
 static const std::map<int32_t, const char*> bonkDamageValues = {
@@ -1316,41 +1295,66 @@ void SohMenu::AddMenuEnhancements() {
         .Options(CheckboxOptions().Tooltip(
             "When you lose 4 quarters of a heart you will permanently lose that Heart Container.\n\n"
             "Disabling this after the fact will restore your Heart Containers."));
-    AddWidget(path, "Damage Multiplier", WIDGET_CVAR_COMBOBOX)
-        .CVar(CVAR_ENHANCEMENT("DamageMult"))
-        .Options(ComboboxOptions().ComboMap(allPowers).DefaultIndex(0).Tooltip(
-            "Modifies all sources of damage not affected by other sliders:\n"
-            "2x: Can survive all common attacks from the start of the game.\n"
-            "4x: Dies in 1 hit to any substantial attack from the start of the game.\n"
-            "8x: Can only survive trivial damage from the start of the game.\n"
-            "16x: Can survive all common attacks with max health without double defense.\n"
-            "32x: Can survive all common attacks with max health and double defense.\n"
-            "64x: Can survive trivial damage with max health without double defense.\n"
-            "128x: Can survive trivial damage with max health and double defense.\n"
-            "256x: Cannot survive damage."));
-    AddWidget(path, "Fall Damage Multiplier", WIDGET_CVAR_COMBOBOX)
-        .CVar(CVAR_ENHANCEMENT("FallDamageMult"))
-        .Options(ComboboxOptions().ComboMap(subPowers).Tooltip(
-            "Modifies all fall damage:\n"
-            "2x: Can survive all fall damage from the start of the game.\n"
-            "4x: Can only survive short fall damage from the start of the game.\n"
-            "8x: Cannot survive any fall damage from the start of the game.\n"
-            "16x: Can survive all fall damage with max health without double defense.\n"
-            "32x: Can survive all fall damage with max health and double defense.\n"
-            "64x: Can survive short fall damage with double defense.\n"
-            "128x: Cannot survive fall damage."));
-    AddWidget(path, "Void Damage Multiplier", WIDGET_CVAR_COMBOBOX)
-        .CVar(CVAR_ENHANCEMENT("VoidDamageMult"))
-        .Options(ComboboxOptions()
-                     .ComboMap(subSubPowers)
-                     .DefaultIndex(0)
-                     .Tooltip("Modifies damage taken after falling into a void:\n"
-                              "2x: Can survive void damage from the start of the game.\n"
-                              "4x: Cannot survive void damage from the start of the game.\n"
-                              "8x: Can survive void damage twice with max health without double defense.\n"
-                              "16x: Can survive void damage with max health without double defense.\n"
-                              "32x: Can survive void damage with max health and double defense.\n"
-                              "64x: Cannot survive void damage."));
+    auto clampDamagePercent = [](const char* cvarName) {
+        float value = CVarGetFloat(cvarName, 100.0f);
+        float clamped = value;
+
+        if (value != value) {
+            clamped = 100.0f;
+        } else if (clamped < 0.0f) {
+            clamped = 0.0f;
+        } else if (clamped > 5000.0f) {
+            clamped = 5000.0f;
+        }
+
+        if (value != clamped) {
+            CVarSetFloat(cvarName, clamped);
+            CVarSave();
+        }
+    };
+    AddWidget(path, "Damage Dealt (%)", WIDGET_CVAR_INPUT)
+        .CVar(CVAR_ENHANCEMENT("PlayerDamageDealtPercent"))
+        .Options(InputOptions()
+                     .InputType(InputTypes::Float)
+                     .DefaultValue("100")
+                     .PlaceholderText("0 - 5000")
+                     .Tooltip("Modifies damage dealt by Link and his projectiles.\n"
+                              "Accepts decimal percentages for fine tuning. 100% is vanilla."))
+        .Callback([clampDamagePercent](WidgetInfo& info) {
+            clampDamagePercent(CVAR_ENHANCEMENT("PlayerDamageDealtPercent"));
+        });
+    AddWidget(path, "Damage Taken (%)", WIDGET_CVAR_INPUT)
+        .CVar(CVAR_ENHANCEMENT("DamagePercent"))
+        .Options(InputOptions()
+                     .InputType(InputTypes::Float)
+                     .DefaultValue("100")
+                     .PlaceholderText("0 - 5000")
+                     .Tooltip("Modifies all sources of damage not affected by other sliders.\n"
+                              "Accepts decimal percentages for fine tuning (e.g., 110.5).\n"
+                              "100%: Vanilla damage.\n"
+                              "150%: 1.5x damage.\n"
+                              "200%: 2x damage.\n"
+                              "5000%: 50x damage for near-OHKO difficulty."))
+        .Callback([clampDamagePercent](WidgetInfo& info) { clampDamagePercent(CVAR_ENHANCEMENT("DamagePercent")); });
+    AddWidget(path, "Fall Damage (%)", WIDGET_CVAR_INPUT)
+        .CVar(CVAR_ENHANCEMENT("FallDamagePercent"))
+        .Options(InputOptions()
+                     .InputType(InputTypes::Float)
+                     .DefaultValue("100")
+                     .PlaceholderText("0 - 5000")
+                     .Tooltip("Modifies all fall damage dealt to Link. Accepts decimal percentages. 100% is vanilla."))
+        .Callback(
+            [clampDamagePercent](WidgetInfo& info) { clampDamagePercent(CVAR_ENHANCEMENT("FallDamagePercent")); });
+    AddWidget(path, "Void Damage (%)", WIDGET_CVAR_INPUT)
+        .CVar(CVAR_ENHANCEMENT("VoidDamagePercent"))
+        .Options(InputOptions()
+                     .InputType(InputTypes::Float)
+                     .DefaultValue("100")
+                     .PlaceholderText("0 - 5000")
+                     .Tooltip(
+                         "Modifies damage taken after falling into a void. Accepts decimal percentages. 100% is vanilla."))
+        .Callback(
+            [clampDamagePercent](WidgetInfo& info) { clampDamagePercent(CVAR_ENHANCEMENT("VoidDamagePercent")); });
     AddWidget(path, "Bonk Damage Multiplier", WIDGET_CVAR_COMBOBOX)
         .CVar(CVAR_ENHANCEMENT("BonkDamageMult"))
         .Options(ComboboxOptions()
@@ -1427,10 +1431,34 @@ void SohMenu::AddMenuEnhancements() {
     AddWidget(path, "Enemies", WIDGET_SEPARATOR_TEXT);
     AddWidget(path, "Hyper Bosses", WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR_ENHANCEMENT("HyperBosses"))
-        .Options(CheckboxOptions().Tooltip("All Major Bosses move and act twice as fast."));
+        .Options(CheckboxOptions().Tooltip(
+            "All Major Bosses move and act faster based on the Hyper Speed Increase sliders."));
     AddWidget(path, "Hyper Enemies", WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR_ENHANCEMENT("HyperEnemies"))
-        .Options(CheckboxOptions().Tooltip("All Regular Enemies and Mini-Bosses move and act twice as fast."));
+        .Options(CheckboxOptions().Tooltip(
+            "All Regular Enemies and Mini-Bosses move and act faster based on the Hyper Speed Increase sliders."));
+    AddWidget(path, "Hyper Speed Increase: +%d%%", WIDGET_CVAR_SLIDER_INT)
+        .CVar(HyperSpeed::FullHealthCVar)
+        .Options(IntSliderOptions()
+                     .Min(0)
+                     .Max(400)
+                     .DefaultValue(HyperSpeed::FullHealthDefault)
+                     .Format("+%d%%")
+                     .Tooltip(
+                         "Sets the Hyper speed increase while an enemy or boss is at full health.\n"
+                         "10% runs one extra update every 10 frames, 100% is twice as fast, and 400% is five times "
+                         "as fast."));
+    AddWidget(path, "Hyper Speed at 0 Health: %+d%%", WIDGET_CVAR_SLIDER_INT)
+        .CVar(HyperSpeed::ZeroHealthCVar)
+        .Options(IntSliderOptions()
+                     .Min(-100)
+                     .Max(400)
+                     .DefaultValue(HyperSpeed::ZeroHealthDefault)
+                     .Format("%+d%%")
+                     .Tooltip(
+                         "Sets the Hyper speed increase reached as health approaches zero.\n"
+                         "Values below the full-health setting taper actors back toward normal speed; Hyper mode "
+                         "never makes them slower than normal."));
     AddWidget(path, "Enable Visual Guard Vision", WIDGET_CVAR_CHECKBOX).CVar(CVAR_ENHANCEMENT("GuardVision"));
     AddWidget(path, "Leever Spawn Rate: %d seconds", WIDGET_CVAR_SLIDER_INT)
         .CVar(CVAR_ENHANCEMENT("LeeverSpawnRate"))

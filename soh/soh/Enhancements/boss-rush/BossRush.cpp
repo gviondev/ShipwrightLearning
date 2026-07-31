@@ -815,9 +815,9 @@ void BossRush_OnVanillaBehaviorHandler(GIVanillaBehavior id, bool* should, va_li
                     break;
                 }
                 case SCENE_WATER_TEMPLE_BOSS: {
-                    BossMo* bossMo = va_arg(args, BossMo*);
-                    Actor_Spawn(&gPlayState->actorCtx, gPlayState, ACTOR_DOOR_WARP1, bossMo->actor.world.pos.x, -280.0f,
-                                bossMo->actor.world.pos.z, 0, 0, 0, WARP_DUNGEON_ADULT);
+                    (void)va_arg(args, BossMo*);
+                    Actor_Spawn(&gPlayState->actorCtx, gPlayState, ACTOR_DOOR_WARP1, 0.0f, -280.0f, 0.0f, 0, 0, 0,
+                                WARP_DUNGEON_ADULT);
                     break;
                 }
                 case SCENE_SPIRIT_TEMPLE_BOSS: {

@@ -54,7 +54,7 @@ typedef struct BossDodongo {
     /* 0x01CA */ char unk_1CA[0x2];
     /* 0x01CC */ s16 unk_1CC;
     /* 0x01CE */ char unk_1CE[0xC];
-    /* 0x01DA */ s16 unk_1DA; 
+    /* 0x01DA */ s16 unk_1DA;
     /* 0x01DC */ s16 unk_1DC;
     /* 0x01DE */ s16 unk_1DE;
     /* 0x01E0 */ s16 unk_1E0;
@@ -97,6 +97,29 @@ typedef struct BossDodongo {
     /* 0x0440 */ ColliderJntSph collider;
     /* 0x0460 */ ColliderJntSphElement items[19];
     /* 0x0920 */ BossDodongoEffect effects[80];
-} BossDodongo; // size = 0x1820
+    // Hard-boss state is appended so the original actor, collider, and effect offsets stay intact.
+    s16 postRollCornerRecoveryTimer;
+    s16 rollingRockTimer;
+    s16 currentRollTargetCollisions;
+    s16 aggressiveRollCornersRemaining;
+    s16 aggressiveChainsInCycle;
+    s16 aggressiveChainCooldown;
+    u8 dodojrSpawnedThisCycle;
+    u8 rollingEnvApplied;
+    u8 aggressiveChainActive;
+    u8 aggressiveCornerFirePending;
+    u8 rewardState;
+    f32 rollSpeedMultiplier;
+    f32 rollingLightPulseTimer;
+    f32 rollingFogStrength;
+    f32 rollingFogTarget;
+    f32 rollingFogNearOffset;
+    s16 rollingBaseLight1Color[3];
+    s16 rollingBaseAmbientColor[3];
+    s16 rollingBaseFogColor[3];
+    s16 rollingBaseFogNear;
+    u32 lastLavaTextureUpdateFrame;
+    Vec3f rewardHeartPos;
+} BossDodongo;
 
 #endif

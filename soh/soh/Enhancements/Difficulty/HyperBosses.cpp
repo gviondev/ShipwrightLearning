@@ -4,12 +4,120 @@
 #include "variables.h"
 #include "soh/Enhancements/game-interactor/GameInteractor_Hooks.h"
 #include "soh/Enhancements/boss-rush/BossRush.h"
+#include "soh/Enhancements/Difficulty/HyperSpeed.h"
+#include "overlays/actors/ovl_Boss_Dodongo/z_boss_dodongo.h"
+#include "overlays/actors/ovl_Boss_Fd/z_boss_fd.h"
+#include "overlays/actors/ovl_Boss_Ganondrof/z_boss_ganondrof.h"
 
 extern "C" PlayState* gPlayState;
+extern "C" s32 BossMo_GetHyperSpeedHealth(Actor* actor, s32* maximumHealth);
+extern "C" s32 BossVa_GetHyperSpeedHealth(s32* maximumHealth);
 
 #define CVAR_HYPER_BOSSES_DEFAULT 0
 #define CVAR_HYPER_BOSSES_NAME CVAR_ENHANCEMENT("HyperBosses")
 #define CVAR_HYPER_BOSSES_VALUE CVarGetInteger(CVAR_HYPER_BOSSES_NAME, CVAR_HYPER_BOSSES_DEFAULT)
+
+namespace {
+
+Actor* FindActiveBossActor(s16 actorId, bool matchParams = false, s16 params = 0) {
+    Actor* actor = gPlayState->actorCtx.actorLists[ACTORCAT_BOSS].head;
+
+    while (actor != nullptr) {
+        if ((actor->id == actorId) && (!matchParams || (actor->params == params)) && (actor->update != nullptr)) {
+            return actor;
+        }
+        actor = actor->next;
+    }
+
+    return nullptr;
+}
+
+Actor* FindActiveBossActorBelowParams(s16 actorId, s16 maximumParams) {
+    Actor* actor = gPlayState->actorCtx.actorLists[ACTORCAT_BOSS].head;
+
+    while (actor != nullptr) {
+        if ((actor->id == actorId) && (actor->params < maximumParams) && (actor->update != nullptr)) {
+            return actor;
+        }
+        actor = actor->next;
+    }
+
+    return nullptr;
+}
+
+int32_t ReadActorHealth(const Actor* actor) {
+    const int32_t rawHealth = actor->colChkInfo.health;
+    return rawHealth <= 0x7F ? rawHealth : 0;
+}
+
+HyperSpeed::Health GetActorHealth(const Actor* actor, int32_t maximumHealth) {
+    return { ReadActorHealth(actor), maximumHealth };
+}
+
+HyperSpeed::Health GetOwnerHealth(s16 ownerId, int32_t maximumHealth, bool matchParams = false, s16 params = 0) {
+    Actor* owner = FindActiveBossActor(ownerId, matchParams, params);
+    return { owner != nullptr ? ReadActorHealth(owner) : 0, maximumHealth };
+}
+
+HyperSpeed::Health GetGanonOwnerHealth() {
+    Actor* owner = FindActiveBossActorBelowParams(ACTOR_BOSS_GANON, 0x64);
+    return { owner != nullptr ? ReadActorHealth(owner) : 0, 40 };
+}
+
+HyperSpeed::Health GetFhgFireOwnerHealth() {
+    Actor* phantomGanon = FindActiveBossActor(ACTOR_BOSS_GANONDROF, true, GND_REAL_BOSS);
+    if (phantomGanon != nullptr) {
+        return { ReadActorHealth(phantomGanon), GND_MAX_HEALTH };
+    }
+
+    return GetGanonOwnerHealth();
+}
+
+HyperSpeed::Health GetBossHealth(Actor* actor) {
+    switch (actor->id) {
+        case ACTOR_BOSS_GOMA:
+            return GetActorHealth(actor, 20);
+        case ACTOR_BOSS_DODONGO:
+            return { reinterpret_cast<BossDodongo*>(actor)->health, 20 };
+        case ACTOR_EN_BDFIRE: {
+            Actor* owner = FindActiveBossActor(ACTOR_BOSS_DODONGO);
+            return { owner != nullptr ? reinterpret_cast<BossDodongo*>(owner)->health : 0, 20 };
+        }
+        case ACTOR_BOSS_VA: {
+            s32 maximumHealth;
+            s32 currentHealth = BossVa_GetHyperSpeedHealth(&maximumHealth);
+            return { currentHealth, maximumHealth };
+        }
+        case ACTOR_BOSS_GANONDROF:
+            return GetOwnerHealth(ACTOR_BOSS_GANONDROF, GND_MAX_HEALTH, true, GND_REAL_BOSS);
+        case ACTOR_EN_FHG_FIRE:
+            return GetFhgFireOwnerHealth();
+        case ACTOR_EN_FHG:
+            return GetOwnerHealth(ACTOR_BOSS_GANONDROF, GND_MAX_HEALTH, true, GND_REAL_BOSS);
+        case ACTOR_BOSS_FD:
+            return GetActorHealth(actor, BOSSFD_MAX_HEALTH);
+        case ACTOR_BOSS_FD2:
+        case ACTOR_EN_VB_BALL:
+            return GetOwnerHealth(ACTOR_BOSS_FD, BOSSFD_MAX_HEALTH);
+        case ACTOR_BOSS_MO: {
+            s32 maximumHealth;
+            s32 currentHealth = BossMo_GetHyperSpeedHealth(actor, &maximumHealth);
+            return { currentHealth, maximumHealth };
+        }
+        case ACTOR_BOSS_SST:
+            return GetOwnerHealth(ACTOR_BOSS_SST, 36, true, -1);
+        case ACTOR_BOSS_TW:
+            return GetOwnerHealth(ACTOR_BOSS_TW, 24, true, 2);
+        case ACTOR_BOSS_GANON:
+            return GetGanonOwnerHealth();
+        case ACTOR_BOSS_GANON2:
+            return GetActorHealth(actor, 30);
+        default:
+            return { ReadActorHealth(actor), 0 };
+    }
+}
+
+} // namespace
 
 bool IsHyperBossesActive() {
     return CVAR_HYPER_BOSSES_VALUE ||
@@ -18,10 +126,13 @@ bool IsHyperBossesActive() {
 }
 
 void MakeHyperBosses(void* refActor) {
-    // Run the update function a second time to make bosses move and act twice as fast.
+    Actor* actor = static_cast<Actor*>(refActor);
+    if (actor == nullptr || actor->update == nullptr) {
+        HyperSpeed::Erase(actor);
+        return;
+    }
 
     Player* player = GET_PLAYER(gPlayState);
-    Actor* actor = static_cast<Actor*>(refActor);
 
     uint8_t isBossActor = actor->id == ACTOR_BOSS_GOMA ||      // Gohma
                           actor->id == ACTOR_BOSS_DODONGO ||   // King Dodongo
@@ -44,20 +155,66 @@ void MakeHyperBosses(void* refActor) {
         if (actor->id == ACTOR_BOSS_VA) {
             // params -1 is BOSSVA_BODY
             if (actor->params == -1) {
-                Actor* actorList = gPlayState->actorCtx.actorLists[ACTORCAT_BOSS].head;
-                while (actorList != NULL) {
-                    GameInteractor::RawAction::UpdateActor(actorList);
-                    actorList = actorList->next;
+                const int32_t additionalUpdates = HyperSpeed::CalculateAdditionalUpdates(
+                    HyperSpeed::TrackerGroup::Bosses, actor, GetBossHealth(actor));
+                for (int32_t i = 0; i < additionalUpdates; ++i) {
+                    if (Player_InBlockingCsMode(gPlayState, player)) {
+                        break;
+                    }
+
+                    Actor* actorList = gPlayState->actorCtx.actorLists[ACTORCAT_BOSS].head;
+                    while (actorList != NULL) {
+                        Actor* nextActor = actorList->next;
+                        if (actorList->id == ACTOR_BOSS_VA && actorList->update != nullptr) {
+                            GameInteractor::RawAction::UpdateActor(actorList);
+                        }
+                        actorList = nextActor;
+                    }
+
+                    if (actor->update == nullptr) {
+                        HyperSpeed::Erase(actor);
+                        break;
+                    }
                 }
             }
         } else {
-            GameInteractor::RawAction::UpdateActor(actor);
+            int32_t additionalUpdates = HyperSpeed::CalculateAdditionalUpdates(
+                HyperSpeed::TrackerGroup::Bosses, actor, GetBossHealth(actor));
+            if (actor->id == ACTOR_EN_FHG_FIRE) {
+                // Reflectable projectiles and ground shocks need one collision step per movement step.
+                // Their cadence still accelerates with the boss that spawns them.
+                additionalUpdates = 0;
+            } else if ((actor->id == ACTOR_BOSS_GANONDROF || actor->id == ACTOR_EN_FHG) &&
+                       additionalUpdates > 1) {
+                // Faster substeps collapse Phantom Ganon's tells and can tunnel his dash through the
+                // one collision pass performed per rendered frame.
+                additionalUpdates = 1;
+            }
+            for (int32_t i = 0; i < additionalUpdates; ++i) {
+                if (Player_InBlockingCsMode(gPlayState, player)) {
+                    break;
+                }
+
+                GameInteractor::RawAction::UpdateActor(actor);
+                if (actor->update == nullptr) {
+                    HyperSpeed::Erase(actor);
+                    break;
+                }
+            }
         }
     }
 }
 
 static void UpdateHyperBossesState() {
-    COND_HOOK(OnActorUpdate, IsHyperBossesActive(), MakeHyperBosses);
+    HyperSpeed::Reset(HyperSpeed::TrackerGroup::Bosses);
+    COND_HOOK(OnActorUpdate, IsHyperBossesActive() && HyperSpeed::HasConfiguredExtraUpdates(), MakeHyperBosses);
 }
 
-static RegisterShipInitFunc initFunc(UpdateHyperBossesState, { CVAR_HYPER_BOSSES_NAME });
+static void RegisterHyperBosses() {
+    UpdateHyperBossesState();
+    COND_HOOK(OnLoadGame, true, [](int32_t) { UpdateHyperBossesState(); });
+}
+
+static RegisterShipInitFunc initFunc(
+    RegisterHyperBosses,
+    { CVAR_HYPER_BOSSES_NAME, HyperSpeed::FullHealthCVar, HyperSpeed::ZeroHealthCVar });

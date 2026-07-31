@@ -29,6 +29,7 @@
 #include "soh/resource/type/scenecommand/SetSoundSettings.h"
 #include "soh/resource/type/scenecommand/SetEchoSettings.h"
 #include "soh/resource/type/scenecommand/SetAlternateHeaders.h"
+#include "soh/telemetry/ExternalTelemetry.h"
 #include <spdlog/spdlog.h>
 
 extern Ship::IResource* OTRPlay_LoadFile(PlayState* play, const char* fileName);
@@ -251,6 +252,7 @@ bool Scene_CommandTimeSettings(PlayState* play, SOH::ISceneCommand* cmd) {
         gSaveContext.skyboxTime = gSaveContext.dayTime = static_cast<u16>(
             ((cmdTime->settings.hour + (cmdTime->settings.minute / 60.0f)) * 60.0f) / ((f32)(24 * 60) / 0x10000));
     }
+    ExternalTelemetry_SetDayTime(gSaveContext.dayTime);
 
     if (cmdTime->settings.timeIncrement != 0xFF) {
         play->envCtx.timeIncrement = cmdTime->settings.timeIncrement;

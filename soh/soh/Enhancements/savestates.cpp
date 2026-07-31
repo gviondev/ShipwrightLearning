@@ -14,6 +14,7 @@
 #include <variables.h>
 #include <functions.h>
 #include "savestate_serialize.h"
+#include "soh/Enhancements/Difficulty/HyperSpeed.h"
 
 extern "C" PlayState* gPlayState;
 
@@ -26,6 +27,9 @@ extern "C" void BgMoriHineri_SaveState(SaveStateCtx* ctx);
 extern "C" void BgPoEvent_SaveState(SaveStateCtx* ctx);
 extern "C" void BgRelayObjects_SaveState(SaveStateCtx* ctx);
 extern "C" void BgSpot18Basket_SaveState(SaveStateCtx* ctx);
+extern "C" void BossDodongo_SaveState(SaveStateCtx* ctx);
+extern "C" void BossGoma_SaveState(SaveStateCtx* ctx);
+extern "C" void BossGanondrof_SaveState(SaveStateCtx* ctx);
 extern "C" void BossGanon_SaveState(SaveStateCtx* ctx);
 extern "C" void BossGanon2_SaveState(SaveStateCtx* ctx);
 extern "C" void BossMo_SaveState(SaveStateCtx* ctx);
@@ -125,6 +129,9 @@ typedef struct SaveStateInfo {
     std::unique_ptr<uint8_t[]> bgPoEventState;
     std::unique_ptr<uint8_t[]> bgRelayObjectsState;
     std::unique_ptr<uint8_t[]> bgSpot18BasketState;
+    std::unique_ptr<uint8_t[]> bossDodongoState;
+    std::unique_ptr<uint8_t[]> bossGomaState;
+    std::unique_ptr<uint8_t[]> bossGanondrofState;
     std::unique_ptr<uint8_t[]> bossGanonState;
     std::unique_ptr<uint8_t[]> bossGanon2State;
     std::unique_ptr<uint8_t[]> bossMoState;
@@ -260,6 +267,9 @@ void SaveState::SaveOverlayStaticData(void) {
     SaveOverlayState(info->bgPoEventState, BgPoEvent_SaveState);
     SaveOverlayState(info->bgRelayObjectsState, BgRelayObjects_SaveState);
     SaveOverlayState(info->bgSpot18BasketState, BgSpot18Basket_SaveState);
+    SaveOverlayState(info->bossDodongoState, BossDodongo_SaveState);
+    SaveOverlayState(info->bossGomaState, BossGoma_SaveState);
+    SaveOverlayState(info->bossGanondrofState, BossGanondrof_SaveState);
     SaveOverlayState(info->bossGanonState, BossGanon_SaveState);
     SaveOverlayState(info->bossGanon2State, BossGanon2_SaveState);
     SaveOverlayState(info->bossMoState, BossMo_SaveState);
@@ -306,6 +316,9 @@ void SaveState::LoadOverlayStaticData(void) {
     LoadOverlayState(info->bgPoEventState, BgPoEvent_SaveState);
     LoadOverlayState(info->bgRelayObjectsState, BgRelayObjects_SaveState);
     LoadOverlayState(info->bgSpot18BasketState, BgSpot18Basket_SaveState);
+    LoadOverlayState(info->bossDodongoState, BossDodongo_SaveState);
+    LoadOverlayState(info->bossGomaState, BossGoma_SaveState);
+    LoadOverlayState(info->bossGanondrofState, BossGanondrof_SaveState);
     LoadOverlayState(info->bossGanonState, BossGanon_SaveState);
     LoadOverlayState(info->bossGanon2State, BossGanon2_SaveState);
     LoadOverlayState(info->bossMoState, BossMo_SaveState);
@@ -473,4 +486,6 @@ void SaveState::Load(void) {
     D_801755D0 = info->D_801755D0_copy;
     LoadOverlayStaticData();
     LoadTransitionActors();
+    CollisionCheck_ClearPlayerDamageRemainders();
+    HyperSpeed::ResetAll();
 }

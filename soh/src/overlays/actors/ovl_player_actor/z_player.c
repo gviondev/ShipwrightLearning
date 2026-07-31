@@ -48,7 +48,9 @@ static f32 Player_GetDamagePercent(const char* cvarName) {
     f32 percent = CVarGetFloat(cvarName, DAMAGE_PERCENT_DEFAULT);
     f32 clampedPercent = percent;
 
-    if (clampedPercent < DAMAGE_PERCENT_MIN) {
+    if (percent != percent) {
+        clampedPercent = DAMAGE_PERCENT_DEFAULT;
+    } else if (clampedPercent < DAMAGE_PERCENT_MIN) {
         clampedPercent = DAMAGE_PERCENT_MIN;
     } else if (clampedPercent > DAMAGE_PERCENT_MAX) {
         clampedPercent = DAMAGE_PERCENT_MAX;

@@ -39,6 +39,16 @@ void EnbdFire_SetupDraw(EnBdfire* this, EnBdfireDrawFunc drawFunc) {
     this->drawFunc = drawFunc;
 }
 
+static BossDodongo* EnBdfire_GetActiveBossParent(EnBdfire* this) {
+    Actor* parent = this->actor.parent;
+
+    if ((parent == NULL) || (parent->update == NULL) || (parent->id != ACTOR_BOSS_DODONGO)) {
+        return NULL;
+    }
+
+    return (BossDodongo*)parent;
+}
+
 void EnBdfire_Init(Actor* thisx, PlayState* play) {
     EnBdfire* this = (EnBdfire*)thisx;
     s32 pad;
@@ -85,7 +95,12 @@ void func_809BC2A4(EnBdfire* this, PlayState* play) {
     BossDodongo* kingDodongo;
     s32 temp;
 
-    kingDodongo = (BossDodongo*)this->actor.parent;
+    kingDodongo = EnBdfire_GetActiveBossParent(this);
+    if (kingDodongo == NULL) {
+        Actor_Kill(&this->actor);
+        return;
+    }
+
     this->actor.world.pos.x = kingDodongo->firePos.x;
     this->actor.world.pos.y = kingDodongo->firePos.y;
     this->actor.world.pos.z = kingDodongo->firePos.z;
@@ -128,7 +143,12 @@ void func_809BC598(EnBdfire* this, PlayState* play) {
     s16 phi_v1;
     s32 temp;
 
-    bossDodongo = ((BossDodongo*)this->actor.parent);
+    bossDodongo = EnBdfire_GetActiveBossParent(this);
+    if (bossDodongo == NULL) {
+        Actor_Kill(&this->actor);
+        return;
+    }
+
     this->unk_158 = bossDodongo->unk_1A2;
     phi_v1_2 = 0;
     if (this->actor.params == 0) {

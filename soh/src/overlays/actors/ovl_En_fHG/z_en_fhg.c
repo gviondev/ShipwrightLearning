@@ -65,12 +65,39 @@ static EnfHGPainting sPaintings[] = {
     { { 260.0f, 60.0f, 155.0f }, 0xAAA8 },  { { 260.0f, 60.0f, -155.0f }, 0xD552 },
 };
 
-static const s16 sHorseDismountHealthThreshold = 42;
-
 static InitChainEntry sInitChain[] = {
     ICHAIN_S8(naviEnemyId, 0x1A, ICHAIN_CONTINUE),
     ICHAIN_F32(uncullZoneScale, 1200, ICHAIN_STOP),
 };
+
+static Actor* EnfHG_TrySpawnFence(EnfHG* this, PlayState* play) {
+    Actor* actor = play->actorCtx.actorLists[ACTORCAT_DOOR].head;
+
+    while (actor != NULL) {
+        if (actor == this->actor.child) {
+            if ((actor->id == ACTOR_DOOR_SHUTTER) && (actor->update != NULL)) {
+                return actor;
+            }
+            break;
+        }
+        actor = actor->next;
+    }
+
+    if (this->timers[4] != 0) {
+        return NULL;
+    }
+
+    actor = Actor_SpawnAsChild(&play->actorCtx, &this->actor, play, ACTOR_DOOR_SHUTTER,
+                               GND_BOSSROOM_CENTER_X, GND_BOSSROOM_CENTER_Y - 97.0f,
+                               GND_BOSSROOM_CENTER_Z + 308.0f, 0, 0, 0, SHUTTER_PG_BARS << 6);
+    if (actor != NULL) {
+        Audio_PlayActorSound2(actor, NA_SE_EV_SPEAR_FENCE);
+    } else {
+        this->timers[4] = 2;
+    }
+
+    return actor;
+}
 
 void EnfHG_Init(Actor* thisx, PlayState* play2) {
     PlayState* play = play2;
@@ -139,16 +166,16 @@ void EnfHG_Intro(EnfHG* this, PlayState* play) {
             break;
         case INTRO_START:
             if (Flags_GetEventChkInf(EVENTCHKINF_BEGAN_PHANTOM_GANON_BATTLE)) {
-                if (this->timers[0] == 55) {
-                    Actor_SpawnAsChild(&play->actorCtx, &this->actor, play, ACTOR_DOOR_SHUTTER,
-                                       GND_BOSSROOM_CENTER_X + 0.0f, GND_BOSSROOM_CENTER_Y - 97.0f,
-                                       GND_BOSSROOM_CENTER_Z + 308.0f, 0, 0, 0, (SHUTTER_PG_BARS << 6));
+                if (this->timers[0] <= 55) {
+                    EnfHG_TrySpawnFence(this, play);
                 }
                 if (this->timers[0] == 51) {
-                    Audio_PlayActorSound2(this->actor.child, NA_SE_EV_SPEAR_FENCE);
                     Audio_QueueSeqCmd(SEQ_PLAYER_BGM_MAIN << 24 | NA_BGM_BOSS);
                 }
                 if (this->timers[0] == 0) {
+                    if (EnfHG_TrySpawnFence(this, play) == NULL) {
+                        break;
+                    }
                     EnfHG_SetupApproach(this, play, Rand_ZeroOne() * 5.99f);
                     this->bossGndSignal = FHG_START_FIGHT;
                 }
@@ -157,8 +184,12 @@ void EnfHG_Intro(EnfHG* this, PlayState* play) {
             func_80064520(play, &play->csCtx);
             Player_SetCsActionWithHaltedActors(play, &this->actor, 8);
             this->cutsceneCamera = Play_CreateSubCamera(play);
-            Play_ChangeCameraStatus(play, CAM_ID_MAIN, CAM_STAT_WAIT);
-            Play_ChangeCameraStatus(play, this->cutsceneCamera, CAM_STAT_ACTIVE);
+            if (this->cutsceneCamera != SUBCAM_NONE) {
+                Play_ChangeCameraStatus(play, CAM_ID_MAIN, CAM_STAT_WAIT);
+                Play_ChangeCameraStatus(play, this->cutsceneCamera, CAM_STAT_ACTIVE);
+            } else {
+                this->cutsceneCamera = CAM_ID_MAIN;
+            }
             this->cutsceneState = INTRO_FENCE;
             this->timers[0] = 60;
             this->actor.world.pos.y = GND_BOSSROOM_CENTER_Y - 7.0f;
@@ -177,15 +208,13 @@ void EnfHG_Intro(EnfHG* this, PlayState* play) {
             this->cameraAt.x = GND_BOSSROOM_CENTER_X + 0.0f;
             this->cameraAt.y = GND_BOSSROOM_CENTER_Y + 47.0f;
             this->cameraAt.z = GND_BOSSROOM_CENTER_Z + 315.0f;
-            if (this->timers[0] == 25) {
-                Actor_SpawnAsChild(&play->actorCtx, &this->actor, play, ACTOR_DOOR_SHUTTER,
-                                   GND_BOSSROOM_CENTER_X + 0.0f, GND_BOSSROOM_CENTER_Y - 97.0f,
-                                   GND_BOSSROOM_CENTER_Z + 308.0f, 0, 0, 0, (SHUTTER_PG_BARS << 6));
-            }
-            if (this->timers[0] == 21) {
-                Audio_PlayActorSound2(this->actor.child, NA_SE_EV_SPEAR_FENCE);
+            if (this->timers[0] <= 25) {
+                EnfHG_TrySpawnFence(this, play);
             }
             if (this->timers[0] == 0) {
+                if (EnfHG_TrySpawnFence(this, play) == NULL) {
+                    break;
+                }
                 this->cutsceneState = INTRO_BACK;
                 this->timers[0] = 80;
             }
@@ -396,10 +425,12 @@ void EnfHG_Intro(EnfHG* this, PlayState* play) {
             if (this->timers[1] == 0) {
                 Camera* camera = Play_GetCamera(play, 0);
 
-                camera->eye = this->cameraEye;
-                camera->eyeNext = this->cameraEye;
-                camera->at = this->cameraAt;
-                func_800C08AC(play, this->cutsceneCamera, 0);
+                if (this->cutsceneCamera != CAM_ID_MAIN) {
+                    camera->eye = this->cameraEye;
+                    camera->eyeNext = this->cameraEye;
+                    camera->at = this->cameraAt;
+                    func_800C08AC(play, this->cutsceneCamera, 0);
+                }
                 this->cutsceneCamera = 0;
                 func_80064534(play, &play->csCtx);
                 Player_SetCsActionWithHaltedActors(play, &this->actor, 7);
@@ -619,7 +650,7 @@ void EnfHG_Damage(EnfHG* this, PlayState* play) {
         this->timers[0] = 140;
         this->actionFunc = EnfHG_Retreat;
         Animation_MorphToLoop(&this->skin.skelAnime, &gPhantomHorseRunningAnim, 0.0f);
-        if (bossGnd->actor.colChkInfo.health > sHorseDismountHealthThreshold) {
+        if (bossGnd->actor.colChkInfo.health > GND_HORSE_DISMOUNT_HEALTH) {
             this->bossGndSignal = FHG_RIDE;
         } else {
             bossGnd->flyMode = GND_FLY_NEUTRAL;

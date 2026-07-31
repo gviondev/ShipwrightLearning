@@ -81,6 +81,32 @@ void EnFhgFire_SetUpdate(EnFhgFire* this, EnFhgFireUpdateFunc updateFunc) {
     this->updateFunc = updateFunc;
 }
 
+static BossGanondrof* EnFhgFire_GetBossParent(EnFhgFire* this, PlayState* play) {
+    Actor* actor = play->actorCtx.actorLists[ACTORCAT_BOSS].head;
+
+    while (actor != NULL) {
+        if (actor == this->actor.parent) {
+            return (actor->id == ACTOR_BOSS_GANONDROF) ? (BossGanondrof*)actor : NULL;
+        }
+        actor = actor->next;
+    }
+
+    return NULL;
+}
+
+static EnfHG* EnFhgFire_GetHorseParent(EnFhgFire* this, PlayState* play) {
+    Actor* actor = play->actorCtx.actorLists[ACTORCAT_BG].head;
+
+    while (actor != NULL) {
+        if (actor == this->actor.parent) {
+            return (actor->id == ACTOR_EN_FHG) ? (EnfHG*)actor : NULL;
+        }
+        actor = actor->next;
+    }
+
+    return NULL;
+}
+
 void EnFhgFire_Init(Actor* thisx, PlayState* play) {
     s32 pad;
     EnFhgFire* this = (EnFhgFire*)thisx;
@@ -145,6 +171,10 @@ void EnFhgFire_Init(Actor* thisx, PlayState* play) {
         s16 aimYawOffset = this->actor.world.rot.y;
         s16 aimPitchOffset = this->actor.world.rot.z;
 
+        this->work[FHGFIRE_THROW_ACTION] = speedType;
+        if (speedType == THROW_HELD) {
+            this->work[FHGFIRE_FIRE_MODE] = FHGFIRE_LIGHT_BLUE;
+        }
         switch (speedType) {
             case THROW_NORMAL:
                 this->actor.speedXZ = 10.0f;
@@ -189,6 +219,16 @@ void EnFhgFire_Destroy(Actor* thisx, PlayState* play) {
     }
 
     if (this->actor.params == FHGFIRE_ENERGY_BALL) {
+        BossGanondrof* bossGnd = EnFhgFire_GetBossParent(this, play);
+
+        if ((this->work[FHGFIRE_THROW_ACTION] == THROW_HELD) && (bossGnd != NULL) &&
+            (bossGnd->finalVolleyChargeBall == &this->actor)) {
+            bossGnd->finalVolleyChargeBall = NULL;
+        }
+        if ((bossGnd != NULL) && (bossGnd->activeVolleyBall == &this->actor)) {
+            bossGnd->activeVolleyBall = NULL;
+            bossGnd->returnSuccess = false;
+        }
         LightContext_RemoveLight(play, &play->lightCtx, this->lightNode);
     }
 }
@@ -389,11 +429,14 @@ void EnFhgFire_LightningBurst(EnFhgFire* this, PlayState* play) {
 }
 
 void EnFhgFire_SpearLight(EnFhgFire* this, PlayState* play) {
-    BossGanondrof* bossGnd;
+    BossGanondrof* bossGnd = EnFhgFire_GetBossParent(this, play);
     s16 i;
 
     osSyncPrintf("yari hikari 1\n");
-    bossGnd = (BossGanondrof*)this->actor.parent;
+    if ((bossGnd == NULL) || (bossGnd->actor.update == NULL)) {
+        Actor_Kill(&this->actor);
+        return;
+    }
     if ((this->work[FHGFIRE_VARIANCE_TIMER] % 2) != 0) {
         Actor_SetScale(&this->actor, 6.0f);
     } else {
@@ -438,26 +481,31 @@ void EnFhgFire_EnergyBall(EnFhgFire* this, PlayState* play) {
     u8 killMode = BALL_FIZZLE;
     u8 canBottleReflect1;
     Player* player = GET_PLAYER(play);
+    BossGanondrof* bossGnd = EnFhgFire_GetBossParent(this, play);
 
-    if (this->actor.world.rot.x == THROW_HELD) {
-        BossGanondrof* bossGnd = (BossGanondrof*)this->actor.parent;
+    if ((bossGnd == NULL) || (bossGnd->actor.update == NULL)) {
+        Actor_Kill(&this->actor);
+        return;
+    }
 
-        this->collider.base.acFlags &= ~AC_ON;
+    if (this->work[FHGFIRE_THROW_ACTION] == THROW_HELD) {
+
+        this->collider.base.acFlags &= ~(AC_ON | AC_HIT);
         this->collider.base.atFlags &= ~AT_ON;
         this->collider.base.ocFlags1 &= ~OC1_ON;
 
-        if (bossGnd != NULL) {
+        {
             s16 yaw = bossGnd->actor.shape.rot.y;
             f32 forwardOffset = 50.0f;
-            f32 heightOffset = 40.0f;
+            f32 heightOffset = 30.0f;
             f32 chargeRatio = 1.0f - ((f32)bossGnd->finalVolleyChannelTimer / (f32)GND_FINAL_VOLLEY_CHANNEL_TIME);
             f32 pulse = Math_SinS(this->work[FHGFIRE_VARIANCE_TIMER] * 500) * 0.5f;
             f32 scaledChargeRatio = CLAMP(chargeRatio, 0.0f, 1.0f);
             f32 baseScale = 5.0f + (scaledChargeRatio * 6.0f);
 
-            this->actor.world.pos.x = bossGnd->spearTip.x + (Math_SinS(yaw) * forwardOffset);
-            this->actor.world.pos.y = bossGnd->spearTip.y + heightOffset;
-            this->actor.world.pos.z = bossGnd->spearTip.z + (Math_CosS(yaw) * forwardOffset);
+            this->actor.world.pos.x = bossGnd->actor.world.pos.x + (Math_SinS(yaw) * forwardOffset);
+            this->actor.world.pos.y = bossGnd->actor.world.pos.y + heightOffset;
+            this->actor.world.pos.z = bossGnd->actor.world.pos.z + (Math_CosS(yaw) * forwardOffset);
             Actor_SetScale(&this->actor, baseScale + pulse);
 
             if ((this->work[FHGFIRE_VARIANCE_TIMER] % 3) == 0) {
@@ -471,6 +519,8 @@ void EnFhgFire_EnergyBall(EnFhgFire* this, PlayState* play) {
         }
 
         this->actor.shape.rot.z += (s16)(Rand_ZeroOne() * 0x4E20) + 0x2000;
+        Lights_PointNoGlowSetInfo(&this->lightInfo, (s16)this->actor.world.pos.x, (s16)this->actor.world.pos.y,
+                                  (s16)this->actor.world.pos.z, 180, 220, 255, 200);
         if (this->work[FHGFIRE_TIMER] == 0) {
             Actor_Kill(&this->actor);
         }
@@ -478,6 +528,7 @@ void EnFhgFire_EnergyBall(EnFhgFire* this, PlayState* play) {
     }
 
     if (this->work[FHGFIRE_KILL_TIMER] != 0) {
+        this->collider.base.acFlags &= ~(AC_ON | AC_HIT);
         this->work[FHGFIRE_KILL_TIMER]--;
         if (this->work[FHGFIRE_KILL_TIMER] == 0) {
             Actor_Kill(&this->actor);
@@ -485,11 +536,10 @@ void EnFhgFire_EnergyBall(EnFhgFire* this, PlayState* play) {
         }
     } else {
         s32 canBottleReflect2;
-        BossGanondrof* bossGnd = (BossGanondrof*)this->actor.parent;
 
-        dxPG = bossGnd->targetPos.x - this->actor.world.pos.x;
-        dyPG = bossGnd->targetPos.y - this->actor.world.pos.y;
-        dzPG = bossGnd->targetPos.z - this->actor.world.pos.z;
+        dxPG = bossGnd->actor.world.pos.x - this->actor.world.pos.x;
+        dyPG = bossGnd->actor.world.pos.y + 45.0f - this->actor.world.pos.y;
+        dzPG = bossGnd->actor.world.pos.z - this->actor.world.pos.z;
         dxL = player->actor.world.pos.x - this->actor.world.pos.x;
         dyL = player->actor.world.pos.y + 40.0f - this->actor.world.pos.y;
         dzL = player->actor.world.pos.z - this->actor.world.pos.z;
@@ -534,8 +584,6 @@ void EnFhgFire_EnergyBall(EnFhgFire* this, PlayState* play) {
                     s16 i2;
                     Vec3f spA8;
                     Vec3f sp9C = { 0.0f, -0.5f, 0.0f };
-                    s16 angleModX;
-                    s16 angleModY;
 
                     for (i2 = 0; i2 < 30; i2++) {
                         spA8.x = Rand_CenteredFloat(20.0f);
@@ -553,28 +601,25 @@ void EnFhgFire_EnergyBall(EnFhgFire* this, PlayState* play) {
                         Rumble_Request(this->actor.xyzDistToPlayerSq, 0xFF, 0x14, 0x96);
                     } else {
                         if (bossGnd->flyMode == GND_FLY_NEUTRAL) {
-                            angleModX = Rand_CenteredFloat(0x2000);
-                            angleModY = Rand_CenteredFloat(0x2000);
                             this->actor.speedXZ = 15.0f;
                         } else {
-                            angleModX = 0;
-                            angleModY = 0;
-                            this->work[FHGFIRE_RETURN_COUNT]++;
-                            if ((this->work[FHGFIRE_RETURN_COUNT] > 3) && (Rand_ZeroOne() < 0.5f)) {
-                                this->work[FHGFIRE_RETURN_COUNT] = 100;
-                            }
+                            s16 returnLimit =
+                                (bossGnd->actor.colChkInfo.health <= GND_PHASE_TWO_HEALTH) ? 6 : 4;
 
+                            this->work[FHGFIRE_RETURN_COUNT]++;
                             if (!canBottleReflect2 && (player->meleeWeaponAnimation >= 24)) {
                                 this->actor.speedXZ = 20.0f;
-                                this->work[FHGFIRE_RETURN_COUNT] = 4;
+                                this->work[FHGFIRE_RETURN_COUNT] = returnLimit;
                             } else {
                                 this->actor.speedXZ += 1.0f;
                             }
+                            if (this->work[FHGFIRE_RETURN_COUNT] >= returnLimit) {
+                                this->work[FHGFIRE_RETURN_COUNT] = 100;
+                            }
                         }
-                        this->actor.world.rot.y = (s16)(Math_FAtan2F(dxPG, dzPG) * (0x8000 / M_PI)) + angleModY;
+                        this->actor.world.rot.y = Math_FAtan2F(dxPG, dzPG) * (0x8000 / M_PI);
                         this->actor.world.rot.x =
-                            (s16)(Math_FAtan2F(dyPG, sqrtf((dxPG * dxPG) + (dzPG * dzPG))) * (0x8000 / M_PI)) +
-                            angleModX;
+                            Math_FAtan2F(dyPG, sqrtf((dxPG * dxPG) + (dzPG * dzPG))) * (0x8000 / M_PI);
                         this->work[FHGFIRE_FIRE_MODE] = FHGFIRE_LIGHT_BLUE;
                         this->work[FHGFIRE_FX_TIMER] = 2;
                         Audio_PlaySoundGeneral(NA_SE_IT_SWORD_REFLECT_MG, &player->actor.projectedPos, 4,
@@ -582,7 +627,9 @@ void EnFhgFire_EnergyBall(EnFhgFire* this, PlayState* play) {
                                                &gSfxDefaultReverb);
                         Rumble_Request(this->actor.xyzDistToPlayerSq, 0xB4, 0x14, 0x64);
                     }
-                } else if (sqrtf(SQ(dxL) + SQ(dyL) + SQ(dzL)) <= 25.0f) {
+                } else if ((this->work[FHGFIRE_FX_TIMER] == 0) &&
+                           (this->collider.base.acFlags & AC_ON) && (player->invincibilityTimer == 0) &&
+                           (sqrtf(SQ(dxL) + SQ(dyL) + SQ(dzL)) <= 25.0f)) {
                     killMode = BALL_BURST;
                     Audio_PlayActorSound2(&this->actor, NA_SE_EN_FANTOM_HIT_THUNDER);
                     if ((bossGnd->flyMode >= GND_FLY_VOLLEY) && (this->work[FHGFIRE_RETURN_COUNT] >= 2)) {
@@ -592,7 +639,8 @@ void EnFhgFire_EnergyBall(EnFhgFire* this, PlayState* play) {
                 }
                 break;
             case FHGFIRE_LIGHT_BLUE:
-                if ((bossGnd->flyMode == GND_FLY_RETURN) && (this->work[FHGFIRE_RETURN_COUNT] < 100)) {
+                if ((bossGnd->activeVolleyBall == &this->actor) && (bossGnd->flyMode == GND_FLY_RETURN) &&
+                    (this->work[FHGFIRE_RETURN_COUNT] < 100)) {
                     this->actor.world.rot.y = Math_FAtan2F(dxPG, dzPG) * (0x8000 / M_PI);
                     if ((sqrtf(SQ(dxPG) + SQ(dzPG)) < (150.0f + (this->actor.speedXZ * 8.0f)))) {
                         this->work[FHGFIRE_FIRE_MODE] = FHGFIRE_LIGHT_REFLECT;
@@ -601,7 +649,8 @@ void EnFhgFire_EnergyBall(EnFhgFire* this, PlayState* play) {
                     }
                 } else {
                     if (this->work[FHGFIRE_RETURN_COUNT] >= 100) {
-                        if ((sqrtf(SQ(dxPG) + SQ(dyPG) + SQ(dzPG)) < 100.0f)) {
+                        if ((bossGnd->activeVolleyBall == &this->actor) &&
+                            (sqrtf(SQ(dxPG) + SQ(dyPG) + SQ(dzPG)) < 100.0f)) {
                             bossGnd->returnSuccess = true;
                         }
                         this->actor.world.rot.y = Math_FAtan2F(dxPG, dzPG) * (0x8000 / M_PI);
@@ -668,20 +717,35 @@ void EnFhgFire_EnergyBall(EnFhgFire* this, PlayState* play) {
                                        player->actor.world.pos.y + 20.0f, this->actor.world.pos.z, 0xC8, 0, 0,
                                        FHGFIRE_LIGHTNING_BURST);
                 }
-                bossGnd->flyMode = GND_FLY_NEUTRAL;
+                if (bossGnd->activeVolleyBall == &this->actor) {
+                    bossGnd->activeVolleyBall = NULL;
+                    bossGnd->returnSuccess = false;
+                    if (bossGnd->flyMode == GND_FLY_RETURN) {
+                        bossGnd->flyMode = GND_FLY_NEUTRAL;
+                    }
+                }
                 this->work[FHGFIRE_KILL_TIMER] = 30;
                 this->actor.draw = NULL;
+                this->collider.base.acFlags &= ~(AC_ON | AC_HIT);
+                Lights_PointNoGlowSetInfo(&this->lightInfo, (s16)this->actor.world.pos.x,
+                                          (s16)this->actor.world.pos.y, (s16)this->actor.world.pos.z, 0, 0, 0, 0);
                 if (killMode == BALL_FIZZLE) {
                     Audio_PlayActorSound2(&this->actor, NA_SE_EN_FANTOM_THUNDER_GND);
                 }
                 return;
-            } else {
-                Collider_UpdateCylinder(&this->actor, &this->collider);
-                osSyncPrintf("BEFORE setAC   %d\n", this->collider.base.shape);
-                CollisionCheck_SetAC(play, &play->colChkCtx, &this->collider.base);
-                osSyncPrintf("AFTER  setAC\n");
             }
         }
+
+        if (this->work[FHGFIRE_FX_TIMER] == 0) {
+            this->collider.base.acFlags |= AC_ON;
+        } else {
+            this->collider.base.acFlags &= ~(AC_ON | AC_HIT);
+        }
+        Collider_UpdateCylinder(&this->actor, &this->collider);
+        osSyncPrintf("BEFORE setAC   %d\n", this->collider.base.shape);
+        CollisionCheck_SetAC(play, &play->colChkCtx, &this->collider.base);
+        osSyncPrintf("AFTER  setAC\n");
+
         Lights_PointNoGlowSetInfo(&this->lightInfo, (s16)this->actor.world.pos.x, (s16)this->actor.world.pos.y,
                                   (s16)this->actor.world.pos.z, 255, 255, 255, 200);
         if (this->actor.speedXZ > 20.0f) {
@@ -694,7 +758,7 @@ void EnFhgFire_EnergyBall(EnFhgFire* this, PlayState* play) {
 }
 
 void EnFhgFire_PhantomWarp(EnFhgFire* this, PlayState* play) {
-    EnfHG* horse = (EnfHG*)this->actor.parent;
+    EnfHG* horse = EnFhgFire_GetHorseParent(this, play);
     f32 scrollDirection;
 
     this->fwork[FHGFIRE_WARP_TEX_1_X] += 25.0f * this->fwork[FHGFIRE_WARP_TEX_SPEED];
@@ -727,7 +791,8 @@ void EnFhgFire_PhantomWarp(EnFhgFire* this, PlayState* play) {
     }
 
     osSyncPrintf("EFC 1\n");
-    if ((this->work[FHGFIRE_TIMER] == 0) || ((this->actor.params == FHGFIRE_WARP_EMERGE) && horse->fhgFireKillWarp)) {
+    if ((this->work[FHGFIRE_TIMER] == 0) ||
+        ((this->actor.params == FHGFIRE_WARP_EMERGE) && (horse != NULL) && horse->fhgFireKillWarp)) {
         Actor_Kill(&this->actor);
     }
     osSyncPrintf("EFC 2\n");

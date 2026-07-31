@@ -10,6 +10,14 @@
 
 #include <stdint.h>
 
+#if defined(_WIN32)
+#define EXTERNAL_TELEMETRY_API __declspec(dllexport)
+#elif defined(__GNUC__)
+#define EXTERNAL_TELEMETRY_API __attribute__((visibility("default")))
+#else
+#define EXTERNAL_TELEMETRY_API
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -19,12 +27,11 @@ typedef struct ExternalTelemetry {
     uint32_t dayTime;
 } ExternalTelemetry;
 
-extern ExternalTelemetry gExternalTelemetry;
+EXTERNAL_TELEMETRY_API extern ExternalTelemetry gExternalTelemetry;
 
-void ExternalTelemetry_SetSceneId(uint32_t sceneId);
-void ExternalTelemetry_SetDayTime(uint32_t dayTime);
+EXTERNAL_TELEMETRY_API void ExternalTelemetry_SetSceneId(uint32_t sceneId);
+EXTERNAL_TELEMETRY_API void ExternalTelemetry_SetDayTime(uint32_t dayTime);
 
 #ifdef __cplusplus
 }
 #endif
-

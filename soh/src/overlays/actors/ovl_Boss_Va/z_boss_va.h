@@ -46,7 +46,8 @@ typedef struct BossVa {
     /* 0x02D8 */ ColliderJntSph colliderSph;
     /* 0x02F8 */ ColliderJntSphElement elements[1];
     /* 0x0338 */ ColliderQuad colliderLightning;
-} BossVa; // size = 0x03B8
+    /* 0x03B8 */ u8 deathBiliCount;
+} BossVa;
 
 typedef enum {
     /* -1 */ BOSSVA_BODY = -1,

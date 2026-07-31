@@ -8,17 +8,25 @@ struct BossFd;
 
 typedef void (*BossFdActionFunc)(struct BossFd*, PlayState*);
 
+#define BOSSFD_MAX_HEALTH 48
+#define BOSSFD_PHASE_2_HEALTH 42
+#define BOSSFD_PHASE_3_HEALTH 32
+#define BOSSFD_PHASE_4_HEALTH 24
+#define BOSSFD_ENRAGED_HEALTH 18
+
 typedef enum {
     /*  -1 */ BOSSFD_WAIT_INTRO = -1,
     /*   0 */ BOSSFD_FLY_MAIN,
     /*   1 */ BOSSFD_FLY_HOLE,
     /*   2 */ BOSSFD_BURROW,
     /*   3 */ BOSSFD_EMERGE,
-    /*  50 */ BOSSFD_FLY_CEILING = 50,
-    /*  51 */ BOSSFD_DROP_ROCKS,
+    /*  50 */ BOSSFD_FLY_ROCKFALL = 50,
+    /*  51 */ BOSSFD_FLY_LEGACY_DROP_ROCKS,
     /* 100 */ BOSSFD_FLY_CHASE = 100,
     /* 101 */ BOSSFD_FLY_LOW_CIRCLE,
     /* 102 */ BOSSFD_FLY_GRAB,
+    /* 103 */ BOSSFD_FLY_UNUSED_103,
+    /* 104 */ BOSSFD_FLY_LEGACY_METEOR,
     /* 200 */ BOSSFD_DEATH_START = 200,
     /* 201 */ BOSSFD_SKIN_BURN,
     /* 202 */ BOSSFD_BONES_FALL,
@@ -51,7 +59,7 @@ typedef struct {
     /* 0x34 */ f32 bFdFxFloat1;
     /* 0x38 */ f32 bFdFxFloat2;
     u32 epoch;
-} BossFdEffect; // size = 0x3C
+} BossFdEffect; // size = 0x40
 
 #define BOSSFD_EFFECT_COUNT 180
 
@@ -110,7 +118,7 @@ typedef enum {
     /* 15 */ BFD_SPLASH_TIMER,
     /* 16 */ BFD_CAM_SHAKE_TIMER,
     /* 17 */ BFD_STOP_FLAG,
-    /* 18 */ BFD_FLY_COUNT,
+    /* 18 */ BFD_ATTACK_TRACKER,
     /* 19 */ BFD_SHORT_COUNT
 } BossFdS16Var;
 
@@ -189,6 +197,13 @@ typedef struct BossFd {
     /* 0x14CC */ ColliderJntSph collider;
     /* 0x14EC */ ColliderJntSphElement elements[19];
     /* 0x19BC */ BossFdEffect effects[180];
-} BossFd; // size = 0x43E0
+    /* appended */ Vec3f attackTarget;
+    /* appended */ s16 attackPhase;
+    /* appended */ s16 attackStep;
+    /* appended */ s16 groundSpawnRetryTimer;
+    /* appended */ u8 hazardsCleared;
+    /* appended */ u8 grabTransitionedThisFrame;
+    /* appended */ u8 grabPlayerFloorWasDisabled;
+} BossFd;
 
 #endif

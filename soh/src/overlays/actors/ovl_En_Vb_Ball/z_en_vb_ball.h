@@ -6,6 +6,8 @@
 
 struct EnVbBall;
 
+#define ENVBALL_ROCK_IMPACT 103
+
 typedef struct EnVbBall {
     /* 0x0000 */ Actor actor;
     /* 0x014C */ char unk_14C[4];

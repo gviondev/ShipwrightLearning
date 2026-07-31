@@ -5,7 +5,6 @@
 #include <unordered_map>
 #include <cstdlib>
 #include <libultraship/libultra/types.h>
-#include <ship/utils/StringHelper.h>
 #include <spdlog/fmt/fmt.h>
 #include "soh/OTRGlobals.h"
 
@@ -780,13 +779,13 @@ bool InputString(const char* label, std::string* value, const InputOptions& opti
     if (labelSize.x != 0) {
         if (options.alignment == ComponentAlignments::Left) {
             if (options.labelPosition == LabelPositions::Above) {
-                ImGui::Text(label, *value->c_str());
+                ImGui::TextUnformatted(label);
             }
         } else if (options.alignment == ComponentAlignments::Right) {
             if (options.labelPosition == LabelPositions::Above) {
                 ImGui::NewLine();
                 ImGui::SameLine(width - ImGui::CalcTextSize(label).x);
-                ImGui::Text(label, *value->c_str());
+                ImGui::TextUnformatted(label);
             }
         }
     }
@@ -842,13 +841,13 @@ bool InputInt(const char* label, int32_t* value, const InputOptions& options) {
     float width = (options.size == ImVec2(0, 0)) ? ImGui::GetContentRegionAvail().x : options.size.x;
     if (options.alignment == ComponentAlignments::Left) {
         if (options.labelPosition == LabelPositions::Above) {
-            ImGui::Text(label, *value);
+            ImGui::TextUnformatted(label);
         }
     } else if (options.alignment == ComponentAlignments::Right) {
         if (options.labelPosition == LabelPositions::Above) {
             ImGui::NewLine();
             ImGui::SameLine(width - ImGui::CalcTextSize(label).x);
-            ImGui::Text(label, *value);
+            ImGui::TextUnformatted(label);
         }
     }
     ImGui::SetNextItemWidth(width);
@@ -894,13 +893,13 @@ bool InputFloat(const char* label, float* value, const InputOptions& options) {
     float width = (options.size == ImVec2(0, 0)) ? ImGui::GetContentRegionAvail().x : options.size.x;
     if (options.alignment == ComponentAlignments::Left) {
         if (options.labelPosition == LabelPositions::Above) {
-            ImGui::Text(label, *value);
+            ImGui::TextUnformatted(label);
         }
     } else if (options.alignment == ComponentAlignments::Right) {
         if (options.labelPosition == LabelPositions::Above) {
             ImGui::NewLine();
             ImGui::SameLine(width - ImGui::CalcTextSize(label).x);
-            ImGui::Text(label, *value);
+            ImGui::TextUnformatted(label);
         }
     }
     ImGui::SetNextItemWidth(width);
@@ -915,9 +914,9 @@ bool InputFloat(const char* label, float* value, const InputOptions& options) {
     ImGui::EndDisabled();
     ImGui::EndGroup();
     if (options.disabled && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) &&
-        !Ship_IsCStringEmpty(options.disabledTooltip)) {
+        !options.disabledTooltip.empty()) {
         ImGui::SetTooltip("%s", WrappedText(options.disabledTooltip).c_str());
-    } else if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) && !Ship_IsCStringEmpty(options.tooltip)) {
+    } else if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) && !options.tooltip.empty()) {
         ImGui::SetTooltip("%s", WrappedText(options.tooltip).c_str());
     }
     ImGui::PopID();
@@ -937,7 +936,7 @@ bool CVarInputFloat(const char* label, const char* cvarName, const InputOptions&
     float value = CVarGetFloat(cvarName, defaultValue);
     if (InputFloat(label, &value, options)) {
         CVarSetFloat(cvarName, value);
-        Ship::Context::GetInstance()->GetWindow()->GetGui()->SaveConsoleVariablesNextFrame();
+        Ship::Context::GetRawInstance()->GetWindow()->GetGui()->SaveConsoleVariablesNextFrame();
         ShipInit::Init(cvarName);
         dirty = true;
     }

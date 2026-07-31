@@ -5,6 +5,7 @@
 #include "overlays/actors/ovl_En_Fire_Rock/z_en_fire_rock.h"
 #include "scenes/dungeons/ddan_boss/ddan_boss_room_1.h"
 #include "soh/frame_interpolation.h"
+#include "soh/Enhancements/savestate_serialize.h"
 #include "soh/Enhancements/game-interactor/GameInteractor_Hooks.h"
 #include "soh/OTRGlobals.h"
 #include "soh/ResourceManagerHelpers.h"
@@ -21,6 +22,14 @@
 #define LAVA_TEX_WIDTH 32
 #define LAVA_TEX_HEIGHT 64
 #define LAVA_TEX_SIZE 2048
+#define BOSS_DODONGO_ROCK_VOLLEY_EXTRA_MAX 3
+
+#define BOSS_DODONGO_REWARD_HEART_DECIDED (1 << 0)
+#define BOSS_DODONGO_REWARD_HEART_REQUIRED (1 << 1)
+#define BOSS_DODONGO_REWARD_HEART_SPAWNED (1 << 2)
+#define BOSS_DODONGO_REWARD_WARP_DECIDED (1 << 3)
+#define BOSS_DODONGO_REWARD_WARP_REQUIRED (1 << 4)
+#define BOSS_DODONGO_REWARD_WARP_SPAWNED (1 << 5)
 
 static const s16 sAggressiveHealthThreshold = 8;
 static const s16 sAggressivePostFireRolls = 3;
@@ -50,10 +59,10 @@ void BossDodongo_Vulnerable(BossDodongo* this, PlayState* play);
 void BossDodongo_GetUp(BossDodongo* this, PlayState* play);
 void BossDodongo_SetupWalk(BossDodongo* this);
 void BossDodongo_SetupPostRollCornerRecovery(BossDodongo* this);
-void BossDodongo_SetupPostRollCornerFire(BossDodongo* this);
-void BossDodongo_SetupPostRollCornerInhale(BossDodongo* this);
+void BossDodongo_SetupPostRollCornerFire(BossDodongo* this, PlayState* play);
+void BossDodongo_SetupPostRollCornerInhale(BossDodongo* this, PlayState* play);
 void BossDodongo_DeathCutscene(BossDodongo* this, PlayState* play);
-void BossDodongo_SetupDeathCutscene(BossDodongo* this);
+void BossDodongo_SetupDeathCutscene(BossDodongo* this, PlayState* play);
 void BossDodongo_Damaged(BossDodongo* this, PlayState* play);
 void BossDodongo_UpdateDamage(BossDodongo* this, PlayState* play);
 void BossDodongo_PlayerPosCheck(BossDodongo* this, PlayState* play);
@@ -63,13 +72,16 @@ f32 func_808C50A8(BossDodongo* this, PlayState* play);
 void BossDodongo_DrawEffects(PlayState* play);
 void BossDodongo_UpdateEffects(PlayState* play);
 void BossDodongo_TrySpawnDodojrs(BossDodongo* this, PlayState* play);
-void BossDodongo_ClearSpawnedDodojrs(BossDodongo* this, PlayState* play);
 void BossDodongo_TrySpawnRollingRocks(BossDodongo* this, PlayState* play);
 void BossDodongo_SpawnWallCollisionRocks(BossDodongo* this, PlayState* play);
 void BossDodongo_UpdateRollingAtmosphere(BossDodongo* this, PlayState* play);
+static void BossDodongo_RestoreRollingAtmosphere(BossDodongo* this, PlayState* play);
+static void BossDodongo_ClearOwnedFightActors(BossDodongo* this, PlayState* play, bool clearDodojrs);
+static void BossDodongo_AdvanceCorner(BossDodongo* this);
+static void BossDodongo_TrySpawnRewards(BossDodongo* this, PlayState* play);
 static void BossDodongo_ResetAggressiveRolling(BossDodongo* this);
 static void BossDodongo_FinishAggressiveRolling(BossDodongo* this);
-static s16 BossDodongo_GetFarthestCornerFromPlayer(BossDodongo* this, PlayState* play);
+static s16 BossDodongo_GetFarthestCornerFromPlayer(PlayState* play);
 static bool BossDodongo_ShouldTriggerAggressiveChain(BossDodongo* this);
 static bool BossDodongo_StartAggressiveRollChain(BossDodongo* this, PlayState* play);
 
@@ -92,7 +104,6 @@ static u8 sMaskTex16x16[16 * 16] = { { 0 } };
 static u8 sMaskTex8x16[8 * 16] = { { 0 } };
 static u8 sMaskTex16x32[16 * 32] = { { 0 } };
 static u8 sMaskTex32x16[32 * 16] = { { 0 } };
-static u8 sMaskTex8x8[8 * 8] = { { 0 } };
 static u8 sMaskTex8x32[8 * 32] = { { 0 } };
 static u8 sMaskTexLava[LAVA_TEX_WIDTH * LAVA_TEX_HEIGHT] = { { 0 } };
 
@@ -103,8 +114,18 @@ static u16 sLavaWavyTex[LAVA_TEX_SIZE];
 
 static u8 hasRegisteredBlendedHook = 0;
 
-static const Vec3f sArenaMinBounds = { -1390.0f, -FLT_MAX, -3804.0f };
-static const Vec3f sArenaMaxBounds = { -390.0f, FLT_MAX, -2804.0f };
+static void BossDodongo_RegisterRawLavaFallback(void) {
+    u8 maskValue = !!Flags_GetClear(gPlayState, gPlayState->roomCtx.curRoom.num);
+    s32 i;
+
+    for (i = 0; i < ARRAY_COUNT(sMaskTexLava); i++) {
+        sMaskTexLava[i] = maskValue;
+    }
+
+    Gfx_RegisterBlendedTexture(gDodongosCavernBossLavaFloorTex, sMaskTexLava, NULL);
+    Gfx_TextureCacheDelete(sMaskTexLava);
+}
+
 static const s32 sMaxDodojrs = 12;
 static const s32 sMaxEnemiesInArena = 12;
 static const s32 sMaxRollingRocks = 12;
@@ -152,33 +173,34 @@ void BossDodongo_RegisterBlendedLavaTextureUpdate() {
     // Otherwise the original asset is u16 for RGBA16
     if (ResourceMgr_TexIsRaw(gDodongosCavernBossLavaFloorTex)) {
         u32* lavaTex = ResourceGetDataByName(sLavaFloorLavaTex);
+        u32* rockTex = ResourceGetDataByName(sLavaFloorRockTex);
         size_t lavaSize = ResourceGetSizeByName(sLavaFloorLavaTex);
         size_t floorSize = ResourceGetSizeByName(gDodongosCavernBossLavaFloorTex);
         size_t rockSize = ResourceGetSizeByName(sLavaFloorRockTex);
 
-        // If the sizes don't match, then don't bother with the blended effect to avoid crashing
-        if (floorSize != lavaSize || floorSize != rockSize) {
-            uint8_t maskVal = !!Flags_GetClear(gPlayState, gPlayState->roomCtx.curRoom.num);
-
-            if (sMaskTexLava[0] != maskVal) {
-                for (int i = 0; i < ARRAY_COUNT(sMaskTexLava); i++) {
-                    sMaskTexLava[i] = maskVal;
-                }
-            }
-
-            Gfx_RegisterBlendedTexture(gDodongosCavernBossLavaFloorTex, sMaskTexLava, NULL);
-            Gfx_TextureCacheDelete(sMaskTexLava);
+        // Fall back to the original scene texture when an alternate texture is missing or incompatible.
+        if ((floorSize == 0) || (floorSize != lavaSize) || (floorSize != rockSize) || (lavaTex == NULL) ||
+            (rockTex == NULL)) {
+            BossDodongo_RegisterRawLavaFallback();
             return;
         }
 
         sLavaFloorModifiedTexRaw = malloc(lavaSize);
         sLavaWavyTexRaw = malloc(floorSize);
 
+        if ((sLavaFloorModifiedTexRaw == NULL) || (sLavaWavyTexRaw == NULL)) {
+            free(sLavaFloorModifiedTexRaw);
+            free(sLavaWavyTexRaw);
+            sLavaFloorModifiedTexRaw = NULL;
+            sLavaWavyTexRaw = NULL;
+            BossDodongo_RegisterRawLavaFallback();
+            return;
+        }
+
         memcpy(sLavaFloorModifiedTexRaw, lavaTex, lavaSize);
 
         // When KD is dead, just immediately copy the rock texture
         if (Flags_GetClear(gPlayState, gPlayState->roomCtx.curRoom.num)) {
-            u32* rockTex = ResourceGetDataByName(sLavaFloorRockTex);
             memcpy(sLavaFloorModifiedTexRaw, rockTex, rockSize);
         }
 
@@ -214,6 +236,125 @@ void BossDodongo_RegisterBlendedLavaTextureUpdate() {
     Gfx_TextureCacheDelete(sLavaFloorModifiedTex);
 }
 
+#define BOSS_DODONGO_SHIP_SAVESTATE_FIELDS(F) \
+    F(sMaskTex16x16)                           \
+    F(sMaskTex8x16)                            \
+    F(sMaskTex16x32)                           \
+    F(sMaskTex32x16)                           \
+    F(sMaskTex8x32)                            \
+    F(sMaskTexLava)                            \
+    F(sLavaFloorModifiedTex)
+
+static BossDodongo* BossDodongo_FindActiveBoss(PlayState* play) {
+    Actor* actor = play->actorCtx.actorLists[ACTORCAT_BOSS].head;
+
+    while (actor != NULL) {
+        if ((actor->id == ACTOR_BOSS_DODONGO) && (actor->update != NULL)) {
+            return (BossDodongo*)actor;
+        }
+        actor = actor->next;
+    }
+
+    return NULL;
+}
+
+static void BossDodongo_RebuildRawLavaCooling(PlayState* play) {
+    BossDodongo* boss;
+    u32* rockTex;
+    u16 width;
+    u16 height;
+    u16 widthScale;
+    u16 heightScale;
+    u32 textureSize;
+    u32 coolingUpdates;
+    u32 cooledPixels;
+    u32 pixel;
+
+    if ((sLavaFloorModifiedTexRaw == NULL) || (sLavaWavyTexRaw == NULL) ||
+        Flags_GetClear(play, play->roomCtx.curRoom.num)) {
+        return;
+    }
+
+    boss = BossDodongo_FindActiveBoss(play);
+    if ((boss == NULL) || (boss->unk_1C6 == 0)) {
+        return;
+    }
+
+    width = ResourceGetTexWidthByName(sLavaFloorRockTex);
+    height = ResourceGetTexHeightByName(sLavaFloorRockTex);
+    widthScale = width / LAVA_TEX_WIDTH;
+    heightScale = height / LAVA_TEX_HEIGHT;
+    textureSize = width * height;
+
+    if ((widthScale == 0) || (heightScale == 0) || (textureSize == 0)) {
+        return;
+    }
+
+    // unk_1C2 advances by 20 * 37 per cooling update. Divide out the common factor of four and
+    // multiply by the inverse of 185 modulo 16384 to recover the number of elapsed cooling updates.
+    coolingUpdates = ((((u16)boss->unk_1C2 >> 2) * 1417U) & 0x3FFF);
+    cooledPixels = CLAMP_MAX(coolingUpdates * 20U, LAVA_TEX_SIZE);
+    rockTex = ResourceGetDataByName(sLavaFloorRockTex);
+
+    if (rockTex == NULL) {
+        return;
+    }
+
+    for (pixel = 0; pixel < cooledPixels; pixel++) {
+        u32 baseIndex = (pixel * 37U) & (LAVA_TEX_SIZE - 1);
+        u32 indexStart =
+            ((baseIndex % LAVA_TEX_WIDTH) * widthScale) + ((baseIndex / LAVA_TEX_WIDTH) * width * heightScale);
+        u16 y;
+
+        for (y = 0; y < heightScale; y++) {
+            u16 x;
+
+            for (x = 0; x < widthScale; x++) {
+                u32 scaledIndex = (indexStart + x + (y * width)) & (textureSize - 1);
+                sLavaFloorModifiedTexRaw[scaledIndex] = rockTex[scaledIndex];
+            }
+        }
+    }
+
+    memcpy(sLavaWavyTexRaw, sLavaFloorModifiedTexRaw, ResourceGetSizeByName(gDodongosCavernBossLavaFloorTex));
+    Gfx_TextureCacheDelete(sLavaWavyTexRaw);
+}
+
+void BossDodongo_SaveState(SaveStateCtx* ctx) {
+    BOSS_DODONGO_SHIP_SAVESTATE_FIELDS(SHIP_SAVESTATE_SERIALIZE_FIELD)
+
+    if ((ctx->mode == SHIP_SAVESTATE_LOAD) && (gPlayState != NULL) &&
+        (gPlayState->sceneNum == SCENE_DODONGOS_CAVERN_BOSS)) {
+        BossDodongo* boss = BossDodongo_FindActiveBoss(gPlayState);
+
+        if (ResourceMgr_TexIsRaw(gDodongosCavernBossLavaFloorTex) &&
+            (ResourceGetSizeByName(gDodongosCavernBossLavaFloorTex) == ResourceGetSizeByName(sLavaFloorLavaTex)) &&
+            (ResourceGetSizeByName(gDodongosCavernBossLavaFloorTex) == ResourceGetSizeByName(sLavaFloorRockTex))) {
+            BossDodongo_RegisterBlendedLavaTextureUpdate();
+            BossDodongo_RebuildRawLavaCooling(gPlayState);
+        } else if (!ResourceMgr_TexIsRaw(gDodongosCavernBossLavaFloorTex)) {
+            memcpy(sLavaWavyTex, sLavaFloorModifiedTex, sizeof(sLavaWavyTex));
+            Gfx_RegisterBlendedTexture(gDodongosCavernBossLavaFloorTex, sMaskTexLava, sLavaWavyTex);
+            Gfx_TextureCacheDelete(sLavaWavyTex);
+            Gfx_TextureCacheDelete(sLavaFloorModifiedTex);
+        } else {
+            Gfx_RegisterBlendedTexture(gDodongosCavernBossLavaFloorTex, sMaskTexLava, NULL);
+        }
+
+        Gfx_TextureCacheDelete(sMaskTexLava);
+
+        if (boss != NULL) {
+            boss->lastLavaTextureUpdateFrame = (u32)-1;
+        }
+
+        Gfx_TextureCacheDelete(sMaskTex8x16);
+        Gfx_TextureCacheDelete(sMaskTex8x32);
+        Gfx_TextureCacheDelete(sMaskTex16x16);
+        Gfx_TextureCacheDelete(sMaskTex16x32);
+        Gfx_TextureCacheDelete(sMaskTex32x16);
+    }
+}
+
 void func_808C12C4(u8* arg1, s16 arg2) {
     if (arg2[arg1] != 0) {
         sMaskTex8x16[arg2 / 2] = 1;
@@ -242,8 +383,14 @@ void func_808C1554_Raw(void* arg0, void* floorTex, s32 arg2, f32 arg3) {
     }
 
     u16 width = ResourceGetTexWidthByName(arg0);
-    s32 size = ResourceGetTexHeightByName(arg0) * width;
+    u16 height = ResourceGetTexHeightByName(arg0);
+    s32 size;
 
+    if ((width < LAVA_TEX_WIDTH) || (height == 0)) {
+        return;
+    }
+
+    size = height * width;
     u32* temp_s3 = sLavaWavyTexRaw;
     u32* temp_s1 = sLavaFloorModifiedTexRaw;
     s32 i;
@@ -251,6 +398,10 @@ void func_808C1554_Raw(void* arg0, void* floorTex, s32 arg2, f32 arg3) {
     u32* sp54 = malloc(size * sizeof(u32)); // Match the size for lava floor tex
     s32 temp;
     s32 temp2;
+
+    if (sp54 == NULL) {
+        return;
+    }
 
     // Multiplier is used to try to scale the wavy effect to match the scale of the HD texture
     // Applying sqrt(multiplier) to arg3 is to control how many pixels move left/right for the selected row
@@ -379,18 +530,17 @@ void BossDodongo_Init(Actor* thisx, PlayState* play) {
     this->unk_224 = 2.0f;
     this->unk_228 = 9200.0f;
     this->rollingRockTimer = 0;
-    this->lightningTimer = 0;
-    this->lightningActive = false;
     this->rollingLightPulseTimer = 0.0f;
     this->rollingFogStrength = 0.0f;
     this->rollingFogTarget = 0.0f;
     this->rollingFogNearOffset = 0.0f;
     this->rollingEnvApplied = false;
+    this->lastLavaTextureUpdateFrame = -1;
+    this->rewardState = 0;
     BossDodongo_ResetAggressiveRolling(this);
     this->aggressiveChainsInCycle = 0;
     this->aggressiveChainCooldown = 0;
     this->postRollCornerRecoveryTimer = 0;
-    this->dodojrSpawnTimer = 0;
     this->dodojrSpawnedThisCycle = false;
     Collider_InitJntSph(play, &this->collider);
     Collider_SetJntSph(play, &this->collider, &this->actor, &sJntSphInit, this->items);
@@ -461,9 +611,12 @@ void BossDodongo_Init(Actor* thisx, PlayState* play) {
 void BossDodongo_Destroy(Actor* thisx, PlayState* play) {
     BossDodongo* this = (BossDodongo*)thisx;
 
+    BossDodongo_ClearOwnedFightActors(this, play, true);
+    BossDodongo_RestoreRollingAtmosphere(this, play);
+    Audio_StopSfxByPosAndId(&this->actor.projectedPos, NA_SE_EN_DODO_K_ROLL);
+    Audio_StopSfxByPosAndId(&this->actor.projectedPos, NA_SE_EN_DODO_K_BREATH);
     SkelAnime_Free(&this->skelAnime, play);
     Collider_DestroyJntSph(play, &this->collider);
-
 }
 
 void BossDodongo_SetupIntroCutscene(BossDodongo* this, PlayState* play) {
@@ -698,7 +851,8 @@ void BossDodongo_SetupDamaged(BossDodongo* this) {
     this->unk_1DA = 100;
 }
 
-void BossDodongo_SetupExplode(BossDodongo* this) {
+void BossDodongo_SetupExplode(BossDodongo* this, PlayState* play) {
+    BossDodongo_ClearOwnedFightActors(this, play, false);
     Animation_Change(&this->skelAnime, &object_kingdodongo_Anim_00E848, 1.0f, 0.0f,
                      Animation_GetLastFrame(&object_kingdodongo_Anim_00E848), ANIMMODE_ONCE, -5.0f);
     this->actionFunc = BossDodongo_Explode;
@@ -736,6 +890,20 @@ static void BossDodongo_ResetAggressiveRolling(BossDodongo* this) {
     this->rollSpeedMultiplier = 1.0f;
 }
 
+static void BossDodongo_AdvanceCorner(BossDodongo* this) {
+    if (this->unk_1A2 == 0) {
+        this->unk_1A0++;
+        if (this->unk_1A0 >= (s16)ARRAY_COUNT(sCornerPositions)) {
+            this->unk_1A0 = 0;
+        }
+    } else {
+        this->unk_1A0--;
+        if (this->unk_1A0 < 0) {
+            this->unk_1A0 = (s16)ARRAY_COUNT(sCornerPositions) - 1;
+        }
+    }
+}
+
 static void BossDodongo_FinishAggressiveRolling(BossDodongo* this) {
     if (this->aggressiveChainActive) {
         this->aggressiveChainsInCycle++;
@@ -749,12 +917,12 @@ static void BossDodongo_FinishAggressiveRolling(BossDodongo* this) {
     BossDodongo_ResetAggressiveRolling(this);
 }
 
-static s16 BossDodongo_GetFarthestCornerFromPlayer(BossDodongo* this, PlayState* play) {
+static s16 BossDodongo_GetFarthestCornerFromPlayer(PlayState* play) {
     Player* player = GET_PLAYER(play);
     s16 farthestIndex = 0;
     f32 farthestDistSq = -FLT_MAX;
 
-    for (s16 i = 0; i < ARRAY_COUNT(sCornerPositions); i++) {
+    for (s16 i = 0; i < (s16)ARRAY_COUNT(sCornerPositions); i++) {
         f32 distX = sCornerPositions[i].x - player->actor.world.pos.x;
         f32 distZ = sCornerPositions[i].z - player->actor.world.pos.z;
         f32 distSq = SQ(distX) + SQ(distZ);
@@ -786,7 +954,7 @@ static bool BossDodongo_StartAggressiveRollChain(BossDodongo* this, PlayState* p
     this->aggressiveRollCornersRemaining = sAggressivePostFireRolls;
     this->rollSpeedMultiplier = sAggressiveRollSpeedMultiplier;
     this->currentRollTargetCollisions = 1;
-    this->unk_1A0 = BossDodongo_GetFarthestCornerFromPlayer(this, play);
+    this->unk_1A0 = BossDodongo_GetFarthestCornerFromPlayer(play);
 
     targetCorner = &sCornerPositions[this->unk_1A0];
     distX = targetCorner->x - this->actor.world.pos.x;
@@ -794,6 +962,7 @@ static bool BossDodongo_StartAggressiveRollChain(BossDodongo* this, PlayState* p
 
     if ((SQ(distX) + SQ(distZ)) <= SQ(20.0f)) {
         this->aggressiveCornerFirePending = false;
+        BossDodongo_AdvanceCorner(this);
         return true;
     }
 
@@ -803,7 +972,7 @@ static bool BossDodongo_StartAggressiveRollChain(BossDodongo* this, PlayState* p
 void BossDodongo_SetupRoll(BossDodongo* this, PlayState* play) {
     if (BossDodongo_ShouldTriggerAggressiveChain(this)) {
         if (BossDodongo_StartAggressiveRollChain(this, play)) {
-            BossDodongo_SetupPostRollCornerInhale(this);
+            BossDodongo_SetupPostRollCornerInhale(this, play);
             return;
         }
     }
@@ -811,7 +980,7 @@ void BossDodongo_SetupRoll(BossDodongo* this, PlayState* play) {
     if (!this->aggressiveChainActive) {
         BossDodongo_ResetAggressiveRolling(this);
     } else if (this->aggressiveCornerFirePending) {
-        this->unk_1A0 = BossDodongo_GetFarthestCornerFromPlayer(this, play);
+        this->unk_1A0 = BossDodongo_GetFarthestCornerFromPlayer(play);
         this->currentRollTargetCollisions = 1;
     } else {
         this->currentRollTargetCollisions = this->aggressiveRollCornersRemaining;
@@ -826,7 +995,6 @@ void BossDodongo_SetupRoll(BossDodongo* this, PlayState* play) {
     this->numWallCollisions = 0;
     this->unk_1DA = 27;
     this->rollingRockTimer = Rand_S16Offset(8, 8);
-    this->lightningTimer = Rand_S16Offset(16, 10);
     this->rollingFogTarget = 1.0f;
 }
 
@@ -835,10 +1003,11 @@ s32 BossDodongo_CountActiveRollingRocks(PlayState* play) {
     s32 rockCount = 0;
 
     while (actor != NULL) {
-        if (actor->id == ACTOR_EN_FIRE_ROCK) {
+        if ((actor->update != NULL) && (actor->id == ACTOR_EN_FIRE_ROCK)) {
             EnFireRock* rock = (EnFireRock*)actor;
 
-            if ((rock->type == FIRE_ROCK_SPAWNED_FALLING1) || (rock->type == FIRE_ROCK_SPAWNED_FALLING2)) {
+            if ((rock->type == FIRE_ROCK_SPAWNED_FALLING1) || (rock->type == FIRE_ROCK_SPAWNED_FALLING2) ||
+                (rock->type == FIRE_ROCK_BROKEN_PIECE1) || (rock->type == FIRE_ROCK_BROKEN_PIECE2)) {
                 rockCount++;
             }
         }
@@ -849,13 +1018,25 @@ s32 BossDodongo_CountActiveRollingRocks(PlayState* play) {
     return rockCount;
 }
 
+static void BossDodongo_SetRockSpawnAroundPlayer(PlayState* play, Vec3f* spawnPos) {
+    Player* player = GET_PLAYER(play);
+    f32 angle = Rand_ZeroFloat(2.0f * M_PI);
+    f32 radius = Rand_ZeroFloat(140.0f) + 120.0f;
+
+    spawnPos->x = player->actor.world.pos.x + (sinf(angle) * radius);
+    spawnPos->y = player->actor.world.pos.y + Rand_ZeroFloat(140.0f) + 240.0f;
+    spawnPos->z = player->actor.world.pos.z + (cosf(angle) * radius);
+}
+
 void BossDodongo_TrySpawnRollingRocks(BossDodongo* this, PlayState* play) {
     Player* player = GET_PLAYER(play);
+    Actor* spawnedRock;
     Vec3f spawnPos;
     f32 dirX;
     f32 dirY;
     f32 dirZ;
     f32 magnitude;
+    s32 extraSpawn;
 
     if ((this->actionFunc != BossDodongo_Roll) || (this->unk_1DA != 0)) {
         return;
@@ -895,22 +1076,23 @@ void BossDodongo_TrySpawnRollingRocks(BossDodongo* this, PlayState* play) {
         spawnPos.z = Rand_CenteredFloat(60.0f) + player->actor.world.pos.z;
     }
 
-    if (Actor_SpawnAsChild(&play->actorCtx, &this->actor, play, ACTOR_EN_FIRE_ROCK, spawnPos.x, spawnPos.y, spawnPos.z, 0,
-                           0, 0, FIRE_ROCK_SPAWNED_FALLING2) != NULL) {
+    spawnedRock = Actor_SpawnAsChild(&play->actorCtx, &this->actor, play, ACTOR_EN_FIRE_ROCK, spawnPos.x, spawnPos.y,
+                                     spawnPos.z, 0, 0, 0, FIRE_ROCK_SPAWNED_FALLING2);
+    if (spawnedRock != NULL) {
         this->rollingRockTimer = Rand_S16Offset(8, 12);
         Audio_PlayActorSound2(&this->actor, NA_SE_EV_VOLCANO - SFX_FLAG);
 
-        while ((BossDodongo_CountActiveRollingRocks(play) < sMaxRollingRocks) && (Rand_ZeroOne() < 0.7f)) {
-            spawnPos.x = Rand_CenteredFloat(260.0f) +  player->actor.world.pos.x;
-            spawnPos.y = Rand_ZeroFloat(140.0f) +  player->actor.world.pos.y + 240.0f;
-            spawnPos.z = Rand_CenteredFloat(260.0f) + player->actor.world.pos.z;
+        for (extraSpawn = 0; extraSpawn < BOSS_DODONGO_ROCK_VOLLEY_EXTRA_MAX; extraSpawn++) {
+            if ((BossDodongo_CountActiveRollingRocks(play) >= sMaxRollingRocks) || (Rand_ZeroOne() >= 0.7f)) {
+                break;
+            }
 
-            Actor_SpawnAsChild(&play->actorCtx, &this->actor, play, ACTOR_EN_FIRE_ROCK, spawnPos.x, spawnPos.y,
-                               spawnPos.z, 0, 0, 0, FIRE_ROCK_SPAWNED_FALLING2);
-        }
+            BossDodongo_SetRockSpawnAroundPlayer(play, &spawnPos);
 
-        if (this->lightningTimer > 10) {
-            this->lightningTimer = 10;
+            if (Actor_SpawnAsChild(&play->actorCtx, &this->actor, play, ACTOR_EN_FIRE_ROCK, spawnPos.x, spawnPos.y,
+                                   spawnPos.z, 0, 0, 0, FIRE_ROCK_SPAWNED_FALLING2) == NULL) {
+                break;
+            }
         }
     } else {
         this->rollingRockTimer = Rand_S16Offset(6, 10);
@@ -918,7 +1100,6 @@ void BossDodongo_TrySpawnRollingRocks(BossDodongo* this, PlayState* play) {
 }
 
 void BossDodongo_SpawnWallCollisionRocks(BossDodongo* this, PlayState* play) {
-    Player* player = GET_PLAYER(play);
     s32 spawnCount = 4 + Rand_ZeroOne() * 3.0f;
     s32 i;
 
@@ -929,22 +1110,41 @@ void BossDodongo_SpawnWallCollisionRocks(BossDodongo* this, PlayState* play) {
             break;
         }
 
-        spawnPos.x = Rand_CenteredFloat(260.0f) + player->actor.world.pos.x;
-        spawnPos.y = Rand_ZeroFloat(140.0f) + player->actor.world.pos.y + 240.0f;
-        spawnPos.z = Rand_CenteredFloat(260.0f) + player->actor.world.pos.z;
+        BossDodongo_SetRockSpawnAroundPlayer(play, &spawnPos);
 
-        Actor_SpawnAsChild(&play->actorCtx, &this->actor, play, ACTOR_EN_FIRE_ROCK, spawnPos.x, spawnPos.y, spawnPos.z,
-                           0, 0, 0, FIRE_ROCK_SPAWNED_FALLING2);
+        if (Actor_SpawnAsChild(&play->actorCtx, &this->actor, play, ACTOR_EN_FIRE_ROCK, spawnPos.x, spawnPos.y,
+                               spawnPos.z, 0, 0, 0, FIRE_ROCK_SPAWNED_FALLING2) == NULL) {
+            break;
+        }
     }
 }
 
-void BossDodongo_UpdateRollingAtmosphere(BossDodongo* this, PlayState* play) {
+static void BossDodongo_RestoreRollingAtmosphere(BossDodongo* this, PlayState* play) {
     s32 i;
+
+    if (this->rollingEnvApplied) {
+        for (i = 0; i < ARRAY_COUNT(play->envCtx.adjLight1Color); i++) {
+            play->envCtx.adjLight1Color[i] = this->rollingBaseLight1Color[i];
+            play->envCtx.adjAmbientColor[i] = this->rollingBaseAmbientColor[i];
+            play->envCtx.adjFogColor[i] = this->rollingBaseFogColor[i];
+        }
+        play->envCtx.adjFogNear = this->rollingBaseFogNear;
+    }
+
+    this->rollingLightPulseTimer = 0.0f;
+    this->rollingFogStrength = 0.0f;
+    this->rollingFogTarget = 0.0f;
+    this->rollingFogNearOffset = 0.0f;
+    this->rollingEnvApplied = false;
+}
+
+void BossDodongo_UpdateRollingAtmosphere(BossDodongo* this, PlayState* play) {
     f32 pulseScale;
     f32 intensity;
     s16 keyLightR;
     s16 keyLightG;
     s16 keyLightB;
+    s32 i;
 
     this->rollingFogTarget = (this->actionFunc == BossDodongo_Roll) ? 1.0f : 0.0f;
     Math_SmoothStepToF(&this->rollingFogStrength, this->rollingFogTarget, 0.8f, 0.2f, 0.01f);
@@ -959,37 +1159,38 @@ void BossDodongo_UpdateRollingAtmosphere(BossDodongo* this, PlayState* play) {
         keyLightG = CLAMP_MAX((s16)(70.0f * intensity), 255);
         keyLightB = CLAMP_MAX((s16)(30.0f * intensity), 255);
 
-        play->envCtx.adjLight1Color[0] = keyLightR;
-        play->envCtx.adjLight1Color[1] = keyLightG;
-        play->envCtx.adjLight1Color[2] = keyLightB;
-
-        play->envCtx.adjAmbientColor[0] = CLAMP_MAX((s16)(140.0f * intensity), 255);
-        play->envCtx.adjAmbientColor[1] = CLAMP_MAX((s16)(40.0f * intensity), 255);
-        play->envCtx.adjAmbientColor[2] = CLAMP_MAX((s16)(20.0f * intensity), 255);
-
-        play->envCtx.adjFogColor[0] = CLAMP_MAX((s16)(160.0f * intensity), 255);
-        play->envCtx.adjFogColor[1] = CLAMP_MAX((s16)(40.0f * intensity), 255);
-        play->envCtx.adjFogColor[2] = CLAMP_MAX((s16)(30.0f * intensity), 255);
-        play->envCtx.adjFogNear = (s16)this->rollingFogNearOffset;
-
-        this->rollingEnvApplied = true;
-    } else if (this->rollingEnvApplied) {
-        Math_SmoothStepToF(&this->rollingFogStrength, 0.0f, 0.8f, 0.2f, 0.01f);
-        Math_SmoothStepToF(&this->rollingFogNearOffset, 0.0f, 1.0f, 20.0f, 1.0f);
-
-        if (this->rollingFogStrength < 0.01f) {
+        if (!this->rollingEnvApplied) {
             for (i = 0; i < ARRAY_COUNT(play->envCtx.adjLight1Color); i++) {
-                play->envCtx.adjLight1Color[i] = 0;
-                play->envCtx.adjAmbientColor[i] = 0;
-                play->envCtx.adjFogColor[i] = 0;
+                this->rollingBaseLight1Color[i] = play->envCtx.adjLight1Color[i];
+                this->rollingBaseAmbientColor[i] = play->envCtx.adjAmbientColor[i];
+                this->rollingBaseFogColor[i] = play->envCtx.adjFogColor[i];
             }
-
-            play->envCtx.adjFogNear = 0;
-            this->rollingEnvApplied = false;
+            this->rollingBaseFogNear = play->envCtx.adjFogNear;
+            this->rollingEnvApplied = true;
         }
+
+        play->envCtx.adjLight1Color[0] = CLAMP(this->rollingBaseLight1Color[0] + keyLightR, -255, 255);
+        play->envCtx.adjLight1Color[1] = CLAMP(this->rollingBaseLight1Color[1] + keyLightG, -255, 255);
+        play->envCtx.adjLight1Color[2] = CLAMP(this->rollingBaseLight1Color[2] + keyLightB, -255, 255);
+
+        play->envCtx.adjAmbientColor[0] =
+            CLAMP(this->rollingBaseAmbientColor[0] + (s16)(140.0f * intensity), -255, 255);
+        play->envCtx.adjAmbientColor[1] =
+            CLAMP(this->rollingBaseAmbientColor[1] + (s16)(40.0f * intensity), -255, 255);
+        play->envCtx.adjAmbientColor[2] =
+            CLAMP(this->rollingBaseAmbientColor[2] + (s16)(20.0f * intensity), -255, 255);
+
+        play->envCtx.adjFogColor[0] =
+            CLAMP(this->rollingBaseFogColor[0] + (s16)(160.0f * intensity), -255, 255);
+        play->envCtx.adjFogColor[1] =
+            CLAMP(this->rollingBaseFogColor[1] + (s16)(40.0f * intensity), -255, 255);
+        play->envCtx.adjFogColor[2] =
+            CLAMP(this->rollingBaseFogColor[2] + (s16)(30.0f * intensity), -255, 255);
+        play->envCtx.adjFogNear = this->rollingBaseFogNear + (s16)this->rollingFogNearOffset;
+    } else if (this->rollingEnvApplied && (this->rollingFogTarget == 0.0f)) {
+        BossDodongo_RestoreRollingAtmosphere(this, play);
     }
 }
-
 
 void BossDodongo_SetupBlowFire(BossDodongo* this) {
     this->actor.speedXZ = 0.0f;
@@ -1001,8 +1202,8 @@ void BossDodongo_SetupBlowFire(BossDodongo* this) {
     this->unk_1AE = 0;
 }
 
-void BossDodongo_SetupPostRollCornerFire(BossDodongo* this) {
-    s16 targetYaw = Actor_WorldYawTowardActor(&this->actor, &GET_PLAYER(gPlayState)->actor);
+void BossDodongo_SetupPostRollCornerFire(BossDodongo* this, PlayState* play) {
+    s16 targetYaw = Actor_WorldYawTowardActor(&this->actor, &GET_PLAYER(play)->actor);
 
     this->actor.world.rot.y = targetYaw;
     this->actor.shape.rot.y = targetYaw;
@@ -1016,8 +1217,8 @@ void BossDodongo_SetupPostRollCornerFire(BossDodongo* this) {
     this->unk_1AE = 0;
 }
 
-void BossDodongo_SetupPostRollCornerInhale(BossDodongo* this) {
-    s16 targetYaw = Actor_WorldYawTowardActor(&this->actor, &GET_PLAYER(gPlayState)->actor);
+void BossDodongo_SetupPostRollCornerInhale(BossDodongo* this, PlayState* play) {
+    s16 targetYaw = Actor_WorldYawTowardActor(&this->actor, &GET_PLAYER(play)->actor);
 
     this->actor.world.rot.y = targetYaw;
     this->actor.shape.rot.y = targetYaw;
@@ -1029,6 +1230,7 @@ void BossDodongo_SetupPostRollCornerInhale(BossDodongo* this) {
     this->unk_1DA = 60;
     this->unk_1AC = 0;
     this->unk_1E2 = 1;
+    BossDodongo_SpawnFire(this, play, -1);
 }
 
 void BossDodongo_SetupInhale(BossDodongo* this) {
@@ -1105,7 +1307,6 @@ void BossDodongo_LayDown(BossDodongo* this, PlayState* play) {
                          Animation_GetLastFrame(&object_kingdodongo_Anim_0042A8), ANIMMODE_LOOP, -5.0f);
         this->actionFunc = BossDodongo_Vulnerable;
         this->unk_1DA = 100;
-        this->dodojrSpawnTimer = 0;
         this->dodojrSpawnedThisCycle = false;
     }
 }
@@ -1218,13 +1419,13 @@ void BossDodongo_PostRollCornerInhale(BossDodongo* this, PlayState* play) {
     SkelAnime_Update(&this->skelAnime);
 
     if (this->unk_1DA == 0) {
-        BossDodongo_SetupPostRollCornerFire(this);
+        BossDodongo_SetupPostRollCornerFire(this, play);
     } else {
         this->unk_1AC++;
 
         if ((this->unk_1AC > 20) && (this->unk_1AC < 82) && BossDodongo_AteExplosive(this, play)) {
             Audio_PlayActorSound2(&this->actor, NA_SE_EN_DODO_K_DRINK);
-            BossDodongo_SetupExplode(this);
+            BossDodongo_SetupExplode(this, play);
         }
     }
 }
@@ -1246,7 +1447,7 @@ void BossDodongo_Inhale(BossDodongo* this, PlayState* PlayState) {
 
         if ((this->unk_1AC > 20) && (this->unk_1AC < 82) && BossDodongo_AteExplosive(this, PlayState)) {
             Audio_PlayActorSound2(&this->actor, NA_SE_EN_DODO_K_DRINK);
-            BossDodongo_SetupExplode(this);
+            BossDodongo_SetupExplode(this, PlayState);
         }
     }
 }
@@ -1300,32 +1501,15 @@ void BossDodongo_Walk(BossDodongo* this, PlayState* play) {
     if ((fabsf(sp48) <= 5.0f) && (fabsf(sp44) <= 5.0f)) {
         this->unk_1E8 = 0.0f;
         this->unk_1E4 = 0.0f;
-        if (this->unk_1A2 == 0) {
-            this->unk_1A0++;
-            if (this->unk_1A0 >= 4) {
-                this->unk_1A0 = 0;
-            }
-        } else {
-            this->unk_1A0--;
-            if (this->unk_1A0 < 0) {
-                this->unk_1A0 = 3;
-            }
-        }
+        BossDodongo_AdvanceCorner(this);
     }
 
     if ((this->unk_1DA == 0) && (this->unk_1BC == 0)) {
-        if (BossDodongo_ShouldTriggerAggressiveChain(this)) {
-            if (BossDodongo_StartAggressiveRollChain(this, play)) {
-                BossDodongo_SetupPostRollCornerInhale(this);
-            } else {
-                BossDodongo_SetupRoll(this, play);
-            }
-            return;
-        }
-
-        if ((this->actor.xzDistToPlayer < 500.0f) && (this->unk_1A4 != 0) && !this->playerPosInRange) {
+        if ((Actor_WorldDistXZToActor(&this->actor, &GET_PLAYER(play)->actor) < 500.0f) && (this->unk_1A4 != 0) &&
+            !this->playerPosInRange) {
             BossDodongo_SetupInhale(this);
             BossDodongo_SpawnFire(this, play, -1);
+            return;
         }
 
         if (!this->playerPosInRange && !this->playerYawInRange) {
@@ -1359,7 +1543,7 @@ void BossDodongo_PostRollCornerRecovery(BossDodongo* this, PlayState* play) {
             }
 
             if (this->cutsceneCamera == 0) {
-                func_80033E88(&this->actor, play, 4, 10);
+                Actor_RequestQuakeAndRumble(&this->actor, play, 4, 10);
             } else {
                 this->unk_1B6 = 10;
                 func_800A9F6C(0.0f, 180, 20, 100);
@@ -1391,7 +1575,7 @@ void BossDodongo_PostRollCornerRecovery(BossDodongo* this, PlayState* play) {
     }
 
     if (this->postRollCornerRecoveryTimer == 0) {
-        BossDodongo_SetupPostRollCornerInhale(this);
+        BossDodongo_SetupPostRollCornerInhale(this, play);
     }
 }
 
@@ -1443,17 +1627,15 @@ void BossDodongo_Roll(BossDodongo* this, PlayState* play) {
     Math_SmoothStepToS(&this->actor.world.rot.y, Math_FAtan2F(sp4C, sp48) * (0x8000 / M_PI), 5,
                        this->unk_1EC * this->unk_1E8, 0);
 
-    if (fabsf(sp4C) <= 15.0f && fabsf(sp48) <= 15.0f) {
+    if ((this->unk_1DA == 0) && (fabsf(sp4C) <= 15.0f) && (fabsf(sp48) <= 15.0f)) {
         this->numWallCollisions++;
         BossDodongo_SpawnWallCollisionRocks(this, play);
-        if (this->lightningTimer > 8) {
-            this->lightningTimer = 8;
-        }
 
         if (this->aggressiveChainActive && this->aggressiveCornerFirePending) {
             this->aggressiveCornerFirePending = false;
             this->numWallCollisions = 0;
-            BossDodongo_SetupPostRollCornerInhale(this);
+            BossDodongo_AdvanceCorner(this);
+            BossDodongo_SetupPostRollCornerInhale(this, play);
             return;
         }
 
@@ -1475,7 +1657,7 @@ void BossDodongo_Roll(BossDodongo* this, PlayState* play) {
             this->unk_1E8 = 0.0f;
             this->unk_1E4 = 0.0f;
             BossDodongo_FinishAggressiveRolling(this);
-            if (this->actor.xzDistToPlayer > 600.0f) {
+            if (Actor_WorldDistXZToActor(&this->actor, &GET_PLAYER(play)->actor) > 600.0f) {
                 BossDodongo_SetupPostRollCornerRecovery(this);
             } else {
                 BossDodongo_SetupWalk(this);
@@ -1494,17 +1676,7 @@ void BossDodongo_Roll(BossDodongo* this, PlayState* play) {
             Audio_PlayActorSound2(&this->actor, NA_SE_EN_DODO_K_COLI2);
         }
 
-        if (this->unk_1A2 == 0) {
-            this->unk_1A0++;
-            if (this->unk_1A0 >= 4) {
-                this->unk_1A0 = 0;
-            }
-        } else {
-            this->unk_1A0--;
-            if (this->unk_1A0 < 0) {
-                this->unk_1A0 = 3;
-            }
-        }
+        BossDodongo_AdvanceCorner(this);
     }
 }
 
@@ -1526,10 +1698,6 @@ void BossDodongo_Update(Actor* thisx, PlayState* play2) {
 
     if (this->unk_1DC != 0) {
         this->unk_1DC--;
-    }
-
-    if (this->dodojrSpawnTimer != 0) {
-        this->dodojrSpawnTimer--;
     }
 
     if (this->aggressiveChainCooldown > 0) {
@@ -1601,17 +1769,7 @@ void BossDodongo_Update(Actor* thisx, PlayState* play2) {
         }
     }
 
-    if (this->lightningActive) {
-        f32 targetR = (this->lightningTimer < 4) ? 255.0f : 200.0f;
-        f32 targetG = (this->lightningTimer < 4) ? 40.0f : 25.0f;
-        f32 targetB = (this->lightningTimer < 4) ? 10.0f : 5.0f;
-
-        Math_SmoothStepToF(&this->colorFilterR, targetR, 1, 10.0f, 0.0f);
-        Math_SmoothStepToF(&this->colorFilterG, targetG, 1, 10.0f, 0.0f);
-        Math_SmoothStepToF(&this->colorFilterB, targetB, 1, 10.0f, 0.0f);
-        Math_SmoothStepToF(&this->colorFilterMin, 880.0f, 1, 8.0f, 0.0f);
-        Math_SmoothStepToF(&this->colorFilterMax, 1120.0f, 1, 8.0f, 0.0f);
-    } else if (this->unk_1BE != 0) {
+    if (this->unk_1BE != 0) {
         if (this->unk_1BE >= 1000) {
             Math_SmoothStepToF(&this->colorFilterR, 30.0f, 1, 20.0f, 0.0);
             Math_SmoothStepToF(&this->colorFilterG, 10.0f, 1, 20.0f, 0.0);
@@ -1713,10 +1871,13 @@ void BossDodongo_Update(Actor* thisx, PlayState* play2) {
         // to handle them here rather than as a shader effect.
         //
         // Apply the corresponding wavy effect based on the texture being raw or not
-        if (ResourceMgr_TexIsRaw(gDodongosCavernBossLavaFloorTex)) {
-            func_808C1554_Raw(gDodongosCavernBossLavaFloorTex, sLavaFloorLavaTex, this->unk_19E, this->unk_224);
-        } else {
-            func_808C1554(gDodongosCavernBossLavaFloorTex, sLavaFloorLavaTex, this->unk_19E, this->unk_224);
+        if (this->lastLavaTextureUpdateFrame != play->gameplayFrames) {
+            this->lastLavaTextureUpdateFrame = play->gameplayFrames;
+            if (ResourceMgr_TexIsRaw(gDodongosCavernBossLavaFloorTex)) {
+                func_808C1554_Raw(gDodongosCavernBossLavaFloorTex, sLavaFloorLavaTex, this->unk_19E, this->unk_224);
+            } else {
+                func_808C1554(gDodongosCavernBossLavaFloorTex, sLavaFloorLavaTex, this->unk_19E, this->unk_224);
+            }
         }
     }
 
@@ -1783,16 +1944,19 @@ void BossDodongo_Update(Actor* thisx, PlayState* play2) {
 
         CollisionCheck_SetOC(play, &play->colChkCtx, &this->collider.base);
 
-        if (this->actionFunc == BossDodongo_Roll) {
+        if ((this->actionFunc == BossDodongo_Roll) && (this->unk_1DA == 0)) {
             CollisionCheck_SetAT(play, &play->colChkCtx, &this->collider.base);
         }
     }
 
-    this->collider.elements[0].dim.scale = (this->actionFunc == BossDodongo_Inhale) ? 0.0f : 1.0f;
+    this->collider.elements[0].dim.scale =
+        ((this->actionFunc == BossDodongo_Inhale) || (this->actionFunc == BossDodongo_PostRollCornerInhale)) ? 0.0f
+                                                                                                             : 1.0f;
 
     for (i = 6; i < 19; i++) {
         if (i != 12) {
-            this->collider.elements[i].dim.scale = (this->actionFunc == BossDodongo_Roll) ? 0.0f : 1.0f;
+            this->collider.elements[i].dim.scale =
+                ((this->actionFunc == BossDodongo_Roll) && (this->unk_1DA == 0)) ? 0.0f : 1.0f;
         }
     }
 
@@ -1898,13 +2062,12 @@ void BossDodongo_Draw(Actor* thisx, PlayState* play) {
     OPEN_DISPS(play->state.gfxCtx);
     Gfx_SetupDL_25Opa(play->state.gfxCtx);
 
-    if ((this->csState == 9) && (this->unk_1DA < 854)) {
-        gSPInvalidateTexCache(POLY_OPA_DISP++, sMaskTex8x16);
-        gSPInvalidateTexCache(POLY_OPA_DISP++, sMaskTex8x32);
-        gSPInvalidateTexCache(POLY_OPA_DISP++, sMaskTex16x16);
-        gSPInvalidateTexCache(POLY_OPA_DISP++, sMaskTex16x32);
-        gSPInvalidateTexCache(POLY_OPA_DISP++, sMaskTex32x16);
-    }
+    // These masks can change during the death sequence or a savestate load.
+    gSPInvalidateTexCache(POLY_OPA_DISP++, sMaskTex8x16);
+    gSPInvalidateTexCache(POLY_OPA_DISP++, sMaskTex8x32);
+    gSPInvalidateTexCache(POLY_OPA_DISP++, sMaskTex16x16);
+    gSPInvalidateTexCache(POLY_OPA_DISP++, sMaskTex16x32);
+    gSPInvalidateTexCache(POLY_OPA_DISP++, sMaskTex32x16);
 
     if ((this->unk_1C0 >= 2) && (this->unk_1C0 & 1)) {
         POLY_OPA_DISP = Gfx_SetFog(POLY_OPA_DISP, 255, 255, 255, 0, 900, 1099);
@@ -1999,22 +2162,25 @@ void BossDodongo_PlayerPosCheck(BossDodongo* this, PlayState* play) {
     }
 }
 
-static void BossDodongo_ClampToArenaBounds(Vec3f* pos) {
-    pos->x = CLAMP(pos->x, sArenaMinBounds.x, sArenaMaxBounds.x);
-    pos->y = CLAMP(pos->y, sArenaMinBounds.y, sArenaMaxBounds.y);
-    pos->z = CLAMP(pos->z, sArenaMinBounds.z, sArenaMaxBounds.z);
+static bool BossDodongo_IsOwnedTransientEnemy(BossDodongo* this, Actor* enemy) {
+    return (enemy->parent == &this->actor) &&
+           ((enemy->id == ACTOR_EN_FIRE_ROCK) || (enemy->id == ACTOR_EN_BDFIRE));
 }
 
-static s32 BossDodongo_CountDodojrs(PlayState* play, s32* enemyCount) {
+static s32 BossDodongo_CountDodojrs(BossDodongo* this, PlayState* play, s32* enemyCount) {
     Actor* enemy = play->actorCtx.actorLists[ACTORCAT_ENEMY].head;
     s32 dodojrCount = 0;
     s32 count = 0;
 
     while (enemy != NULL) {
-        if (enemy->id == ACTOR_EN_DODOJR) {
-            dodojrCount++;
+        if (enemy->update != NULL) {
+            if (enemy->id == ACTOR_EN_DODOJR) {
+                dodojrCount++;
+            }
+            if (!BossDodongo_IsOwnedTransientEnemy(this, enemy)) {
+                count++;
+            }
         }
-        count++;
         enemy = enemy->next;
     }
 
@@ -2025,21 +2191,25 @@ static s32 BossDodongo_CountDodojrs(PlayState* play, s32* enemyCount) {
     return dodojrCount;
 }
 
-void BossDodongo_ClearSpawnedDodojrs(BossDodongo* this, PlayState* play) {
+static void BossDodongo_ClearOwnedFightActors(BossDodongo* this, PlayState* play, bool clearDodojrs) {
     Actor* enemy = play->actorCtx.actorLists[ACTORCAT_ENEMY].head;
 
     while (enemy != NULL) {
         Actor* next = enemy->next;
 
-        if ((enemy->id == ACTOR_EN_DODOJR) && (enemy->parent == &this->actor)) {
+        if ((enemy->update != NULL) && (enemy->parent == &this->actor) &&
+            ((clearDodojrs && (enemy->id == ACTOR_EN_DODOJR)) || (enemy->id == ACTOR_EN_FIRE_ROCK) ||
+             (enemy->id == ACTOR_EN_BDFIRE))) {
+            enemy->parent = NULL;
             Actor_Kill(enemy);
         }
 
         enemy = next;
     }
 
-    this->dodojrSpawnedThisCycle = false;
-    this->dodojrSpawnTimer = 0;
+    if (clearDodojrs) {
+        this->dodojrSpawnedThisCycle = false;
+    }
 }
 
 void BossDodongo_TrySpawnDodojrs(BossDodongo* this, PlayState* play) {
@@ -2064,11 +2234,7 @@ void BossDodongo_TrySpawnDodojrs(BossDodongo* this, PlayState* play) {
         return;
     }
 
-    if (this->dodojrSpawnTimer > 0) {
-        return;
-    }
-
-    dodojrCount = BossDodongo_CountDodojrs(play, &totalEnemies);
+    dodojrCount = BossDodongo_CountDodojrs(this, play, &totalEnemies);
 
     if ((dodojrCount >= sMaxDodojrs) || (totalEnemies >= sMaxEnemiesInArena)) {
         this->dodojrSpawnedThisCycle = true;
@@ -2077,8 +2243,9 @@ void BossDodongo_TrySpawnDodojrs(BossDodongo* this, PlayState* play) {
 
     spawnCount = 3;
     spawnCount = CLAMP_MAX(spawnCount, sMaxDodojrs - dodojrCount);
+    spawnCount = CLAMP_MAX(spawnCount, sMaxEnemiesInArena - totalEnemies);
 
-    if (spawnCount == 0) {
+    if (spawnCount <= 0) {
         this->dodojrSpawnedThisCycle = true;
         return;
     }
@@ -2109,8 +2276,8 @@ void BossDodongo_TrySpawnDodojrs(BossDodongo* this, PlayState* play) {
 
         spawnYaw = this->actor.shape.rot.y;
 
-        spawned = Actor_Spawn(&play->actorCtx, play, ACTOR_EN_DODOJR, spawnPos.x, spawnPos.y, spawnPos.z, 0, spawnYaw,
-                              0, 1, true);
+        spawned =
+            Actor_Spawn(&play->actorCtx, play, ACTOR_EN_DODOJR, spawnPos.x, spawnPos.y, spawnPos.z, 0, spawnYaw, 0, 1);
 
         if (spawned != NULL) {
             spawned->parent = &this->actor;
@@ -2120,6 +2287,8 @@ void BossDodongo_TrySpawnDodojrs(BossDodongo* this, PlayState* play) {
             if ((dodojrCount >= sMaxDodojrs) || (spawnedCount >= spawnCount)) {
                 break;
             }
+        } else {
+            break;
         }
     }
 
@@ -2131,6 +2300,24 @@ void BossDodongo_SpawnFire(BossDodongo* this, PlayState* play, s16 params) {
                        this->vec.z, 0, this->actor.shape.rot.y, 0, params);
 }
 
+static void BossDodongo_TrySpawnRewards(BossDodongo* this, PlayState* play) {
+    if ((this->rewardState & BOSS_DODONGO_REWARD_HEART_REQUIRED) &&
+        !(this->rewardState & BOSS_DODONGO_REWARD_HEART_SPAWNED)) {
+        if (Actor_Spawn(&play->actorCtx, play, ACTOR_ITEM_B_HEART, this->rewardHeartPos.x, this->rewardHeartPos.y,
+                        this->rewardHeartPos.z, 0, 0, 0, 0) != NULL) {
+            this->rewardState |= BOSS_DODONGO_REWARD_HEART_SPAWNED;
+        }
+    }
+
+    if ((this->rewardState & BOSS_DODONGO_REWARD_WARP_REQUIRED) &&
+        !(this->rewardState & BOSS_DODONGO_REWARD_WARP_SPAWNED)) {
+        if (Actor_SpawnAsChild(&play->actorCtx, &this->actor, play, ACTOR_DOOR_WARP1, -890.0f, -1523.76f, -3304.0f,
+                               0, 0, 0, WARP_DUNGEON_CHILD) != NULL) {
+            this->rewardState |= BOSS_DODONGO_REWARD_WARP_SPAWNED;
+        }
+    }
+}
+
 void BossDodongo_UpdateDamage(BossDodongo* this, PlayState* play) {
     s32 pad;
     ColliderInfo* item1;
@@ -2140,14 +2327,14 @@ void BossDodongo_UpdateDamage(BossDodongo* this, PlayState* play) {
     s16 i;
 
     if ((this->health <= 0) && (this->actionFunc != BossDodongo_DeathCutscene)) {
-        BossDodongo_ClearSpawnedDodojrs(this, play);
-        BossDodongo_SetupDeathCutscene(this);
+        BossDodongo_ClearOwnedFightActors(this, play, true);
+        BossDodongo_SetupDeathCutscene(this, play);
         Enemy_StartFinishingBlow(play, &this->actor);
         return;
     }
 
     if (this->unk_1C0 == 0) {
-        if (this->actionFunc == BossDodongo_Inhale) {
+        if ((this->actionFunc == BossDodongo_Inhale) || (this->actionFunc == BossDodongo_PostRollCornerInhale)) {
             for (i = 0; i < 19; i++) {
                 if (this->collider.elements[i].info.bumperFlags & 2) {
                     item1 = this->collider.elements[i].info.acHitInfo;
@@ -2181,7 +2368,10 @@ void BossDodongo_UpdateDamage(BossDodongo* this, PlayState* play) {
     }
 }
 
-void BossDodongo_SetupDeathCutscene(BossDodongo* this) {
+void BossDodongo_SetupDeathCutscene(BossDodongo* this, PlayState* play) {
+    BossDodongo_RestoreRollingAtmosphere(this, play);
+    Audio_StopSfxByPosAndId(&this->actor.projectedPos, NA_SE_EN_DODO_K_ROLL);
+    Audio_StopSfxByPosAndId(&this->actor.projectedPos, NA_SE_EN_DODO_K_BREATH);
     this->actor.speedXZ = 0.0f;
     this->unk_1E4 = 0.0f;
     Animation_Change(&this->skelAnime, &object_kingdodongo_Anim_002D0C, 1.0f, 0.0f,
@@ -2508,11 +2698,17 @@ void BossDodongo_DeathCutscene(BossDodongo* this, PlayState* play) {
 
             if (this->unk_1DA == 820) {
                 Audio_QueueSeqCmd(SEQ_PLAYER_BGM_MAIN << 24 | NA_BGM_BOSS_CLEAR);
-                if (GameInteractor_Should(VB_SPAWN_HEART_CONTAINER, true)) {
-                    Actor_Spawn(&play->actorCtx, play, ACTOR_ITEM_B_HEART,
-                                Math_SinS(this->actor.shape.rot.y) * -50.0f + this->actor.world.pos.x,
-                                this->actor.world.pos.y,
-                                Math_CosS(this->actor.shape.rot.y) * -50.0f + this->actor.world.pos.z, 0, 0, 0, 0);
+                if (!(this->rewardState & BOSS_DODONGO_REWARD_HEART_DECIDED)) {
+                    this->rewardState |= BOSS_DODONGO_REWARD_HEART_DECIDED;
+                    this->rewardHeartPos.x =
+                        Math_SinS(this->actor.shape.rot.y) * -50.0f + this->actor.world.pos.x;
+                    this->rewardHeartPos.y = this->actor.world.pos.y;
+                    this->rewardHeartPos.z =
+                        Math_CosS(this->actor.shape.rot.y) * -50.0f + this->actor.world.pos.z;
+
+                    if (GameInteractor_Should(VB_SPAWN_HEART_CONTAINER, true)) {
+                        this->rewardState |= BOSS_DODONGO_REWARD_HEART_REQUIRED;
+                    }
                 }
             }
             if (this->unk_1DA == 600) {
@@ -2527,9 +2723,11 @@ void BossDodongo_DeathCutscene(BossDodongo* this, PlayState* play) {
                 Play_ChangeCameraStatus(play, CAM_ID_MAIN, CAM_STAT_ACTIVE);
                 func_80064534(play, &play->csCtx);
                 Player_SetCsActionWithHaltedActors(play, &this->actor, 7);
-                if (GameInteractor_Should(VB_SPAWN_BLUE_WARP, true, this)) {
-                    Actor_SpawnAsChild(&play->actorCtx, &this->actor, play, ACTOR_DOOR_WARP1, -890.0f, -1523.76f,
-                                       -3304.0f, 0, 0, 0, WARP_DUNGEON_CHILD);
+                if (!(this->rewardState & BOSS_DODONGO_REWARD_WARP_DECIDED)) {
+                    this->rewardState |= BOSS_DODONGO_REWARD_WARP_DECIDED;
+                    if (GameInteractor_Should(VB_SPAWN_BLUE_WARP, true, this)) {
+                        this->rewardState |= BOSS_DODONGO_REWARD_WARP_REQUIRED;
+                    }
                 }
                 this->skelAnime.playSpeed = 0.0f;
                 Flags_SetClear(play, play->roomCtx.curRoom.num);
@@ -2547,6 +2745,9 @@ void BossDodongo_DeathCutscene(BossDodongo* this, PlayState* play) {
             }
             break;
     }
+
+    BossDodongo_TrySpawnRewards(this, play);
+
     if (this->cutsceneCamera != CAM_ID_MAIN) {
         Play_CameraSetAtEye(play, this->cutsceneCamera, &this->cameraAt, &this->cameraEye);
     }

@@ -30,9 +30,8 @@ _Note: Instructions assume using powershell_
 cd Shipwright
 
 # Setup cmake project
-# Add `-DCMAKE_BUILD_TYPE:STRING=Release` if you're packaging
 # Add `-DSUPPRESS_WARNINGS=0` to prevent suppression of warnings from LUS and decomp (src) files. set to 1 to re-enable suppression
-& 'C:\Program Files\CMake\bin\cmake' -S . -B "build/x64" -G "Visual Studio 17 2022" -T v143 -A x64
+& 'C:\Program Files\CMake\bin\cmake.exe' -S . -B "build/x64" -G "Visual Studio 17 2022" -T v143 -A x64
 
 # Generate soh.o2r
 & 'C:\Program Files\CMake\bin\cmake.exe' --build .\build\x64 --target GenerateSohOtr
@@ -41,8 +40,12 @@ cd Shipwright
 # Add `--config Release` if you're packaging
 & 'C:\Program Files\CMake\bin\cmake.exe' --build .\build\x64
 
-# Now you can run the executable in .\build\x64 or run in Visual Studio
+# Now you can run .\x64\Debug\soh.exe (or .\x64\Release\soh.exe)
+# or open .\build\x64\Ship.sln in Visual Studio
 ```
+
+The same configure, asset-generation, and build steps are available through
+`build-windows.bat [Debug|Release]` from the repository root.
 
 ### Developing SoH
 With the cmake build system you have two options for working on the project:
@@ -51,7 +54,7 @@ With the cmake build system you have two options for working on the project:
 To develop using Visual Studio you only need to use cmake to generate the solution file:
 ```powershell
 # Generates Ship.sln at `build/x64` for Visual Studio 2022
-& 'C:\Program Files\CMake\bin\cmake' -S . -B "build/x64" -G "Visual Studio 17 2022" -T v143 -A x64
+& 'C:\Program Files\CMake\bin\cmake.exe' -S . -B "build/x64" -G "Visual Studio 17 2022" -T v143 -A x64
 ```
 
 #### Visual Studio Code or another editor
@@ -75,14 +78,14 @@ cd "build/x64"
 ### Additional CMake Targets
 #### Clean
 ```powershell
-# If you need to clean the project you can run
-C:\Program Files\CMake\bin\cmake.exe --build build-cmake --target clean
+# From the repository root, run
+& 'C:\Program Files\CMake\bin\cmake.exe' --build .\build\x64 --target clean
 ```
 
 #### Regenerate Asset Headers
 ```powershell
-# If you need to regenerate the asset headers to check them into source
-C:\Program Files\CMake\bin\cmake.exe --build build-cmake --target ExtractAssetHeaders
+# From the repository root, run
+& 'C:\Program Files\CMake\bin\cmake.exe' --build .\build\x64 --target ExtractAssetHeaders
 ```
 
 ## Linux
@@ -330,12 +333,6 @@ See [`supportedHashes.json`](supportedHashes.json)
 
 ## Getting CI to work on your fork
 
-The CI works via [Github Actions](https://github.com/features/actions) where we mostly make use of machines hosted by Github; except for the very first step of the CI process called "Extract assets". This steps extracts assets from the game file and generates an "assets" folder in `soh/`.
+The CI runs entirely on GitHub-hosted runners. Enable GitHub Actions on your fork and the workflows will install their own dependencies; no self-hosted asset runner or ROM is required.
 
-To get this step working on your fork, you'll need to add a machine to your own repository as a self-hosted runner via "Settings > Actions > Runners" in your repository settings. Make sure to add the 'asset-builder' tag to your newly added runner to assign it to run this step. To setup your runner as a service read the docs [here](https://docs.github.com/en/actions/hosting-your-own-runners/configuring-the-self-hosted-runner-application-as-a-service?platform=linux).
-
-### Runner on Windows
-You'll have to enable the ability to run unsigned scripts through PowerShell. To do this, open Powershell as administrator and run `set-executionpolicy remotesigned`. Most dependencies get installed as part of the CI process. You will also need to separately install 7z and add it to the PATH so `7z` can be run as a command. [Chocolatey](https://chocolatey.org/) or other package managers can be used to install it easily.
-
-### Runner on UNIX systems
-If you're on macOS or Linux take a look at `.github/macports.yml` or `.github/workflows/apt-deps.txt` to see the dependencies expected to be on your machine.
+For the dependency lists used by CI, see `.github/macports.yml` for macOS and `linux-build-deps/apt.txt` for Ubuntu.

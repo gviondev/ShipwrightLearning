@@ -2,14 +2,18 @@
 
 #include <cstdint>
 
-extern "C" ExternalTelemetry gExternalTelemetry = { 0, 0 };
+extern "C" {
 
-extern "C" void ExternalTelemetry_SetSceneId(uint32_t sceneId) {
+EXTERNAL_TELEMETRY_API ExternalTelemetry gExternalTelemetry = { 0, 0 };
+
+EXTERNAL_TELEMETRY_API void ExternalTelemetry_SetSceneId(uint32_t sceneId) {
     gExternalTelemetry.sceneId = sceneId;
 }
 
-extern "C" void ExternalTelemetry_SetDayTime(uint32_t dayTime) {
+EXTERNAL_TELEMETRY_API void ExternalTelemetry_SetDayTime(uint32_t dayTime) {
     gExternalTelemetry.dayTime = dayTime;
+}
+
 }
 
 static_assert(sizeof(ExternalTelemetry) == sizeof(uint32_t) * 2,

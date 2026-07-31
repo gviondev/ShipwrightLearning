@@ -10,11 +10,45 @@
 #include "overlays/actors/ovl_Door_Warp1/z_door_warp1.h"
 #include "vt.h"
 #include "soh/frame_interpolation.h"
+#include "soh/Enhancements/game-interactor/GameInteractor.h"
 #include "soh/Enhancements/game-interactor/GameInteractor_Hooks.h"
 
 #define FLAGS                                                                                 \
     (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_HOSTILE | ACTOR_FLAG_UPDATE_CULLING_DISABLED | \
      ACTOR_FLAG_DRAW_CULLING_DISABLED)
+
+#define FD2_FIRE_WINDUP_START 10.0f
+#define FD2_FIRE_ACTIVE_START 25.0f
+#define FD2_FIRE_ACTIVE_END 85.0f
+#define FD2_FIRE_SWEEP_HALF_ANGLE 0x1800
+#define FD2_FIRE_SWEEP_MAX_ANGLE 0x2800
+#define FD2_CLAW_ACTIVE_START 7.0f
+#define FD2_CLAW_ACTIVE_END 14.0f
+#define FD2_MAGMA_BURST_RANGE 160.0f
+#define FD2_MAGMA_BURST_WINDUP 20
+#define FD2_MAGMA_BURST_RECOVERY 20
+#define FD2_MAGMA_BURST_WAVE_DELAY 12
+#define FD2_MAGMA_BURST_COUNT 8
+#define FD2_EMERGENCE_GRAB_HEALTH_THRESHOLD BOSSFD_PHASE_4_HEALTH
+#define FD2_EMERGENCE_GRAB_CHANCE 0.35f
+#define FD2_POST_DAMAGE_GRAB_FRAME 18.0f
+#define FD2_POST_DAMAGE_GRAB_RANGE 210.0f
+#define FD2_GRAB_RANGE 145.0f
+#define FD2_GRAB_VERTICAL_RANGE 80.0f
+#define FD2_GRAB_YAW_TOLERANCE 0x2800
+#define FD2_GRAB_ANIMATION_SPEED 1.15f
+#define FD2_DRAG_PULL_TIME 15
+#define FD2_DRAG_SINK_SPEED 18.0f
+#define FD2_DRAG_TRAVEL_TIME 56
+#define FD2_DRAG_SPIT_TIME 6
+#define FD2_DRAG_RECOVERY_TIME 24
+#define FD2_DRAG_SPLASH_TIME 8
+#define FD2_DRAG_UNDERGROUND_Y 10.0f
+#define FD2_DRAG_RELEASE_Y 115.0f
+#define FD2_DRAG_CAMERA_FOV 70.0f
+#define FD2_DRAG_DAMAGE 8
+#define FD2_DRAG_TOSS_SPEED 8.0f
+#define FD2_DRAG_TOSS_LIFT 14.0f
 
 typedef enum {
     /* 0 */ DEATH_START,
@@ -34,8 +68,38 @@ typedef enum {
 typedef enum {
     /* 0 */ FD2_CHAIN_NONE,
     /* 1 */ FD2_CHAIN_CLAW_SWIPE,
-    /* 2 */ FD2_CHAIN_BREATHE_FIRE
+    /* 2 */ FD2_CHAIN_BREATHE_FIRE,
+    /* 3 */ FD2_CHAIN_FIRE_SWEEP
 } BossFd2ChainAction;
+
+typedef enum {
+    /* -1 */ FD2_FIRE_SWEEP_LEFT = -1,
+    /*  0 */ FD2_FIRE_FOCUSED,
+    /*  1 */ FD2_FIRE_SWEEP_RIGHT
+} BossFd2FirePattern;
+
+typedef enum {
+    /* 0 */ FD2_ATTACK_NONE,
+    /* 1 */ FD2_ATTACK_CLAW,
+    /* 2 */ FD2_ATTACK_FOCUSED_FIRE,
+    /* 3 */ FD2_ATTACK_FIRE_SWEEP,
+    /* 4 */ FD2_ATTACK_MAGMA_BURST
+} BossFd2Attack;
+
+typedef enum {
+    /* 0 */ FD2_GRAB_PUNCH,
+    /* 1 */ FD2_GRAB_PULL_DOWN,
+    /* 2 */ FD2_GRAB_TRAVEL,
+    /* 3 */ FD2_GRAB_SPIT,
+    /* 4 */ FD2_GRAB_RECOVER
+} BossFd2GrabState;
+
+typedef enum {
+    /* 0 */ FD2_DAMAGED_HIT,
+    /* 1 */ FD2_DAMAGED_REACTION,
+    /* 2 */ FD2_DAMAGED_RETREAT,
+    /* 3 */ FD2_DAMAGED_GRAB_MISS_BURROW
+} BossFd2DamagedState;
 
 void BossFd2_Init(Actor* thisx, PlayState* play);
 void BossFd2_Destroy(Actor* thisx, PlayState* play);
@@ -48,13 +112,21 @@ void BossFd2_SetupIdle(BossFd2* this, PlayState* play);
 void BossFd2_Idle(BossFd2* this, PlayState* play);
 void BossFd2_Burrow(BossFd2* this, PlayState* play);
 void BossFd2_SetupBreatheFire(BossFd2* this, PlayState* play);
+void BossFd2_SetupFireSweep(BossFd2* this, PlayState* play);
 void BossFd2_BreatheFire(BossFd2* this, PlayState* play);
 void BossFd2_SetupClawSwipe(BossFd2* this, PlayState* play);
 void BossFd2_ClawSwipe(BossFd2* this, PlayState* play);
+void BossFd2_SetupMagmaBurst(BossFd2* this, PlayState* play);
+void BossFd2_MagmaBurst(BossFd2* this, PlayState* play);
 void BossFd2_Vulnerable(BossFd2* this, PlayState* play);
 void BossFd2_Damaged(BossFd2* this, PlayState* play);
+void BossFd2_SetupGrabAttack(BossFd2* this, PlayState* play, bool retreatOnMiss);
+void BossFd2_GrabAttack(BossFd2* this, PlayState* play);
 void BossFd2_Death(BossFd2* this, PlayState* play);
 void BossFd2_Wait(BossFd2* this, PlayState* play);
+void BossFd2_UpdateCamera(BossFd2* this, PlayState* play);
+
+static void BossFd2_EndDragSequence(BossFd2* this, PlayState* play, bool placePlayerSafely);
 
 const ActorInit Boss_Fd2_InitVars = {
     ACTOR_BOSS_FD2,
@@ -83,6 +155,207 @@ static InitChainEntry sInitChain[] = {
     ICHAIN_F32_DIV1000(gravity, 0, ICHAIN_CONTINUE),
     ICHAIN_F32(targetArrowOffset, 0, ICHAIN_STOP),
 };
+
+static void BossFd2_ClearAttackQueue(BossFd2* this) {
+    this->work[FD2_CHAIN_ACTION] = FD2_CHAIN_NONE;
+    this->work[FD2_FIRE_PATTERN] = FD2_FIRE_FOCUSED;
+    this->work[FD2_FIRE_AIM_YAW] = 0;
+    this->work[FD2_FIRE_AIM_PITCH] = 0;
+    this->headRot.x = 0;
+    this->headRot.y = 0;
+}
+
+static s16 BossFd2_ChooseDragExitHole(BossFd2* this) {
+    s16 exitHole;
+
+    do {
+        exitHole = (s16)Rand_ZeroFloat(8.9f);
+    } while ((exitHole == 1) ||
+             ((fabsf(sHoleLocations[exitHole].x - this->actor.world.pos.x) < 1.0f) &&
+              (fabsf(sHoleLocations[exitHole].z - this->actor.world.pos.z) < 1.0f)));
+
+    return exitHole;
+}
+
+static void BossFd2_StartDragSplash(BossFd* bossFd, const Vec3f* position) {
+    bossFd->holePosition.x = position->x;
+    bossFd->holePosition.z = position->z;
+    if (bossFd->timers[4] < FD2_DRAG_SPLASH_TIME) {
+        bossFd->timers[4] = FD2_DRAG_SPLASH_TIME;
+    }
+    bossFd->work[BFD_SPLASH_TIMER] = FD2_DRAG_SPLASH_TIME;
+}
+
+static void BossFd2_StartDragCamera(BossFd2* this, PlayState* play) {
+    Camera* mainCam = Play_GetCamera(play, CAM_ID_MAIN);
+    f32 horizontalDistance = sqrtf(SQ(mainCam->eye.x) + SQ(mainCam->eye.z));
+
+    this->deathCamera = Play_CreateSubCamera(play);
+    this->camData.eye = mainCam->eye;
+    this->camData.at = mainCam->at;
+    if (horizontalDistance > 1.0f) {
+        this->camData.nextEye.x = (mainCam->eye.x / horizontalDistance) * 380.0f;
+        this->camData.nextEye.z = (mainCam->eye.z / horizontalDistance) * 380.0f;
+    } else {
+        this->camData.nextEye.x = 0.0f;
+        this->camData.nextEye.z = 380.0f;
+    }
+    this->camData.nextEye.y = 430.0f;
+    this->camData.nextAt = this->camData.at;
+    this->camData.eyeVel.x = 45.0f;
+    this->camData.eyeVel.y = 45.0f;
+    this->camData.eyeVel.z = 45.0f;
+    this->camData.atVel.x = 45.0f;
+    this->camData.atVel.y = 45.0f;
+    this->camData.atVel.z = 45.0f;
+    this->camData.eyeMaxVel.x = 0.12f;
+    this->camData.eyeMaxVel.y = 0.12f;
+    this->camData.eyeMaxVel.z = 0.12f;
+    this->camData.atMaxVel.x = 0.18f;
+    this->camData.atMaxVel.y = 0.18f;
+    this->camData.atMaxVel.z = 0.18f;
+    this->camData.speedMod = 0.0f;
+    this->camData.accel = 0.04f;
+    this->camData.yMod = 0.0f;
+    this->camData.shake = mainCam->fov;
+
+    if (this->deathCamera > CAM_ID_MAIN) {
+        Play_ChangeCameraStatus(play, CAM_ID_MAIN, CAM_STAT_WAIT);
+        Play_ChangeCameraStatus(play, this->deathCamera, CAM_STAT_ACTIVE);
+        Play_CameraSetFov(play, this->deathCamera, FD2_DRAG_CAMERA_FOV);
+    } else {
+        this->deathCamera = SUBCAM_FREE;
+    }
+}
+
+static void BossFd2_CloseDragCamera(BossFd2* this, PlayState* play) {
+    if ((this->deathCamera > CAM_ID_MAIN) && (this->deathCamera < NUM_CAMS) &&
+        (play->cameraPtrs[CAM_ID_MAIN] != NULL) && (play->cameraPtrs[this->deathCamera] != NULL)) {
+        if (Play_GetActiveCamId(play) == this->deathCamera) {
+            Play_CopyCamera(play, CAM_ID_MAIN, this->deathCamera);
+            Play_CameraSetFov(play, CAM_ID_MAIN, this->camData.shake);
+            Play_ChangeCameraStatus(play, this->deathCamera, CAM_STAT_WAIT);
+            Play_ChangeCameraStatus(play, CAM_ID_MAIN, CAM_STAT_ACTIVE);
+        }
+        Play_ClearCamera(play, this->deathCamera);
+    }
+    this->deathCamera = SUBCAM_FREE;
+}
+
+static bool BossFd2_ControlDraggedPlayer(BossFd2* this, PlayState* play, Vec3f* position) {
+    Player* player = GET_PLAYER(play);
+
+    if ((player == NULL) || !this->draggingPlayer || (player->actor.parent != &this->actor) ||
+        !(player->stateFlags2 & PLAYER_STATE2_GRABBED_BY_ENEMY)) {
+        return false;
+    }
+
+    player->stateFlags1 |= PLAYER_STATE1_FLOOR_DISABLED;
+    player->actor.world.pos = *position;
+    player->actor.prevPos = *position;
+    player->actor.shape.rot.x = 0;
+    player->actor.shape.rot.y = this->actor.shape.rot.y + 0x8000;
+    player->actor.shape.rot.z = 0;
+    player->actor.world.rot = player->actor.shape.rot;
+    // This grab becomes a short cinematic after the dodge window. Keeping the grabbed action active prevents
+    // Player_SetupAction from re-enabling floor collision during an underground player update.
+    player->av2.actionVar2 = 0;
+    player->linearVelocity = 0.0f;
+    player->actor.speedXZ = 0.0f;
+    player->actor.velocity.x = 0.0f;
+    player->actor.velocity.y = 0.0f;
+    player->actor.velocity.z = 0.0f;
+    return true;
+}
+
+static void BossFd2_ReleaseDraggedPlayer(BossFd2* this, PlayState* play, bool placePlayerSafely) {
+    Player* player = GET_PLAYER(play);
+    bool ownsPlayer;
+    bool restoreOwnedState;
+
+    if (player == NULL) {
+        this->draggingPlayer = false;
+        return;
+    }
+
+    ownsPlayer = player->actor.parent == &this->actor;
+    restoreOwnedState = ownsPlayer || (this->draggingPlayer && (player->actor.parent == NULL));
+
+    if (restoreOwnedState) {
+        if (placePlayerSafely) {
+            player->actor.world.pos = sHoleLocations[this->dragExitHole];
+            player->actor.world.pos.y = FD2_DRAG_RELEASE_Y;
+            player->actor.prevPos = player->actor.world.pos;
+        }
+        player->stateFlags2 &= ~PLAYER_STATE2_GRABBED_BY_ENEMY;
+        if (ownsPlayer) {
+            player->actor.parent = NULL;
+        }
+        player->av2.actionVar2 = 0xC8;
+        player->actor.shape.rot.x = 0;
+        player->actor.shape.rot.z = 0;
+        player->actor.world.rot.x = 0;
+        player->actor.world.rot.z = 0;
+        player->linearVelocity = 0.0f;
+        player->actor.speedXZ = 0.0f;
+        player->actor.velocity.x = 0.0f;
+        player->actor.velocity.y = 0.0f;
+        player->actor.velocity.z = 0.0f;
+    }
+
+    if (this->dragSequenceActive && restoreOwnedState) {
+        if (this->dragPlayerFloorWasDisabled) {
+            player->stateFlags1 |= PLAYER_STATE1_FLOOR_DISABLED;
+        } else {
+            player->stateFlags1 &= ~PLAYER_STATE1_FLOOR_DISABLED;
+        }
+    }
+    this->draggingPlayer = false;
+}
+
+static void BossFd2_EndDragSequence(BossFd2* this, PlayState* play, bool placePlayerSafely) {
+    BossFd2_ReleaseDraggedPlayer(this, play, placePlayerSafely);
+    BossFd2_CloseDragCamera(this, play);
+    this->dragSequenceActive = false;
+    this->dragPlayerFloorWasDisabled = false;
+    this->dragDamageApplied = false;
+    this->dragDamagePending = false;
+    this->grabRetreatOnMiss = false;
+}
+
+static void BossFd2_UpdateDragCamera(BossFd2* this, PlayState* play) {
+    Player* player = GET_PLAYER(play);
+
+    if (player == NULL) {
+        return;
+    }
+
+    this->camData.nextAt.x = player->actor.world.pos.x;
+    this->camData.nextAt.y = CLAMP_MIN(player->actor.world.pos.y + 35.0f, 115.0f);
+    this->camData.nextAt.z = player->actor.world.pos.z;
+    BossFd2_UpdateCamera(this, play);
+    if ((this->deathCamera > CAM_ID_MAIN) && (this->deathCamera < NUM_CAMS) &&
+        (play->cameraPtrs[this->deathCamera] != NULL)) {
+        Play_CameraSetFov(play, this->deathCamera, FD2_DRAG_CAMERA_FOV);
+    }
+}
+
+static void BossFd2_BeginDamagedRetreat(BossFd2* this) {
+    this->actionFunc = BossFd2_Damaged;
+    this->work[FD2_ACTION_STATE] = FD2_DAMAGED_RETREAT;
+    this->timers[0] = 25;
+}
+
+static void BossFd2_AbortGrabAttack(BossFd2* this, PlayState* play) {
+    BossFd* bossFd = (BossFd*)this->actor.parent;
+
+    BossFd2_EndDragSequence(this, play, true);
+    this->actor.world.pos = sHoleLocations[this->dragExitHole];
+    this->actor.world.pos.y = -100.0f;
+    bossFd->holeIndex = this->dragExitHole;
+    this->work[FD2_ACTION_STATE] = FD2_GRAB_RECOVER;
+    this->timers[0] = FD2_DRAG_RECOVERY_TIME;
+}
 
 void BossFd2_SpawnDebris(PlayState* play, BossFdEffect* effect, Vec3f* position, Vec3f* velocity, Vec3f* acceleration,
                          f32 scale) {
@@ -191,6 +464,20 @@ void BossFd2_Init(Actor* thisx, PlayState* play) {
     Actor_ProcessInitChain(&this->actor, sInitChain);
     Actor_SetScale(&this->actor, 0.0069999993f);
     this->actor.world.pos.y = -850.0f;
+    this->deathCamera = SUBCAM_FREE;
+    this->dragEntryPos = this->actor.world.pos;
+    this->dragPlayerStartPos = this->actor.world.pos;
+    this->dragExitHole = 0;
+    this->dragSequenceActive = false;
+    this->draggingPlayer = false;
+    this->dragPlayerFloorWasDisabled = false;
+    this->dragDamageApplied = false;
+    this->dragDamagePending = false;
+    this->emergenceGrabPending = false;
+    this->grabRetreatOnMiss = false;
+    this->grabTransitionedThisFrame = false;
+    this->work[FD2_LAST_ATTACK] = FD2_ATTACK_NONE;
+    BossFd2_ClearAttackQueue(this);
     ActorShape_Init(&this->actor.shape, -580.0f / this->actor.scale.y, NULL, 0.0f);
     SkelAnime_InitFlex(play, &this->skelAnime, &gHoleVolvagiaSkel, &gHoleVolvagiaIdleAnim, NULL, NULL, 0);
     if (this->actor.params == BFD_CS_NONE) {
@@ -206,6 +493,9 @@ void BossFd2_Destroy(Actor* thisx, PlayState* play) {
     s32 pad;
     BossFd2* this = (BossFd2*)thisx;
 
+    if (this->dragSequenceActive || this->draggingPlayer) {
+        BossFd2_EndDragSequence(this, play, true);
+    }
     SkelAnime_Free(&this->skelAnime, play);
     Collider_DestroyJntSph(play, &this->collider);
 }
@@ -219,6 +509,8 @@ void BossFd2_SetupEmerge(BossFd2* this, PlayState* play) {
     osSyncPrintf("UP INIT 1\n");
     Animation_PlayOnce(&this->skelAnime, &gHoleVolvagiaEmergeAnim);
     this->actionFunc = BossFd2_Emerge;
+    BossFd2_ClearAttackQueue(this);
+    this->emergenceGrabPending = false;
     this->skelAnime.playSpeed = 0.0f;
     temp_rand = Rand_ZeroFloat(8.9f);
     this->actor.world.pos.x = sHoleLocations[temp_rand].x;
@@ -228,13 +520,13 @@ void BossFd2_SetupEmerge(BossFd2* this, PlayState* play) {
     emergeDelay = 6;
     if (bossFd != NULL) {
         health = bossFd->actor.colChkInfo.health;
-        if (health >= 42) {
+        if (health >= BOSSFD_PHASE_2_HEALTH) {
             this->work[FD2_FAKEOUT_COUNT] = 0;
             emergeDelay = 6;
-        } else if (health >= 32) {
+        } else if (health >= BOSSFD_PHASE_3_HEALTH) {
             this->work[FD2_FAKEOUT_COUNT] = 1;
             emergeDelay = 5;
-        } else if (health >= 24) {
+        } else if (health >= BOSSFD_PHASE_4_HEALTH) {
             this->work[FD2_FAKEOUT_COUNT] = 2;
             emergeDelay = 4;
         } else {
@@ -270,13 +562,13 @@ void BossFd2_Emerge(BossFd2* this, PlayState* play) {
                 this->work[FD2_HOLE_COUNTER]++;
                 this->actor.world.pos.y = -200.0f;
                 health = bossFd->actor.colChkInfo.health;
-                if (health == 48) {
+                if (health == BOSSFD_MAX_HEALTH) {
                     holeTime = 20;
-                } else if (health >= 18) {
+                } else if (health >= BOSSFD_PHASE_2_HEALTH) {
                     holeTime = 16;
-                } else if (health >= 12) {
+                } else if (health >= BOSSFD_PHASE_3_HEALTH) {
                     holeTime = 12;
-                } else if (health >= 6) {
+                } else if (health >= BOSSFD_PHASE_4_HEALTH) {
                     holeTime = 8;
                 } else {
                     holeTime = 4;
@@ -298,16 +590,20 @@ void BossFd2_Emerge(BossFd2* this, PlayState* play) {
                     this->actor.world.pos.z = sHoleLocations[i].z;
                     this->work[FD2_ACTION_STATE] = 0;
                     health = bossFd->actor.colChkInfo.health;
-                    if (health >= 18) {
+                    if (health >= BOSSFD_PHASE_2_HEALTH) {
                         this->timers[0] = 6;
-                    } else if (health >= 12) {
+                    } else if (health >= BOSSFD_PHASE_3_HEALTH) {
                         this->timers[0] = 5;
-                    } else if (health >= 6) {
+                    } else if (health >= BOSSFD_PHASE_4_HEALTH) {
                         this->timers[0] = 4;
                     } else {
                         this->timers[0] = 3;
                     }
                 } else {
+                    health = bossFd->actor.colChkInfo.health;
+                    this->emergenceGrabPending =
+                        (health <= FD2_EMERGENCE_GRAB_HEALTH_THRESHOLD) &&
+                        (Rand_ZeroOne() < FD2_EMERGENCE_GRAB_CHANCE);
                     this->skelAnime.playSpeed = 1.0f;
                     this->fwork[FD2_END_FRAME] = Animation_GetLastFrame(&gHoleVolvagiaEmergeAnim);
                     this->work[FD2_ACTION_STATE] = 2;
@@ -325,16 +621,24 @@ void BossFd2_Emerge(BossFd2* this, PlayState* play) {
                 }
             }
             break;
-        case 2:
+        case 2: {
+            bool emergenceFinished = Animation_OnFrame(&this->skelAnime, this->fwork[FD2_END_FRAME]);
+
             Math_ApproachS(&this->actor.shape.rot.y, this->actor.yawTowardsPlayer, 3, 0x7D0);
-            if ((this->timers[0] == 1) && (this->actor.xzDistToPlayer < 120.0f)) {
+            if (this->emergenceGrabPending && emergenceFinished) {
+                BossFd2_SetupGrabAttack(this, play, false);
+                break;
+            }
+            if (!this->emergenceGrabPending && (this->timers[0] == 1) &&
+                (this->actor.xzDistToPlayer < 120.0f)) {
                 Actor_SetPlayerKnockbackLarge(play, &this->actor, 3.0f, this->actor.yawTowardsPlayer, 2.0f, 0x20);
                 Audio_PlayActorSound2(&player->actor, NA_SE_PL_BODY_HIT);
             }
-            if (Animation_OnFrame(&this->skelAnime, this->fwork[FD2_END_FRAME])) {
+            if (emergenceFinished) {
                 BossFd2_SetupIdle(this, play);
             }
             break;
+        }
     }
     osSyncPrintf("UP 2\n");
 }
@@ -347,15 +651,17 @@ void BossFd2_SetupIdle(BossFd2* this, PlayState* play) {
     osSyncPrintf("UP INIT 1\n");
     Animation_PlayLoop(&this->skelAnime, &gHoleVolvagiaTurnAnim);
     this->actionFunc = BossFd2_Idle;
-    this->work[FD2_UNUSED_4] = FD2_CHAIN_NONE;
+    this->emergenceGrabPending = false;
+    this->grabRetreatOnMiss = false;
+    this->work[FD2_CHAIN_ACTION] = FD2_CHAIN_NONE;
     health = bossFd->actor.colChkInfo.health;
-    if (health == 48) {
+    if (health == BOSSFD_MAX_HEALTH) {
         idleTime = 40;
-    } else if (health >= 18) {
+    } else if (health >= BOSSFD_PHASE_2_HEALTH) {
         idleTime = 32;
-    } else if (health >= 12) {
-        idleTime = 32;
-    } else if (health >= 6) {
+    } else if (health >= BOSSFD_PHASE_3_HEALTH) {
+        idleTime = 28;
+    } else if (health >= BOSSFD_PHASE_4_HEALTH) {
         idleTime = 24;
     } else {
         idleTime = 16;
@@ -366,6 +672,7 @@ void BossFd2_SetupIdle(BossFd2* this, PlayState* play) {
 void BossFd2_Idle(BossFd2* this, PlayState* play) {
     BossFd* bossFd = (BossFd*)this->actor.parent;
     s16 prevToLink;
+    s16 lastAttack;
     s8 health;
 
     SkelAnime_Update(&this->skelAnime);
@@ -382,16 +689,26 @@ void BossFd2_Idle(BossFd2* this, PlayState* play) {
     }
     if (this->timers[0] == 0) {
         health = bossFd->actor.colChkInfo.health;
-        if (this->actor.xzDistToPlayer < 200.0f) {
-            if ((health <= 12) && (Rand_ZeroOne() < 0.2f)) {
-                this->work[FD2_UNUSED_4] = FD2_CHAIN_BREATHE_FIRE;
+        lastAttack = this->work[FD2_LAST_ATTACK];
+        if (this->actor.xzDistToPlayer < FD2_MAGMA_BURST_RANGE) {
+            if ((health <= BOSSFD_PHASE_4_HEALTH) && (lastAttack != FD2_ATTACK_MAGMA_BURST)) {
+                BossFd2_SetupMagmaBurst(this, play);
+            } else {
+                if ((health <= BOSSFD_ENRAGED_HEALTH) && (Rand_ZeroOne() < 0.35f)) {
+                    this->work[FD2_CHAIN_ACTION] =
+                        (lastAttack == FD2_ATTACK_FIRE_SWEEP) ? FD2_CHAIN_BREATHE_FIRE : FD2_CHAIN_FIRE_SWEEP;
+                }
+                BossFd2_SetupClawSwipe(this, play);
             }
-            BossFd2_SetupClawSwipe(this, play);
         } else {
-            if ((health <= 12) && (Rand_ZeroOne() < 0.3f)) {
-                this->work[FD2_UNUSED_4] = FD2_CHAIN_CLAW_SWIPE;
+            if ((health <= BOSSFD_ENRAGED_HEALTH) && (Rand_ZeroOne() < 0.35f)) {
+                this->work[FD2_CHAIN_ACTION] = FD2_CHAIN_CLAW_SWIPE;
             }
-            BossFd2_SetupBreatheFire(this, play);
+            if ((health <= BOSSFD_PHASE_2_HEALTH) && (lastAttack != FD2_ATTACK_FIRE_SWEEP)) {
+                BossFd2_SetupFireSweep(this, play);
+            } else {
+                BossFd2_SetupBreatheFire(this, play);
+            }
         }
     }
 }
@@ -401,6 +718,7 @@ void BossFd2_SetupBurrow(BossFd2* this, PlayState* play) {
 
     Animation_MorphToPlayOnce(&this->skelAnime, &gHoleVolvagiaBurrowAnim, -5.0f);
     this->actionFunc = BossFd2_Burrow;
+    BossFd2_ClearAttackQueue(this);
     this->fwork[FD2_END_FRAME] = Animation_GetLastFrame(&gHoleVolvagiaBurrowAnim);
     bossFd->timers[4] = 30;
     this->work[FD2_ACTION_STATE] = 0;
@@ -418,7 +736,8 @@ void BossFd2_Burrow(BossFd2* this, PlayState* play) {
     } else {
         Math_ApproachF(&this->actor.world.pos.y, -100.0f, 1.0f, 10.0f);
         if (this->timers[0] == 0) {
-            if ((this->work[FD2_HOLE_COUNTER] >= 3) && ((s8)bossFd->actor.colChkInfo.health < 48)) {
+            if ((this->work[FD2_HOLE_COUNTER] >= 3) &&
+                ((s8)bossFd->actor.colChkInfo.health < BOSSFD_MAX_HEALTH)) {
                 this->work[FD2_HOLE_COUNTER] = 0;
                 this->actionFunc = BossFd2_Wait;
                 bossFd->handoffSignal = FD2_SIGNAL_FLY;
@@ -429,20 +748,64 @@ void BossFd2_Burrow(BossFd2* this, PlayState* play) {
     }
 }
 
-void BossFd2_SetupBreatheFire(BossFd2* this, PlayState* play) {
+static void BossFd2_SetupFireAttack(BossFd2* this, s16 pattern) {
     Animation_MorphToPlayOnce(&this->skelAnime, &gHoleVolvagiaBreatheFireAnim, -5.0f);
     this->actionFunc = BossFd2_BreatheFire;
     this->fwork[FD2_END_FRAME] = Animation_GetLastFrame(&gHoleVolvagiaBreatheFireAnim);
     this->work[FD2_ACTION_STATE] = 0;
+    this->work[FD2_FIRE_PATTERN] = pattern;
+    this->work[FD2_FIRE_AIM_PITCH] = 0;
+
+    if (pattern == FD2_FIRE_FOCUSED) {
+        this->work[FD2_FIRE_AIM_YAW] = 0;
+        this->work[FD2_LAST_ATTACK] = FD2_ATTACK_FOCUSED_FIRE;
+    } else {
+        s16 centerYaw = BINANG_SUB(this->actor.yawTowardsPlayer, this->actor.shape.rot.y);
+
+        centerYaw = CLAMP(centerYaw, -0x1000, 0x1000);
+        this->work[FD2_FIRE_AIM_YAW] = centerYaw;
+        this->work[FD2_LAST_ATTACK] = FD2_ATTACK_FIRE_SWEEP;
+        this->work[FD2_SCREAM_TIMER] = 35;
+    }
+}
+
+void BossFd2_SetupBreatheFire(BossFd2* this, PlayState* play) {
+    BossFd2_SetupFireAttack(this, FD2_FIRE_FOCUSED);
+}
+
+void BossFd2_SetupFireSweep(BossFd2* this, PlayState* play) {
+    s16 relativeYaw = BINANG_SUB(this->actor.yawTowardsPlayer, this->actor.shape.rot.y);
+    s16 direction;
+
+    if (ABS(relativeYaw) < 0x200) {
+        direction = (this->work[FD2_HOLE_COUNTER] & 1) ? FD2_FIRE_SWEEP_RIGHT : FD2_FIRE_SWEEP_LEFT;
+    } else {
+        direction = (relativeYaw > 0) ? FD2_FIRE_SWEEP_RIGHT : FD2_FIRE_SWEEP_LEFT;
+    }
+    BossFd2_SetupFireAttack(this, direction);
+}
+
+static void BossFd2_GetFireAim(BossFd2* this, Player* player, s16* yaw, s16* pitch) {
+    Vec3f toLink;
+
+    toLink.x = player->actor.world.pos.x - this->headPos.x;
+    toLink.y = player->actor.world.pos.y - this->headPos.y;
+    toLink.z = player->actor.world.pos.z - this->headPos.z;
+    *yaw = Math_Atan2S(toLink.z, toLink.x) - this->actor.shape.rot.y;
+    *pitch = -Math_Atan2S(sqrtf(SQ(toLink.x) + SQ(toLink.z)), toLink.y) - 0x1B58;
+    *yaw = CLAMP(*yaw, -0x1F40, 0x1F40);
+    *pitch = CLAMP(*pitch, -0xFA0, 0x3E8);
 }
 
 static Vec3f sUnkVec = { 0.0f, 0.0f, 50.0f }; // Unused? BossFd uses a similar array for its fire breath sfx.
 
 void BossFd2_BreatheFire(BossFd2* this, PlayState* play) {
     s16 i;
-    Vec3f toLink;
     s16 angleX;
     s16 angleY;
+    s16 liveAimX;
+    s16 liveAimY;
+    s16 pattern = this->work[FD2_FIRE_PATTERN];
     s16 breathOpacity = 0;
     BossFd* bossFd = (BossFd*)this->actor.parent;
     Player* player = GET_PLAYER(play);
@@ -451,47 +814,62 @@ void BossFd2_BreatheFire(BossFd2* this, PlayState* play) {
 
     SkelAnime_Update(&this->skelAnime);
     if (Animation_OnFrame(&this->skelAnime, this->fwork[FD2_END_FRAME])) {
-        if (this->work[FD2_UNUSED_4] == FD2_CHAIN_CLAW_SWIPE) {
-            this->work[FD2_UNUSED_4] = FD2_CHAIN_NONE;
+        if (this->work[FD2_CHAIN_ACTION] == FD2_CHAIN_CLAW_SWIPE) {
+            this->work[FD2_CHAIN_ACTION] = FD2_CHAIN_NONE;
             BossFd2_SetupClawSwipe(this, play);
         } else {
             BossFd2_SetupBurrow(this, play);
         }
+        return;
     }
-    if ((25.0f <= this->skelAnime.curFrame) && (this->skelAnime.curFrame < 85.0f)) {
-        if (this->skelAnime.curFrame == 25.0f) {
+
+    BossFd2_GetFireAim(this, player, &liveAimY, &liveAimX);
+    if ((pattern != FD2_FIRE_FOCUSED) && Animation_OnFrame(&this->skelAnime, FD2_FIRE_WINDUP_START)) {
+        Audio_PlayActorSound2(&this->actor, NA_SE_EN_VALVAISA_ROAR);
+    }
+    if (Animation_OnFrame(&this->skelAnime, FD2_FIRE_ACTIVE_START)) {
+        if (pattern == FD2_FIRE_FOCUSED) {
+            this->work[FD2_FIRE_AIM_YAW] = liveAimY;
+        }
+        this->work[FD2_FIRE_AIM_PITCH] = liveAimX;
+    }
+
+    if ((FD2_FIRE_ACTIVE_START <= this->skelAnime.curFrame) &&
+        (this->skelAnime.curFrame < FD2_FIRE_ACTIVE_END)) {
+        if (this->skelAnime.curFrame == FD2_FIRE_ACTIVE_START) {
             play->envCtx.unk_D8 = 0.0f;
         }
         Audio_PlayActorSound2(&this->actor, NA_SE_EN_VALVAISA_FIRE - SFX_FLAG);
         if (this->skelAnime.curFrame > 65) {
-            breathOpacity = (85.0f - this->skelAnime.curFrame) * 12.0f;
+            breathOpacity = (FD2_FIRE_ACTIVE_END - this->skelAnime.curFrame) * 12.0f;
         } else {
             breathOpacity = 255;
         }
-        toLink.x = player->actor.world.pos.x - this->headPos.x;
-        toLink.y = player->actor.world.pos.y - this->headPos.y;
-        toLink.z = player->actor.world.pos.z - this->headPos.z;
-        angleY = Math_Atan2S(toLink.z, toLink.x);
-        angleX = -Math_Atan2S(sqrtf(SQ(toLink.x) + SQ(toLink.z)), toLink.y);
-        angleY -= this->actor.shape.rot.y;
-        if (angleY > 0x1F40) {
-            angleY = 0x1F40;
-        }
-        if (angleY < -0x1F40) {
-            angleY = -0x1F40;
-        }
-        angleX += (-0x1B58);
-        if (angleX > 0x3E8) {
-            angleX = 0x3E8;
-        }
-        if (angleX < -0xFA0) {
-            angleX = -0xFA0;
+
+        angleX = this->work[FD2_FIRE_AIM_PITCH];
+        if (pattern == FD2_FIRE_FOCUSED) {
+            angleY = this->work[FD2_FIRE_AIM_YAW];
+        } else {
+            f32 sweepProgress =
+                (this->skelAnime.curFrame - FD2_FIRE_ACTIVE_START) /
+                (FD2_FIRE_ACTIVE_END - FD2_FIRE_ACTIVE_START);
+            f32 sweepYaw = this->work[FD2_FIRE_AIM_YAW] - (pattern * FD2_FIRE_SWEEP_HALF_ANGLE);
+
+            sweepYaw += pattern * (FD2_FIRE_SWEEP_HALF_ANGLE * 2.0f) * sweepProgress;
+            angleY = CLAMP((s16)sweepYaw, -FD2_FIRE_SWEEP_MAX_ANGLE, FD2_FIRE_SWEEP_MAX_ANGLE);
         }
         Math_ApproachS(&this->headRot.y, angleY, 5, 0x7D0);
         Math_ApproachS(&this->headRot.x, angleX, 5, 0x7D0);
+    } else if ((pattern != FD2_FIRE_FOCUSED) && (this->skelAnime.curFrame >= FD2_FIRE_WINDUP_START) &&
+               (this->skelAnime.curFrame < FD2_FIRE_ACTIVE_START)) {
+        angleY = this->work[FD2_FIRE_AIM_YAW] - (pattern * FD2_FIRE_SWEEP_HALF_ANGLE);
+        Math_ApproachS(&this->headRot.y, angleY, 4, 0x600);
+        Math_ApproachS(&this->headRot.x, liveAimX, 5, 0x600);
     } else {
-        Math_ApproachS(&this->headRot.y, 0, 5, 0x7D0);
-        Math_ApproachS(&this->headRot.x, 0, 5, 0x7D0);
+        angleY = (this->skelAnime.curFrame < FD2_FIRE_ACTIVE_START) ? liveAimY : 0;
+        angleX = (this->skelAnime.curFrame < FD2_FIRE_ACTIVE_START) ? liveAimX : 0;
+        Math_ApproachS(&this->headRot.y, angleY, 5, 0x7D0);
+        Math_ApproachS(&this->headRot.x, angleX, 5, 0x7D0);
     }
     if (breathOpacity != 0) {
         f32 breathScale;
@@ -548,21 +926,107 @@ void BossFd2_SetupClawSwipe(BossFd2* this, PlayState* play) {
     Animation_MorphToPlayOnce(&this->skelAnime, &gHoleVolvagiaClawSwipeAnim, -5.0f);
     this->actionFunc = BossFd2_ClawSwipe;
     this->fwork[FD2_END_FRAME] = Animation_GetLastFrame(&gHoleVolvagiaClawSwipeAnim);
+    this->work[FD2_LAST_ATTACK] = FD2_ATTACK_CLAW;
+    this->headRot.x = 0;
+    this->headRot.y = 0;
 }
 
 void BossFd2_ClawSwipe(BossFd2* this, PlayState* play) {
     SkelAnime_Update(&this->skelAnime);
+    this->disableAT =
+        !((this->skelAnime.curFrame >= FD2_CLAW_ACTIVE_START) && (this->skelAnime.curFrame < FD2_CLAW_ACTIVE_END));
     if (Animation_OnFrame(&this->skelAnime, 5.0f)) {
         Audio_PlayActorSound2(&this->actor, NA_SE_EN_VALVAISA_ROAR);
         Audio_PlayActorSound2(&this->actor, NA_SE_EN_VALVAISA_SW_NAIL);
     }
     if (Animation_OnFrame(&this->skelAnime, this->fwork[FD2_END_FRAME])) {
-        if (this->work[FD2_UNUSED_4] == FD2_CHAIN_BREATHE_FIRE) {
-            this->work[FD2_UNUSED_4] = FD2_CHAIN_NONE;
+        s16 chainAction = this->work[FD2_CHAIN_ACTION];
+
+        this->work[FD2_CHAIN_ACTION] = FD2_CHAIN_NONE;
+        if (chainAction == FD2_CHAIN_BREATHE_FIRE) {
             BossFd2_SetupBreatheFire(this, play);
+        } else if (chainAction == FD2_CHAIN_FIRE_SWEEP) {
+            BossFd2_SetupFireSweep(this, play);
         } else {
             BossFd2_SetupBurrow(this, play);
         }
+        return;
+    }
+}
+
+static void BossFd2_SpawnMagmaBurstWave(BossFd2* this, PlayState* play, s16 angleOffset) {
+    BossFd* bossFd = (BossFd*)this->actor.parent;
+    s32 i;
+
+    for (i = 0; i < FD2_MAGMA_BURST_COUNT; i++) {
+        s16 angle = angleOffset + (i * 0x2000);
+        Vec3f spawnPos;
+        Vec3f spawnVel;
+        Vec3f spawnAccel = { 0.0f, 0.0f, 0.0f };
+
+        spawnPos.x = this->actor.world.pos.x + (Math_SinS(angle) * 55.0f);
+        spawnPos.y = 120.0f;
+        spawnPos.z = this->actor.world.pos.z + (Math_CosS(angle) * 55.0f);
+        spawnVel.x = Math_SinS(angle) * 28.0f;
+        spawnVel.y = 0.0f;
+        spawnVel.z = Math_CosS(angle) * 28.0f;
+        BossFd2_SpawnFireBreath(play, bossFd->effects, &spawnPos, &spawnVel, &spawnAccel, 320.0f, 255, angle);
+    }
+}
+
+void BossFd2_SetupMagmaBurst(BossFd2* this, PlayState* play) {
+    Animation_MorphToPlayOnce(&this->skelAnime, &gHoleVolvagiaClawSwipeAnim, -5.0f);
+    this->actionFunc = BossFd2_MagmaBurst;
+    this->fwork[FD2_END_FRAME] = Animation_GetLastFrame(&gHoleVolvagiaClawSwipeAnim);
+    this->work[FD2_ACTION_STATE] = 0;
+    this->timers[0] = FD2_MAGMA_BURST_WINDUP;
+    this->work[FD2_LAST_ATTACK] = FD2_ATTACK_MAGMA_BURST;
+    BossFd2_ClearAttackQueue(this);
+    this->work[FD2_SCREAM_TIMER] = FD2_MAGMA_BURST_WINDUP + 10;
+    Audio_PlayActorSound2(&this->actor, NA_SE_EN_VALVAISA_ROAR);
+}
+
+void BossFd2_MagmaBurst(BossFd2* this, PlayState* play) {
+    BossFd* bossFd = (BossFd*)this->actor.parent;
+
+    SkelAnime_Update(&this->skelAnime);
+    switch (this->work[FD2_ACTION_STATE]) {
+        case 0:
+            if (this->timers[0] == 0) {
+                this->work[FD2_ACTION_STATE] = 1;
+                BossFd2_SpawnMagmaBurstWave(this, play, 0);
+                bossFd->fogMode = 2;
+                bossFd->timers[4] = 12;
+                Actor_RequestQuakeWithSpeed(play, 1, 0x28, 0x4000);
+                Audio_PlayActorSound2(&this->actor, NA_SE_EN_VALVAISA_FIRE);
+                Animation_MorphToLoop(&this->skelAnime, &gHoleVolvagiaIdleAnim, -3.0f);
+                if (bossFd->actor.colChkInfo.health <= BOSSFD_ENRAGED_HEALTH) {
+                    this->timers[0] = FD2_MAGMA_BURST_WAVE_DELAY;
+                } else {
+                    this->work[FD2_ACTION_STATE] = 2;
+                    this->timers[0] = FD2_MAGMA_BURST_RECOVERY;
+                }
+            }
+            break;
+        case 1:
+            if (this->timers[0] == 0) {
+                this->work[FD2_ACTION_STATE] = 2;
+                this->timers[0] = FD2_MAGMA_BURST_RECOVERY;
+                BossFd2_SpawnMagmaBurstWave(this, play, 0x1000);
+                bossFd->fogMode = 2;
+                bossFd->timers[4] = 12;
+                Actor_RequestQuakeWithSpeed(play, 1, 0x20, 0x3800);
+                Audio_PlayActorSound2(&this->actor, NA_SE_EN_VALVAISA_FIRE);
+                Audio_PlayActorSound2(&this->actor, NA_SE_EN_VALVAISA_ROAR);
+                Animation_MorphToPlayOnce(&this->skelAnime, &gHoleVolvagiaClawSwipeAnim, -3.0f);
+            }
+            break;
+        case 2:
+        default:
+            if (this->timers[0] == 0) {
+                BossFd2_SetupBurrow(this, play);
+            }
+            break;
     }
 }
 
@@ -571,6 +1035,7 @@ void BossFd2_SetupVulnerable(BossFd2* this, PlayState* play) {
     this->fwork[FD2_END_FRAME] = Animation_GetLastFrame(&gHoleVolvagiaKnockoutAnim);
     this->actionFunc = BossFd2_Vulnerable;
     this->work[FD2_ACTION_STATE] = 0;
+    BossFd2_ClearAttackQueue(this);
 }
 
 void BossFd2_Vulnerable(BossFd2* this, PlayState* play) {
@@ -613,7 +1078,7 @@ void BossFd2_Vulnerable(BossFd2* this, PlayState* play) {
             }
             break;
         case 1:
-            if (this->actor.xzDistToPlayer < 120.0f) {
+            if ((this->timers[0] <= 20) && (this->actor.xzDistToPlayer < 90.0f)) {
                 BossFd2_SetupClawSwipe(this, play);
                 break;
             }
@@ -628,33 +1093,260 @@ void BossFd2_Vulnerable(BossFd2* this, PlayState* play) {
 }
 
 void BossFd2_SetupDamaged(BossFd2* this, PlayState* play) {
+    if (this->dragSequenceActive || this->draggingPlayer) {
+        BossFd2_EndDragSequence(this, play, true);
+    }
     Animation_PlayOnce(&this->skelAnime, &gHoleVolvagiaHitAnim);
     this->fwork[FD2_END_FRAME] = Animation_GetLastFrame(&gHoleVolvagiaHitAnim);
     this->actionFunc = BossFd2_Damaged;
-    this->work[FD2_ACTION_STATE] = 0;
+    this->work[FD2_ACTION_STATE] = FD2_DAMAGED_HIT;
+    this->emergenceGrabPending = false;
+    this->grabRetreatOnMiss = false;
+    BossFd2_ClearAttackQueue(this);
+}
+
+void BossFd2_SetupGrabAttack(BossFd2* this, PlayState* play, bool retreatOnMiss) {
+    Animation_MorphToPlayOnce(&this->skelAnime, &gHoleVolvagiaClawSwipeAnim, retreatOnMiss ? -5.0f : -3.0f);
+    this->skelAnime.playSpeed = FD2_GRAB_ANIMATION_SPEED;
+    this->fwork[FD2_END_FRAME] = Animation_GetLastFrame(&gHoleVolvagiaClawSwipeAnim);
+    this->actionFunc = BossFd2_GrabAttack;
+    this->work[FD2_ACTION_STATE] = FD2_GRAB_PUNCH;
+    this->emergenceGrabPending = false;
+    this->grabRetreatOnMiss = retreatOnMiss;
+    this->headRot.x = 0;
+    this->headRot.y = 0;
+    BossFd2_ClearAttackQueue(this);
+}
+
+void BossFd2_GrabAttack(BossFd2* this, PlayState* play) {
+    BossFd* bossFd = (BossFd*)this->actor.parent;
+    Player* player = GET_PLAYER(play);
+    Vec3f playerPosition;
+    f32 progress;
+
+    this->disableAT = true;
+    switch (this->work[FD2_ACTION_STATE]) {
+        case FD2_GRAB_PUNCH: {
+            s16 yawDiff;
+
+            SkelAnime_Update(&this->skelAnime);
+            if (this->skelAnime.curFrame < FD2_CLAW_ACTIVE_START) {
+                Math_ApproachS(&this->actor.shape.rot.y, this->actor.yawTowardsPlayer, 3, 0x1000);
+            }
+            if (Animation_OnFrame(&this->skelAnime, 5.0f)) {
+                Audio_PlayActorSound2(&this->actor, NA_SE_EN_VALVAISA_ROAR);
+                Audio_PlayActorSound2(&this->actor, NA_SE_EN_VALVAISA_SW_NAIL);
+            }
+
+            yawDiff = ABS(BINANG_SUB(this->actor.yawTowardsPlayer, this->actor.shape.rot.y));
+            if (!GameInteractor_SecondCollisionUpdate() && (player->actor.parent == NULL) &&
+                (this->skelAnime.curFrame >= FD2_CLAW_ACTIVE_START) &&
+                (this->skelAnime.curFrame < FD2_CLAW_ACTIVE_END) &&
+                (this->actor.xzDistToPlayer < FD2_GRAB_RANGE) &&
+                (fabsf(player->actor.world.pos.y - this->actor.world.pos.y) <
+                 FD2_GRAB_VERTICAL_RANGE) &&
+                (yawDiff < FD2_GRAB_YAW_TOLERANCE) && (play->grabPlayer != NULL)) {
+                u8 floorWasDisabled = (player->stateFlags1 & PLAYER_STATE1_FLOOR_DISABLED) != 0;
+
+                if (play->grabPlayer(play, player)) {
+                    this->dragEntryPos = this->actor.world.pos;
+                    this->dragEntryPos.y = FD2_DRAG_UNDERGROUND_Y;
+                    this->dragPlayerStartPos = player->actor.world.pos;
+                    this->dragExitHole = BossFd2_ChooseDragExitHole(this);
+                    this->dragSequenceActive = true;
+                    this->draggingPlayer = true;
+                    this->dragPlayerFloorWasDisabled = floorWasDisabled;
+                    this->dragDamageApplied = false;
+                    this->dragDamagePending = false;
+                    player->actor.parent = &this->actor;
+                    player->av2.actionVar2 = 0;
+                    player->stateFlags1 |= PLAYER_STATE1_FLOOR_DISABLED;
+                    player->linearVelocity = 0.0f;
+                    player->actor.speedXZ = 0.0f;
+                    player->actor.velocity.x = 0.0f;
+                    player->actor.velocity.y = 0.0f;
+                    player->actor.velocity.z = 0.0f;
+                    bossFd->holeIndex = this->dragExitHole;
+                    BossFd2_StartDragSplash(bossFd, &this->actor.world.pos);
+                    Animation_MorphToPlayOnce(&this->skelAnime, &gHoleVolvagiaBurrowAnim, -3.0f);
+                    this->fwork[FD2_END_FRAME] = Animation_GetLastFrame(&gHoleVolvagiaBurrowAnim);
+                    this->work[FD2_ACTION_STATE] = FD2_GRAB_PULL_DOWN;
+                    this->timers[0] = FD2_DRAG_PULL_TIME;
+                    BossFd2_StartDragCamera(this, play);
+                    Actor_RequestQuakeWithSpeed(play, 1, 0x24, 0x3000);
+                    Audio_PlayActorSound2(&player->actor, NA_SE_VO_LI_DAMAGE_S);
+                }
+            }
+
+            if ((this->work[FD2_ACTION_STATE] == FD2_GRAB_PUNCH) &&
+                Animation_OnFrame(&this->skelAnime, this->fwork[FD2_END_FRAME])) {
+                if (this->grabRetreatOnMiss) {
+                    Animation_MorphToPlayOnce(&this->skelAnime, &gHoleVolvagiaBurrowAnim, -5.0f);
+                    this->fwork[FD2_END_FRAME] = Animation_GetLastFrame(&gHoleVolvagiaBurrowAnim);
+                    this->actionFunc = BossFd2_Damaged;
+                    this->work[FD2_ACTION_STATE] = FD2_DAMAGED_GRAB_MISS_BURROW;
+                    this->grabRetreatOnMiss = false;
+                    this->grabTransitionedThisFrame = true;
+                    bossFd->timers[4] = 30;
+                } else {
+                    this->grabTransitionedThisFrame = true;
+                    BossFd2_SetupIdle(this, play);
+                }
+            }
+            break;
+        }
+        case FD2_GRAB_PULL_DOWN:
+            SkelAnime_Update(&this->skelAnime);
+            progress = 1.0f - (this->timers[0] / (f32)FD2_DRAG_PULL_TIME);
+            progress = CLAMP(progress, 0.0f, 1.0f);
+            playerPosition.x =
+                this->dragPlayerStartPos.x + ((this->dragEntryPos.x - this->dragPlayerStartPos.x) * progress);
+            playerPosition.y =
+                this->dragPlayerStartPos.y + ((FD2_DRAG_UNDERGROUND_Y - this->dragPlayerStartPos.y) * progress);
+            playerPosition.z =
+                this->dragPlayerStartPos.z + ((this->dragEntryPos.z - this->dragPlayerStartPos.z) * progress);
+            Math_ApproachF(&this->actor.world.pos.y, -100.0f, 1.0f, FD2_DRAG_SINK_SPEED);
+            if (!BossFd2_ControlDraggedPlayer(this, play, &playerPosition)) {
+                BossFd2_AbortGrabAttack(this, play);
+                break;
+            }
+            if (this->timers[0] == 0) {
+                this->actor.world.pos.y = -100.0f;
+                this->work[FD2_ACTION_STATE] = FD2_GRAB_TRAVEL;
+                this->timers[0] = FD2_DRAG_TRAVEL_TIME;
+            }
+            break;
+        case FD2_GRAB_TRAVEL: {
+            Vec3f exitPosition = sHoleLocations[this->dragExitHole];
+            f32 easedProgress;
+            s32 i;
+
+            progress = 1.0f - (this->timers[0] / (f32)FD2_DRAG_TRAVEL_TIME);
+            progress = CLAMP(progress, 0.0f, 1.0f);
+            easedProgress = SQ(progress) * (3.0f - (2.0f * progress));
+            playerPosition.x =
+                this->dragEntryPos.x + ((exitPosition.x - this->dragEntryPos.x) * easedProgress);
+            playerPosition.y = FD2_DRAG_UNDERGROUND_Y - (Math_SinS((s16)(progress * 0x8000)) * 20.0f);
+            playerPosition.z =
+                this->dragEntryPos.z + ((exitPosition.z - this->dragEntryPos.z) * easedProgress);
+            this->actor.world.pos.x = playerPosition.x;
+            this->actor.world.pos.y = -100.0f;
+            this->actor.world.pos.z = playerPosition.z;
+            this->actor.shape.rot.y = Math_Vec3f_Yaw(&this->dragEntryPos, &exitPosition);
+
+            if (!BossFd2_ControlDraggedPlayer(this, play, &playerPosition)) {
+                BossFd2_AbortGrabAttack(this, play);
+                break;
+            }
+            if ((this->timers[0] & 7) == 0) {
+                for (i = 0; i < 3; i++) {
+                    Vec3f dustPosition = { playerPosition.x + Rand_CenteredFloat(24.0f), 105.0f,
+                                          playerPosition.z + Rand_CenteredFloat(24.0f) };
+                    Vec3f dustVelocity = { Rand_CenteredFloat(3.0f), Rand_ZeroFloat(2.0f) + 1.0f,
+                                           Rand_CenteredFloat(3.0f) };
+                    Vec3f dustAcceleration = { 0.0f, 0.15f, 0.0f };
+
+                    BossFd2_SpawnDust(bossFd->effects, &dustPosition, &dustVelocity, &dustAcceleration,
+                                      Rand_ZeroFloat(80.0f) + 180.0f);
+                }
+            }
+            if (!this->dragDamageApplied && (this->timers[0] <= (FD2_DRAG_TRAVEL_TIME / 2))) {
+                this->dragDamageApplied = true;
+                // Resolve the health loss only after Link is safely above the exit hole. The quake, voice, and
+                // surface trail sell the underground impact without allowing a death state below scene collision.
+                this->dragDamagePending = true;
+                Actor_RequestQuakeWithSpeed(play, 1, 0x18, 0x2800);
+                Audio_PlayActorSound2(&player->actor, NA_SE_VO_LI_DAMAGE_S);
+            }
+            if (this->timers[0] == 0) {
+                this->actor.world.pos.x = exitPosition.x;
+                this->actor.world.pos.z = exitPosition.z;
+                this->work[FD2_ACTION_STATE] = FD2_GRAB_SPIT;
+                this->timers[0] = FD2_DRAG_SPIT_TIME;
+            }
+            break;
+        }
+        case FD2_GRAB_SPIT: {
+            Vec3f exitPosition = sHoleLocations[this->dragExitHole];
+
+            playerPosition = exitPosition;
+            playerPosition.y = FD2_DRAG_UNDERGROUND_Y;
+            if (!BossFd2_ControlDraggedPlayer(this, play, &playerPosition)) {
+                BossFd2_AbortGrabAttack(this, play);
+                break;
+            }
+            if (this->timers[0] == 0) {
+                Vec3f center = { 0.0f, FD2_DRAG_RELEASE_Y, 0.0f };
+                s16 spitYaw = Math_Vec3f_Yaw(&center, &exitPosition);
+                bool applyDragDamage = this->dragDamagePending;
+
+                BossFd2_StartDragSplash(bossFd, &exitPosition);
+                Actor_RequestQuakeWithSpeed(play, 1, 0x20, 0x3000);
+                BossFd2_ReleaseDraggedPlayer(this, play, true);
+                Actor_SetPlayerKnockbackLargeNoDamage(play, &this->actor, FD2_DRAG_TOSS_SPEED, spitYaw,
+                                                      FD2_DRAG_TOSS_LIFT);
+                if (applyDragDamage && (play->damagePlayer != NULL)) {
+                    this->dragDamagePending = false;
+                    if (play->damagePlayer(play, -FD2_DRAG_DAMAGE)) {
+                        // Boss updates pause during Link's death flow, so do not leave this attack's camera active.
+                        BossFd2_EndDragSequence(this, play, false);
+                    }
+                }
+                Audio_PlayActorSound2(&player->actor, NA_SE_VO_LI_FALL_L);
+                this->work[FD2_ACTION_STATE] = FD2_GRAB_RECOVER;
+                this->timers[0] = FD2_DRAG_RECOVERY_TIME;
+            }
+            break;
+        }
+        case FD2_GRAB_RECOVER:
+        default:
+            if (this->timers[0] == 0) {
+                BossFd2_EndDragSequence(this, play, false);
+                this->grabTransitionedThisFrame = true;
+                this->actionFunc = BossFd2_Wait;
+                bossFd->handoffSignal = FD2_SIGNAL_FLY_FROM_HOLE;
+            }
+            break;
+    }
+
+    if (this->dragSequenceActive) {
+        BossFd2_UpdateDragCamera(this, play);
+    }
 }
 
 void BossFd2_Damaged(BossFd2* this, PlayState* play) {
     BossFd* bossFd = (BossFd*)this->actor.parent;
+    Player* player = GET_PLAYER(play);
 
     SkelAnime_Update(&this->skelAnime);
     this->disableAT = true;
-    if (this->work[FD2_ACTION_STATE] == 0) {
+    if (this->work[FD2_ACTION_STATE] == FD2_DAMAGED_HIT) {
         if (Animation_OnFrame(&this->skelAnime, this->fwork[FD2_END_FRAME])) {
             Animation_PlayOnce(&this->skelAnime, &gHoleVolvagiaDamagedAnim);
             this->fwork[FD2_END_FRAME] = Animation_GetLastFrame(&gHoleVolvagiaDamagedAnim);
-            this->work[FD2_ACTION_STATE] = 1;
+            this->work[FD2_ACTION_STATE] = FD2_DAMAGED_REACTION;
         }
-    } else if (this->work[FD2_ACTION_STATE] == 1) {
+    } else if (this->work[FD2_ACTION_STATE] == FD2_DAMAGED_REACTION) {
         if (Animation_OnFrame(&this->skelAnime, 6.0f)) {
             Audio_PlayActorSound2(&this->actor, NA_SE_EN_VALVAISA_DAMAGE2);
+        }
+        if (Animation_OnFrame(&this->skelAnime, FD2_POST_DAMAGE_GRAB_FRAME)) {
+            if ((player->actor.parent == NULL) && (play->grabPlayer != NULL) &&
+                (this->actor.xzDistToPlayer < FD2_POST_DAMAGE_GRAB_RANGE) &&
+                (fabsf(player->actor.world.pos.y - this->actor.world.pos.y) < FD2_GRAB_VERTICAL_RANGE)) {
+                BossFd2_SetupGrabAttack(this, play, true);
+                return;
+            }
         }
         if (Animation_OnFrame(&this->skelAnime, 20.0f)) {
             bossFd->timers[4] = 30;
         }
         if (Animation_OnFrame(&this->skelAnime, this->fwork[FD2_END_FRAME])) {
-            this->work[FD2_ACTION_STATE] = 2;
-            this->timers[0] = 25;
+            BossFd2_BeginDamagedRetreat(this);
+        }
+    } else if (this->work[FD2_ACTION_STATE] == FD2_DAMAGED_GRAB_MISS_BURROW) {
+        if (Animation_OnFrame(&this->skelAnime, this->fwork[FD2_END_FRAME])) {
+            BossFd2_BeginDamagedRetreat(this);
         }
     } else {
         Math_ApproachF(&this->actor.world.pos.y, -100.0f, 1.0f, 10.0f);
@@ -666,16 +1358,23 @@ void BossFd2_Damaged(BossFd2* this, PlayState* play) {
 }
 
 void BossFd2_SetupDeath(BossFd2* this, PlayState* play) {
+    if (this->dragSequenceActive || this->draggingPlayer) {
+        BossFd2_EndDragSequence(this, play, true);
+    }
     this->fwork[FD2_END_FRAME] = Animation_GetLastFrame(&gHoleVolvagiaDamagedAnim);
     Animation_Change(&this->skelAnime, &gHoleVolvagiaDamagedAnim, 1.0f, 0.0f, this->fwork[FD2_END_FRAME],
                      ANIMMODE_ONCE_INTERP, -3.0f);
     this->actionFunc = BossFd2_Death;
     this->actor.flags &= ~ACTOR_FLAG_ATTENTION_ENABLED;
     this->deathState = DEATH_START;
+    this->emergenceGrabPending = false;
+    this->grabRetreatOnMiss = false;
+    BossFd2_ClearAttackQueue(this);
 }
 
 void BossFd2_UpdateCamera(BossFd2* this, PlayState* play) {
-    if (this->deathCamera != SUBCAM_FREE) {
+    if ((this->deathCamera > CAM_ID_MAIN) && (this->deathCamera < NUM_CAMS) &&
+        (play->cameraPtrs[this->deathCamera] != NULL)) {
         Math_ApproachF(&this->camData.eye.x, this->camData.nextEye.x, this->camData.eyeMaxVel.x,
                        this->camData.eyeVel.x * this->camData.speedMod);
         Math_ApproachF(&this->camData.eye.y, this->camData.nextEye.y, this->camData.eyeMaxVel.y,
@@ -692,6 +1391,8 @@ void BossFd2_UpdateCamera(BossFd2* this, PlayState* play) {
         this->camData.at.y += this->camData.yMod;
         Play_CameraSetAtEye(play, this->deathCamera, &this->camData.at, &this->camData.eye);
         Math_ApproachF(&this->camData.yMod, 0.0f, 1.0f, 0.1f);
+    } else if (this->deathCamera > CAM_ID_MAIN) {
+        this->deathCamera = SUBCAM_FREE;
     }
 }
 
@@ -714,8 +1415,12 @@ void BossFd2_Death(BossFd2* this, PlayState* play) {
             func_80064520(play, &play->csCtx);
             Player_SetCsActionWithHaltedActors(play, &this->actor, 1);
             this->deathCamera = Play_CreateSubCamera(play);
-            Play_ChangeCameraStatus(play, CAM_ID_MAIN, CAM_STAT_WAIT);
-            Play_ChangeCameraStatus(play, this->deathCamera, CAM_STAT_ACTIVE);
+            if (this->deathCamera > CAM_ID_MAIN) {
+                Play_ChangeCameraStatus(play, CAM_ID_MAIN, CAM_STAT_WAIT);
+                Play_ChangeCameraStatus(play, this->deathCamera, CAM_STAT_ACTIVE);
+            } else {
+                this->deathCamera = SUBCAM_FREE;
+            }
             this->camData.eye = mainCam->eye;
             this->camData.at = mainCam->at;
             this->camData.eyeVel.x = 100.0f;
@@ -833,11 +1538,13 @@ void BossFd2_Death(BossFd2* this, PlayState* play) {
             }
             if (bossFd->work[BFD_ACTION_STATE] == BOSSFD_SKULL_BURN) {
                 this->deathState = DEATH_FINISH;
-                mainCam->eye = this->camData.eye;
-                mainCam->eyeNext = this->camData.eye;
-                mainCam->at = this->camData.at;
-                func_800C08AC(play, this->deathCamera, 0);
-                this->deathCamera = 0;
+                if (this->deathCamera > CAM_ID_MAIN) {
+                    mainCam->eye = this->camData.eye;
+                    mainCam->eyeNext = this->camData.eye;
+                    mainCam->at = this->camData.at;
+                    func_800C08AC(play, this->deathCamera, 0);
+                }
+                this->deathCamera = SUBCAM_FREE;
                 func_80064534(play, &play->csCtx);
                 Player_SetCsActionWithHaltedActors(play, &this->actor, 7);
                 if (GameInteractor_Should(VB_SPAWN_BLUE_WARP, true, this)) {
@@ -871,12 +1578,16 @@ void BossFd2_CollisionCheck(BossFd2* this, PlayState* play) {
 
     if (this->actionFunc == BossFd2_ClawSwipe) {
         Player* player = GET_PLAYER(play);
+        bool hitPlayer = false;
 
         for (i = 0; i < ARRAY_COUNT(this->elements); i++) {
             if (this->collider.elements[i].info.toucherFlags & TOUCH_HIT) {
                 this->collider.elements[i].info.toucherFlags &= ~TOUCH_HIT;
-                Audio_PlayActorSound2(&player->actor, NA_SE_PL_BODY_HIT);
+                hitPlayer = true;
             }
+        }
+        if (hitPlayer) {
+            Audio_PlayActorSound2(&player->actor, NA_SE_PL_BODY_HIT);
         }
     }
     if (!bossFd->faceExposed) {
@@ -1012,13 +1723,77 @@ void BossFd2_UpdateFace(BossFd2* this, PlayState* play) {
     }
 }
 
+static bool BossFd2_HasValidOwner(BossFd2* this) {
+    Actor* owner = this->actor.parent;
+
+    return (owner != NULL) && (owner->update != NULL) && (owner->id == ACTOR_BOSS_FD);
+}
+
+static bool BossFd2_IsCombatVisible(BossFd2* this) {
+    return (this->deathState == DEATH_START) && (this->actionFunc != BossFd2_Death) &&
+           (this->actionFunc != BossFd2_Wait) && (this->actionFunc != BossFd2_GrabAttack) &&
+           (this->actor.world.pos.y >= 90.0f);
+}
+
+static void BossFd2_UpdateCollisionState(BossFd2* this, PlayState* play) {
+    bool visible = BossFd2_IsCombatVisible(this);
+    bool attacking = visible && !this->disableAT && (this->actionFunc == BossFd2_ClawSwipe);
+    s32 i;
+
+    if (visible) {
+        this->collider.base.acFlags |= AC_ON;
+        this->collider.base.ocFlags1 |= OC1_ON;
+    } else {
+        this->collider.base.acFlags &= ~(AC_ON | AC_HIT | AC_BOUNCED);
+        this->collider.base.ocFlags1 &= ~(OC1_ON | OC1_HIT);
+        for (i = 0; i < ARRAY_COUNT(this->elements); i++) {
+            this->collider.elements[i].info.bumperFlags &= ~BUMP_HIT;
+        }
+    }
+
+    if (attacking) {
+        this->collider.base.atFlags |= AT_ON;
+    } else {
+        this->collider.base.atFlags &= ~(AT_ON | AT_HIT | AT_BOUNCED);
+        for (i = 0; i < ARRAY_COUNT(this->elements); i++) {
+            this->collider.elements[i].info.toucherFlags &= ~TOUCH_HIT;
+        }
+    }
+
+    if (this->deathState == DEATH_START) {
+        CollisionCheck_SetAC(play, &play->colChkCtx, &this->collider.base);
+        CollisionCheck_SetOC(play, &play->colChkCtx, &this->collider.base);
+        CollisionCheck_SetAT(play, &play->colChkCtx, &this->collider.base);
+    }
+}
+
 void BossFd2_Update(Actor* thisx, PlayState* play2) {
     PlayState* play = play2;
     BossFd2* this = (BossFd2*)thisx;
+    bool secondCollisionUpdate = GameInteractor_SecondCollisionUpdate();
     s16 i;
 
+    if (!BossFd2_HasValidOwner(this)) {
+        if (this->dragSequenceActive || this->draggingPlayer) {
+            BossFd2_EndDragSequence(this, play, true);
+        }
+        this->collider.base.atFlags &= ~(AT_ON | AT_HIT | AT_BOUNCED);
+        this->collider.base.acFlags &= ~(AC_ON | AC_HIT | AC_BOUNCED);
+        this->collider.base.ocFlags1 &= ~(OC1_ON | OC1_HIT);
+        Actor_Kill(&this->actor);
+        return;
+    }
+
+    if (secondCollisionUpdate &&
+        ((this->actionFunc == BossFd2_GrabAttack) || this->grabTransitionedThisFrame)) {
+        return;
+    }
+    if (!secondCollisionUpdate) {
+        this->grabTransitionedThisFrame = false;
+    }
+
     osSyncPrintf("FD2 move start \n");
-    this->disableAT = false;
+    this->disableAT = true;
     this->actor.flags &= ~ACTOR_FLAG_HOOKSHOT_PULLS_PLAYER;
     this->work[FD2_VAR_TIMER]++;
     this->work[FD2_UNK_TIMER]++;
@@ -1038,25 +1813,21 @@ void BossFd2_Update(Actor* thisx, PlayState* play2) {
     }
 
     if (this->deathState == DEATH_START) {
-        if (this->work[FD2_INVINC_TIMER] == 0) {
+        if (BossFd2_IsCombatVisible(this) && (this->work[FD2_INVINC_TIMER] == 0)) {
             BossFd2_CollisionCheck(this, play);
         }
-        CollisionCheck_SetAC(play, &play->colChkCtx, &this->collider.base);
-        CollisionCheck_SetOC(play, &play->colChkCtx, &this->collider.base);
-        if (!this->disableAT) {
-            CollisionCheck_SetAT(play, &play->colChkCtx, &this->collider.base);
-        }
     }
+    BossFd2_UpdateCollisionState(this, play);
 
     BossFd2_UpdateFace(this, play);
     this->fwork[FD2_TEX1_SCROLL_X] += 4.0f;
     this->fwork[FD2_TEX1_SCROLL_Y] = 120.0f;
     this->fwork[FD2_TEX2_SCROLL_X] += 3.0f;
     this->fwork[FD2_TEX2_SCROLL_Y] -= 2.0f;
-    if (this->actor.focus.pos.y < 90.0f) {
-        this->actor.flags &= ~ACTOR_FLAG_ATTENTION_ENABLED;
-    } else {
+    if (BossFd2_IsCombatVisible(this)) {
         this->actor.flags |= ACTOR_FLAG_ATTENTION_ENABLED;
+    } else {
+        this->actor.flags &= ~ACTOR_FLAG_ATTENTION_ENABLED;
     }
 }
 

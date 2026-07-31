@@ -7,6 +7,7 @@
 #include "soh/OTRGlobals.h"
 #include "soh/ResourceManagerHelpers.h"
 #include "soh/Enhancements/savestate_serialize.h"
+#include "soh/telemetry/ExternalTelemetry.h"
 
 typedef enum {
     /* 0 */ LENS_FLARE_CIRCLE0,
@@ -1297,6 +1298,10 @@ void Environment_Update(PlayState* play, EnvironmentContext* envCtx, LightContex
             (envCtx->dirLight2.params.dir.z == 0)) {
             envCtx->dirLight2.params.dir.x = 1;
         }
+    }
+
+    if (gExternalTelemetry.dayTime != gSaveContext.dayTime) {
+        ExternalTelemetry_SetDayTime(gSaveContext.dayTime);
     }
 }
 

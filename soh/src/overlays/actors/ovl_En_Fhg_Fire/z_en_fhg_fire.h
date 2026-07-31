@@ -29,7 +29,7 @@ typedef enum {
 typedef enum {
     /*  0 */ FHGFIRE_TIMER,
     /*  1 */ FHGFIRE_FX_TIMER,
-    /*  2 */ FHGFIRE_US_2,
+    /*  2 */ FHGFIRE_THROW_ACTION,
     /*  3 */ FHGFIRE_VARIANCE_TIMER,
     /*  4 */ FHGFIRE_FIRE_MODE,
     /*  5 */ FHGFIRE_RETURN_COUNT,

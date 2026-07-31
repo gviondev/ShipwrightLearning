@@ -182,7 +182,7 @@ jobs:
     - name: Build SoH
       run: |
         export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
-        cmake --no-warn-unused-cli -H. -Bbuild-cmake -GNinja -DCMAKE_BUILD_TYPE:STRING=Release -DBUILD_REMOTE_CONTROL=1 ${EXTRA_CMAKE_FLAGS}
+        cmake --no-warn-unused-cli -H. -Bbuild-cmake -GNinja -DCMAKE_BUILD_TYPE:STRING=Release ${EXTRA_CMAKE_FLAGS}
         cmake --build build-cmake --config Release -j3
       env:
         CC: ${{ steps.verify-compiler.outputs.cc }}
@@ -199,6 +199,6 @@ jobs:
     - name: Build SoH in nix dev shell
       run: |
         nix develop ./linux-build-deps -c bash -c '
-          cmake --no-warn-unused-cli -H. -Bbuild-cmake -GNinja -DCMAKE_BUILD_TYPE:STRING=Release -DBUILD_REMOTE_CONTROL=1
+          cmake --no-warn-unused-cli -H. -Bbuild-cmake -GNinja -DCMAKE_BUILD_TYPE:STRING=Release
           cmake --build build-cmake --config Release -j3
         '

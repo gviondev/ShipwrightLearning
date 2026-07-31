@@ -6,30 +6,13 @@
 
 struct BossMo;
 
-typedef struct BossMoEffect {
-    /* 0x00 */ Vec3f pos;
-    /* 0x0C */ Vec3f vel;
-    /* 0x18 */ Vec3f accel;
-    /* 0x24 */ u8 type;
-    /* 0x25 */ u8 timer;
-    /* 0x26 */ u8 stopTimer;
-    /* 0x28 */ s16 unk_28; // unused?
-    /* 0x2A */ s16 alpha;
-    /* 0x2C */ s16 rippleMode;
-    /* 0x2E */ s16 maxAlpha;
-    /* 0x30 */ f32 scale;
-    /* 0x30 */ f32 fwork[2];
-    /* 0x3C */ Vec3f* targetPos;
-    u32 epoch;
-} BossMoEffect; // size = 0x40
-
 typedef void (*BossMoActionFunc)(struct BossMo*, PlayState*);
 
 typedef enum {
     /* 0 */ MO_TENT_ACTION_STATE,
     /* 1 */ MO_TENT_MOVE_TIMER,
     /* 2 */ MO_TENT_VAR_TIMER,
-    /* 3 */ MO_TENT_UNK_TIMER,
+    /* 3 */ MO_TENT_RELAY_TIMER,
     /* 4 */ MO_TENT_INVINC_TIMER,
     /* 5 */ MO_TENT_BASE_TEX1_X,
     /* 6 */ MO_TENT_BASE_TEX1_Y,
@@ -147,10 +130,9 @@ typedef struct BossMo {
     /* 0x158C */ struct BossMo* core;
     /* 0x1590 */ struct BossMo* tent1;
     /* 0x1594 */ struct BossMo* tent2;
-    /* 0x1598 */ BossMoEffect* effects;
-    /* 0x159C */ s32 randSeed[3];
-    /* 0x15A8 */ BossMoEffect effectsBuf[300];
-} BossMo; // size = 0x4548
+    /* 0x1598 */ Vec3f battleSpawnPos;
+    /* 0x15A4 */ s8 coreSlot;
+} BossMo; // size = 0x15A8
 
 #define BOSSMO_CORE -1
 #define BOSSMO_SECONDARY_CORE 1

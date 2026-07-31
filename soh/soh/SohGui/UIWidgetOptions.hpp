@@ -46,7 +46,7 @@ enum Colors {
     NoColor
 };
 
-enum InputTypes { String, Scalar };
+enum InputTypes { String, Int, Float };
 
 enum LabelPositions {
     Near,

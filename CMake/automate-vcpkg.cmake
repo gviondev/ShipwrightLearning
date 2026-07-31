@@ -94,7 +94,7 @@ macro(vcpkg_bootstrap)
     _install_or_update_vcpkg()
 
     # Find out whether the user supplied their own VCPKG toolchain file
-    if(NOT DEFINED ${CMAKE_TOOLCHAIN_FILE})
+    if(NOT DEFINED CMAKE_TOOLCHAIN_FILE OR CMAKE_TOOLCHAIN_FILE STREQUAL "")
         # We know this wasn't set before so we need point the toolchain file to the newly found VCPKG_ROOT
         set(CMAKE_TOOLCHAIN_FILE ${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake CACHE STRING "")
     
@@ -132,19 +132,37 @@ macro(_install_or_update_vcpkg)
     endif()
 
     if(WIN32)
-        set(VCPKG_EXEC ${VCPKG_ROOT}/vcpkg.exe)
-        set(VCPKG_BOOTSTRAP ${VCPKG_ROOT}/bootstrap-vcpkg.bat)
+        set(VCPKG_EXEC "${VCPKG_ROOT}/vcpkg.exe")
+        set(VCPKG_BOOTSTRAP "${VCPKG_ROOT}/bootstrap-vcpkg.bat")
     else()
-        set(VCPKG_EXEC ${VCPKG_ROOT}/vcpkg)
-        set(VCPKG_BOOTSTRAP ${VCPKG_ROOT}/bootstrap-vcpkg.sh)
+        set(VCPKG_EXEC "${VCPKG_ROOT}/vcpkg")
+        set(VCPKG_BOOTSTRAP "${VCPKG_ROOT}/bootstrap-vcpkg.sh")
     endif()
 
-    if(NOT EXISTS ${VCPKG_EXEC})
-        message("Bootstrapping vcpkg in ${VCPKG_ROOT}")
-        execute_process(COMMAND ${VCPKG_BOOTSTRAP} WORKING_DIRECTORY ${VCPKG_ROOT})
+    set(VCPKG_TOOL_METADATA "${VCPKG_ROOT}/scripts/vcpkg-tool-metadata.txt")
+    set(VCPKG_NEEDS_BOOTSTRAP FALSE)
+
+    if(NOT EXISTS "${VCPKG_EXEC}")
+        set(VCPKG_NEEDS_BOOTSTRAP TRUE)
+    elseif(EXISTS "${VCPKG_TOOL_METADATA}" AND
+           "${VCPKG_TOOL_METADATA}" IS_NEWER_THAN "${VCPKG_EXEC}")
+        # A vcpkg update can require a newer executable to read its tool metadata.
+        set(VCPKG_NEEDS_BOOTSTRAP TRUE)
     endif()
 
-    if(NOT EXISTS ${VCPKG_EXEC})
+    if(VCPKG_NEEDS_BOOTSTRAP)
+        message(STATUS "Bootstrapping vcpkg in ${VCPKG_ROOT}")
+        execute_process(
+            COMMAND "${VCPKG_BOOTSTRAP}"
+            WORKING_DIRECTORY "${VCPKG_ROOT}"
+            RESULT_VARIABLE VCPKG_BOOTSTRAP_RESULT
+        )
+        if(NOT VCPKG_BOOTSTRAP_RESULT STREQUAL "0")
+            message(FATAL_ERROR "***** FATAL ERROR: Could not bootstrap vcpkg (${VCPKG_BOOTSTRAP_RESULT}) *****")
+        endif()
+    endif()
+
+    if(NOT EXISTS "${VCPKG_EXEC}")
         message(FATAL_ERROR "***** FATAL ERROR: Could not bootstrap vcpkg *****")
     endif()
    
@@ -153,10 +171,7 @@ endmacro()
 # Installs the list of packages given as parameters using Vcpkg
 macro(vcpkg_install_packages)
     
-    # Need the given list to be space-separated
-    #string (REPLACE ";" " " PACKAGES_LIST_STR "${ARGN}")
-
-    message(STATUS "Installing/Updating the following vcpkg-packages: ${PACKAGES_LIST_STR}")
+    message(STATUS "Installing/Updating the following vcpkg-packages: ${ARGN}")
 
     if (VCPKG_TRIPLET)
         set(ENV{VCPKG_DEFAULT_TRIPLET} "${VCPKG_TRIPLET}")
@@ -165,7 +180,11 @@ macro(vcpkg_install_packages)
     execute_process(
         COMMAND ${VCPKG_EXEC} install ${ARGN}
         WORKING_DIRECTORY ${VCPKG_ROOT}
-        )
+        RESULT_VARIABLE VCPKG_INSTALL_RESULT
+    )
+    if(NOT VCPKG_INSTALL_RESULT STREQUAL "0")
+        message(FATAL_ERROR "***** FATAL ERROR: vcpkg install failed (${VCPKG_INSTALL_RESULT}) *****")
+    endif()
 endmacro()
     
 # MIT License
