@@ -5,6 +5,22 @@
 #include "global.h"
 
 typedef enum {
+    /* 0x00 */ TW_KOTAKE,
+    /* 0x01 */ TW_KOUME,
+    /* 0x02 */ TW_TWINROVA,
+    /* 0x64 */ TW_FIRE_BLAST = 0x64,
+    /* 0x65 */ TW_FIRE_BLAST_GROUND,
+    /* 0x66 */ TW_ICE_BLAST,
+    /* 0x67 */ TW_ICE_BLAST_GROUND,
+    /* 0x68 */ TW_DEATHBALL_KOTAKE,
+    /* 0x69 */ TW_DEATHBALL_KOUME,
+    /* 0x6A */ TW_FIRE_SIEGE_ZONE,
+    /* 0x6B */ TW_ICE_SIEGE_ZONE,
+    /* 0x6C */ TW_FIRE_WARNING_SIGIL,
+    /* 0x6D */ TW_ICE_WARNING_SIGIL
+} BossTwType;
+
+typedef enum {
     /*  0 */ TWEFF_NONE,
     /*  1 */ TWEFF_DOT,
     /*  2 */ TWEFF_2,
@@ -90,6 +106,7 @@ typedef enum {
     /* 23 */ UNK_F17,
     /* 24 */ UNK_F18,
     /* 25 */ UNK_F19,
+    /* 25 */ SIEGE_RADIUS = UNK_F19,
     /* 26 */ FWORK_MAX
 } TwFwork;
 
@@ -101,7 +118,17 @@ typedef struct BossTw {
     /* 0x0000 */ Actor actor;
     /* 0x014C */ BossTwActionFunc actionFunc;
     /* 0x0150 */ s16 work[WORK_MAX];
-    /* 0x0168 */ char unused_170[0xE]; // Likely unused Work variables
+    /* 0x016A */ u8 blastBehavior;
+    /* 0x016B */ u8 breakerSequenceSeen;
+    /* 0x016C */ u8 lastSiegePattern;
+    /* 0x016D */ u8 attackPortalActive;
+    /* 0x016E */ u8 defeatRewardsSpawned;
+    /* 0x016F */ u8 sisterUnderPlayerTimer;
+    /* 0x0170 */ u8 cycloneSeen;
+    /* 0x0171 */ u8 pendingFusedAttack;
+    /* 0x0172 */ s16 cycloneCooldown;
+    /* 0x0174 */ s16 falseChargeCooldown;
+    /* 0x0176 */ s16 minefieldCooldown;
     /* 0x0178 */ s16 timers[5];
     /* 0x0184 */ f32 workf[FWORK_MAX];
     /* 0x01D4 */ f32 fogR;
@@ -159,7 +186,7 @@ typedef struct BossTw {
     /* 0x05FE */ s16 csSfxTimer;
     /* 0x0600 */ Vec3f subCamEye;
     /* 0x060C */ Vec3f subCamAt;
-    /* 0x0618 */ char unused_618[0xC];
+    /* 0x0618 */ Vec3f attackPortalPos;
     /* 0x0624 */ Vec3f subCamEye2;
     /* 0x0630 */ Vec3f subCamAt2;
     /* 0x063C */ char unused_63C[0x18];
@@ -172,9 +199,23 @@ typedef struct BossTw {
     /* 0x069C */ f32 subCamUpdateRate;
     /* 0x06A0 */ f32 subCamDistStep;
     /* 0x06A4 */ f32 subCamDist;
-    /* 0x06A8 */ char unused_6A8[4];
+    /* 0x06A8 */ u8 minefieldSequenceState;
+    /* 0x06A9 */ u8 minefieldFollowupSuppressed;
+    /* 0x06AA */ u8 minefieldSeen;
+    /* 0x06AB */ u8 falseChargeSeen;
     /* 0x06AC */ f32 subCamYaw;
     /* 0x06B0 */ f32 subCamYawStep;
 } BossTw; // size = 0x06B4
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+s32 BossTw_SkipToSecondPhase(PlayState* play);
+s32 BossTw_ShouldUseNormalUpdateRate(Actor* actor);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

@@ -80,6 +80,7 @@
 #include "Enhancements/Lang/Lang.h"
 #include "soh/SohGui/ImGuiUtils.h"
 #include "ActorDB.h"
+#include "overlays/actors/ovl_Boss_Tw/z_boss_tw.h"
 #include "SaveManager.h"
 #include "soh/Network/CrowdControl/CrowdControl.h"
 #include "soh/Network/Sail/Sail.h"
@@ -1754,6 +1755,18 @@ extern "C" void Graph_StartFrame() {
                     [[unlikely]] default : break;
             }
 
+            break;
+        }
+        case KbScancode::LUS_KB_F8: {
+            auto overlay = std::dynamic_pointer_cast<Fast::Fast3dGui>(
+                               Ship::Context::GetRawInstance()->GetWindow()->GetGui())
+                               ->GetGameOverlay();
+
+            if (BossTw_SkipToSecondPhase(gPlayState)) {
+                overlay->TextDrawNotification(4.0f, true, "Twinrova: skipped to phase two.");
+            } else {
+                overlay->TextDrawNotification(4.0f, true, "Twinrova phase-one skip is not available.");
+            }
             break;
         }
 #if defined(_WIN32) || defined(__APPLE__)

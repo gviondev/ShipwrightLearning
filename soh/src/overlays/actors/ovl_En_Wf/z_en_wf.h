@@ -88,4 +88,14 @@ typedef enum {
     /* 1 */ WOLFOS_WHITE
 } EnWfType;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void EnWf_ActivateImmediately(EnWf* enWf);
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif

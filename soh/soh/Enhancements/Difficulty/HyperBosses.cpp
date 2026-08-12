@@ -8,6 +8,7 @@
 #include "overlays/actors/ovl_Boss_Dodongo/z_boss_dodongo.h"
 #include "overlays/actors/ovl_Boss_Fd/z_boss_fd.h"
 #include "overlays/actors/ovl_Boss_Ganondrof/z_boss_ganondrof.h"
+#include "overlays/actors/ovl_Boss_Tw/z_boss_tw.h"
 
 extern "C" PlayState* gPlayState;
 extern "C" s32 BossMo_GetHyperSpeedHealth(Actor* actor, s32* maximumHealth);
@@ -184,6 +185,11 @@ void MakeHyperBosses(void* refActor) {
                 // Reflectable projectiles and ground shocks need one collision step per movement step.
                 // Their cadence still accelerates with the boss that spawns them.
                 additionalUpdates = 0;
+            } else if (actor->id == ACTOR_BOSS_TW &&
+                       (actor->params >= TW_FIRE_BLAST || BossTw_ShouldUseNormalUpdateRate(actor))) {
+                // Magic needs one collision step per movement step. Authored Twinrova attacks keep real-time tells
+                // so their boss and independently updated warning actors cannot drift out of sync in Hyper mode.
+                additionalUpdates = 0;
             } else if ((actor->id == ACTOR_BOSS_GANONDROF || actor->id == ACTOR_EN_FHG) &&
                        additionalUpdates > 1) {
                 // Faster substeps collapse Phantom Ganon's tells and can tunnel his dash through the
@@ -198,6 +204,11 @@ void MakeHyperBosses(void* refActor) {
                 GameInteractor::RawAction::UpdateActor(actor);
                 if (actor->update == nullptr) {
                     HyperSpeed::Erase(actor);
+                    break;
+                }
+                if (actor->id == ACTOR_BOSS_TW && BossTw_ShouldUseNormalUpdateRate(actor)) {
+                    // The update may have transitioned into an authored attack; do not spend the remaining Hyper
+                    // substeps inside its telegraph on the same rendered frame.
                     break;
                 }
             }

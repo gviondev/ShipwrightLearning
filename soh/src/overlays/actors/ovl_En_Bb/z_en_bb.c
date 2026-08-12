@@ -310,6 +310,44 @@ void EnBb_KillFlameTrail(EnBb* this) {
     this->actor.child = NULL;
 }
 
+void EnBb_KillFlameTrailImmediate(EnBb* this, PlayState* play) {
+    Actor* actor = play->actorCtx.actorLists[ACTORCAT_ENEMY].head;
+
+    this->actor.child = NULL;
+    while (actor != NULL) {
+        Actor* nextActor = actor->next;
+
+        // Normal Red Bubble reactions detach the linked list before fading it. targetActor remains the stable
+        // owner of every segment, so it also lets boss cleanup remove already-detached trails immediately.
+        if (actor != &this->actor && actor->id == ACTOR_EN_BB &&
+            (actor->params == ENBB_FLAME_TRAIL || actor->params == ENBB_KILL_TRAIL) &&
+            ((EnBb*)actor)->targetActor == &this->actor) {
+            actor->parent = NULL;
+            actor->child = NULL;
+            Actor_Kill(actor);
+        }
+        actor = nextActor;
+    }
+}
+
+void EnBb_ActivateRedImmediately(EnBb* this, PlayState* play) {
+    if (this == NULL || this->actor.params != ENBB_RED || this->action != BB_RED ||
+        this->actionState != BBRED_WAIT || this->timer != 0) {
+        return;
+    }
+
+    // Reuse the Red Bubble's normal emergence, but let an external summoner commit it immediately instead of
+    // leaving an invisible enemy waiting on its proximity trigger.
+    this->actor.speedXZ = 5.0f;
+    this->actor.gravity = -1.0f;
+    this->actor.velocity.y = 18.0f;
+    this->moveMode = BBMOVE_NOCLIP;
+    this->timer = 7;
+    this->actor.bgCheckFlags &= ~BGCHECKFLAG_GROUND;
+    this->actionState = BBRED_ATTACK;
+    EnBb_SpawnFlameTrail(play, this, false);
+}
+
 void EnBb_Init(Actor* thisx, PlayState* play) {
     EffectBlureInit1 blureInit;
     s32 pad;
@@ -793,14 +831,7 @@ void EnBb_Red(EnBb* this, PlayState* play) {
         case BBRED_WAIT:
             if ((Actor_WorldDistXYZToActor(&this->actor, &player->actor) <= 250.0f) && (ABS(yawDiff) <= 0x4000) &&
                 (this->timer == 0)) {
-                this->actor.speedXZ = 5.0f;
-                this->actor.gravity = -1.0f;
-                this->actor.velocity.y = 18.0f;
-                this->moveMode = BBMOVE_NOCLIP;
-                this->timer = 7;
-                this->actor.bgCheckFlags &= ~1;
-                this->actionState++;
-                EnBb_SpawnFlameTrail(play, this, false);
+                EnBb_ActivateRedImmediately(this, play);
             }
             break;
         case BBRED_ATTACK:

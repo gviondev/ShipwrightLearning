@@ -4790,6 +4790,8 @@ u8 Actor_ApplyDamage(Actor* actor) {
 }
 
 void Actor_SetDropFlag(Actor* actor, ColliderInfo* colInfo, s32 freezeFlag) {
+    u8 persistentDropFlag = actor->dropFlag & ACTOR_DROP_FLAG_NO_DROP;
+
     if (colInfo->acHitInfo == NULL) {
         actor->dropFlag = 0x00;
     } else if (freezeFlag && (colInfo->acHitInfo->toucher.dmgFlags & 0x10060000)) {
@@ -4815,6 +4817,8 @@ void Actor_SetDropFlag(Actor* actor, ColliderInfo* colInfo, s32 freezeFlag) {
     } else {
         actor->dropFlag = 0x00;
     }
+
+    actor->dropFlag |= persistentDropFlag;
 }
 
 void Actor_SetDropFlagJntSph(Actor* actor, ColliderJntSph* jntSph, s32 freezeFlag) {
@@ -4822,7 +4826,7 @@ void Actor_SetDropFlagJntSph(Actor* actor, ColliderJntSph* jntSph, s32 freezeFla
     s32 flag;
     s32 i;
 
-    actor->dropFlag = 0x00;
+    actor->dropFlag &= ACTOR_DROP_FLAG_NO_DROP;
 
     for (i = jntSph->count - 1; i >= 0; i--) {
         curColInfo = &jntSph->elements[i].info;

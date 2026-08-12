@@ -69,6 +69,9 @@ void BossMo_DrawEffects(BossMoEffect* effect, PlayState* play);
 void BossMo_SetupTentacle(BossMo* this, PlayState* play);
 void BossMo_Tentacle(BossMo* this, PlayState* play);
 
+static void BossMoRiptide_Cancel(void);
+static bool BossMoRiptide_IsPlayerInWater(Player* player, PlayState* play);
+
 void BossMo_Unknown(void);
 
 typedef enum {
@@ -167,6 +170,77 @@ const ActorInit Boss_Mo_InitVars = {
 #define MO_TENT_NEAR_MAX_AXIS_DIST 320.0f
 #define MO_TENT_FLANK_MIN_DIST 100.0f
 #define MO_CORE_DAMAGE_INVINC_TIME 14
+#define MO_CORE_AGGRESSOR_ORBIT_RADIUS 120.0f
+#define MO_CORE_AGGRESSOR_ORBIT_RATE 0x280
+#define MO_CORE_AGGRESSOR_MOVE_SPEED 8.0f
+#define MO_CORE_AGGRESSOR_JUMP_SPEED 8.0f
+#define MO_CORE_AGGRESSOR_BODY_CHECK_TELL_TIME 8
+#define MO_CORE_AGGRESSOR_BODY_CHECK_TIME 24
+#define MO_CORE_AGGRESSOR_BODY_CHECK_RECOVER_TIME 10
+#define MO_CORE_AGGRESSOR_BODY_CHECK_COOLDOWN 96
+#define MO_CORE_AGGRESSOR_BODY_CHECK_SPEED 11.0f
+#define MO_CORE_AGGRESSOR_BODY_CHECK_MIN_DIST 70.0f
+#define MO_CORE_AGGRESSOR_BODY_CHECK_MAX_DIST 280.0f
+#define MO_CORE_AGGRESSOR_BODY_CHECK_TIMER 4
+#define MO_CORE_TACTICIAN_LEAD_FRAMES 14.0f
+#define MO_CORE_TACTICIAN_MAX_LEAD 160.0f
+#define MO_TENT_TACTICIAN_SUPPORT_SWING_TIME 24
+
+#define MO_RIPTIDE_RAKE_TELL_TIME 20
+#define MO_RIPTIDE_FINAL_RAKE_TELL_TIME 16
+#define MO_RIPTIDE_RAKE_ATTACK_TIME 18
+#define MO_RIPTIDE_RAKE_MAX_STRETCH 1.6f
+#define MO_RIPTIDE_RAKE_TIMEOUT 80
+#define MO_RIPTIDE_WATER_ENTRY_TIME 24
+#define MO_RIPTIDE_RAKE_MISS_TIME 10
+#define MO_RIPTIDE_CHARGE_TELL_TIME 18
+#define MO_RIPTIDE_FINAL_CHARGE_TELL_TIME 16
+#define MO_RIPTIDE_CHARGE_LOCK_TIME 12
+#define MO_RIPTIDE_CHARGE_TIME 14
+#define MO_RIPTIDE_RECOVER_TIME 16
+#define MO_RIPTIDE_FINAL_RECOVER_TIME 14
+#define MO_RIPTIDE_CRASH_STUN_TIME 80
+#define MO_RIPTIDE_NORMAL_CHARGE_SPEED 24.0f
+#define MO_RIPTIDE_FINAL_CHARGE_SPEED 28.0f
+
+typedef enum {
+    MO_TENT_ATTACK_NORMAL,
+    MO_TENT_ATTACK_RAKE,
+    MO_TENT_ATTACK_TACTICIAN_SUPPORT,
+} BossMoTentAttackType;
+
+typedef enum {
+    MO_CORE_BODY_CHECK_IDLE,
+    MO_CORE_BODY_CHECK_TELL,
+    MO_CORE_BODY_CHECK_CHARGE,
+    MO_CORE_BODY_CHECK_RECOVER,
+} BossMoCoreBodyCheckState;
+
+typedef enum {
+    MO_RIPTIDE_IDLE,
+    MO_RIPTIDE_RAKE,
+    MO_RIPTIDE_WAIT_WATER,
+    MO_RIPTIDE_CHARGE_TELL,
+    MO_RIPTIDE_CHARGE,
+    MO_RIPTIDE_CRASH_PENDING,
+    MO_RIPTIDE_RECOVER,
+} BossMoRiptideState;
+
+typedef enum {
+    MO_SUPPORT_NONE = -1,
+    MO_SUPPORT_INNER_SW,
+    MO_SUPPORT_INNER_SE,
+    MO_SUPPORT_INNER_NW,
+    MO_SUPPORT_INNER_NE,
+    MO_SUPPORT_RIM_W,
+    MO_SUPPORT_RIM_E,
+    MO_SUPPORT_RIM_S,
+    MO_SUPPORT_RIM_N,
+    MO_SUPPORT_RIM_SW,
+    MO_SUPPORT_RIM_SE,
+    MO_SUPPORT_RIM_NW,
+    MO_SUPPORT_RIM_NE,
+} BossMoSupport;
 
 typedef enum {
     MO_REWARD_WARP_DECIDED = 1 << 0,
@@ -195,6 +269,14 @@ typedef struct {
     u8 relayNextCoreSlot;
     u8 relayNextTentSlot[BOSSMO_CORE_COUNT];
     u8 phaseTransitionTimer;
+    u8 riptideState;
+    s8 riptideCoreSlot;
+    s8 riptideSupport;
+    s16 riptideTimer;
+    s16 riptideRakeYaw;
+    s16 riptideEjectYaw;
+    s16 riptideChargeYaw;
+    Vec3f riptideRakeTarget;
 } BossMoFightManager;
 
 static BossMoFightManager sBossMoFightManager;
@@ -243,10 +325,12 @@ f32 BossMo_RandZeroOne(void) {
 }
 
 s32 BossMo_NearLand(Vec3f* pos, f32 margin) {
-    if (450.0f - margin <= fabsf(pos->x)) {
-        return true;
-    }
-    if (450.0f - margin <= fabsf(pos->z)) {
+    f32 absX = fabsf(pos->x);
+    f32 absZ = fabsf(pos->z);
+
+    // The room's outer platform is a square annulus. Keep the east doorway and corridors out of combat logic.
+    if ((absX <= 680.0f) && (absZ <= 680.0f) &&
+        ((450.0f - margin <= absX) || (450.0f - margin <= absZ))) {
         return true;
     }
     if ((fabsf(pos->x - 180.0f) < 90.0f + margin) || (fabsf(pos->x - -180.0f) < 90.0f + margin)) {
@@ -405,10 +489,106 @@ static f32 sDropletWidth[41] = {
 static void BossMoFightManager_Reset(void) {
     memset(&sBossMoFightManager, 0, sizeof(sBossMoFightManager));
     sBossMoFightManager.sharedWaterLevel = MO_STARTING_WATER_LEVEL;
+    sBossMoFightManager.riptideCoreSlot = -1;
+    sBossMoFightManager.riptideSupport = MO_SUPPORT_NONE;
 }
 
 static BossMo* BossMo_GetCore(BossMo* this) {
     return (this->core != NULL) ? this->core : this;
+}
+
+static bool BossMo_IsAggressorCore(BossMo* core) {
+    return (core != NULL) && (core->coreSlot == 0);
+}
+
+static bool BossMo_UsesAggressorPersonality(BossMo* core) {
+    return BossMo_IsAggressorCore(core) && (sBossMoFightManager.totalCoreCount > 1);
+}
+
+static bool BossMo_IsAggressorBodyCheckActive(BossMo* core) {
+    return BossMo_IsAggressorCore(core) && (core->attackType != MO_CORE_BODY_CHECK_IDLE);
+}
+
+static bool BossMo_IsAggressorBodyCheckCharging(BossMo* core) {
+    return BossMo_IsAggressorBodyCheckActive(core) &&
+           (core->work[MO_TENT_ACTION_STATE] == MO_CORE_MOVE) &&
+           (core->attackType == MO_CORE_BODY_CHECK_CHARGE);
+}
+
+static bool BossMoFightManager_HasAggressorBodyCheck(void) {
+    return BossMo_IsAggressorBodyCheckActive(sBossMoFightManager.cores[0]);
+}
+
+static void BossMo_EndAggressorBodyCheck(BossMo* core) {
+    if (!BossMo_IsAggressorBodyCheckActive(core)) {
+        return;
+    }
+
+    core->attackType = MO_CORE_BODY_CHECK_IDLE;
+    core->timers[MO_CORE_AGGRESSOR_BODY_CHECK_TIMER] = MO_CORE_AGGRESSOR_BODY_CHECK_COOLDOWN;
+    core->actor.speedXZ = 0.0f;
+    core->coreCollider.base.atFlags &= ~(AT_ON | AT_HIT | AT_BOUNCED);
+}
+
+static void BossMo_GetWaterLaneTarget(Vec3f* pos, Vec3f* target) {
+    f32 platformCenterX;
+    f32 platformCenterZ;
+    f32 platformOffsetX;
+    f32 platformOffsetZ;
+
+    *target = *pos;
+    target->x = CLAMP(target->x, -420.0f, 420.0f);
+    target->z = CLAMP(target->z, -420.0f, 420.0f);
+    if (!BossMo_NearLand(target, 15.0f)) {
+        return;
+    }
+
+    // Clamping clears the outer rim, so any remaining land is one of the four inner platforms.
+    platformCenterX = (target->x < 0.0f) ? -180.0f : 180.0f;
+    platformCenterZ = (target->z < 0.0f) ? -180.0f : 180.0f;
+    platformOffsetX = target->x - platformCenterX;
+    platformOffsetZ = target->z - platformCenterZ;
+    if (fabsf(platformOffsetX) >= fabsf(platformOffsetZ)) {
+        target->x = platformCenterX + ((platformOffsetX < 0.0f) ? -120.0f : 120.0f);
+    } else {
+        target->z = platformCenterZ + ((platformOffsetZ < 0.0f) ? -120.0f : 120.0f);
+    }
+}
+
+static f32 BossMo_GetPlatformHoldHeight(BossMo* core, PlayState* play) {
+    CollisionPoly* floorPoly = NULL;
+    s32 bgId;
+    Vec3f probe = core->actor.world.pos;
+    f32 floorY;
+
+    probe.y = 100.0f;
+    floorY = BgCheck_EntityRaycastFloor4(&play->colCtx, &floorPoly, &bgId, &core->actor, &probe);
+    if ((floorPoly != NULL) && (floorY >= -2.0f) && (floorY <= 42.0f)) {
+        core->actor.floorHeight = floorY;
+        core->actor.floorPoly = floorPoly;
+        core->actor.floorBgId = bgId;
+        return floorY + 10.0f;
+    }
+
+    return MAX(core->actor.world.pos.y, MO_WATER_LEVEL(play) + 10.0f);
+}
+
+static bool BossMo_IsTacticianCore(BossMo* core) {
+    return (core != NULL) && (core->coreSlot == 1);
+}
+
+static void BossMo_GetPursuitTarget(BossMo* core, Player* player, Vec3f* target) {
+    f32 leadDistance = 0.0f;
+
+    *target = player->actor.world.pos;
+    if (BossMo_IsTacticianCore(core)) {
+        leadDistance = CLAMP(player->actor.speedXZ * MO_CORE_TACTICIAN_LEAD_FRAMES,
+                             -MO_CORE_TACTICIAN_MAX_LEAD, MO_CORE_TACTICIAN_MAX_LEAD);
+        target->x += Math_SinS(player->actor.world.rot.y) * leadDistance;
+        target->z += Math_CosS(player->actor.world.rot.y) * leadDistance;
+        target->x = CLAMP(target->x, -650.0f, 650.0f);
+        target->z = CLAMP(target->z, -650.0f, 650.0f);
+    }
 }
 
 s32 BossMo_GetHyperSpeedHealth(Actor* actor, s32* maximumHealth) {
@@ -450,13 +630,17 @@ static bool BossMo_IsStrikerTent(BossMo* tent) {
         return false;
     }
 
-    // With one Morpha left, tent1 keeps the vanilla grab while tent2 becomes the sweeping follow-up.
-    if ((sBossMoFightManager.totalCoreCount <= 1) || BossMoFightManager_IsFinalCorePhase()) {
+    // The survivor starts raking immediately; once tent2 exists, tent1 resumes the vanilla grab role.
+    if (BossMoFightManager_IsFinalCorePhase()) {
+        return (core->tent2 != NULL) ? (tent == core->tent2) : (tent == core->tent1);
+    }
+
+    if (sBossMoFightManager.totalCoreCount <= 1) {
         return tent == core->tent2;
     }
 
-    // While both are alive, the second core supplies the non-grabbing sweep role.
-    return core->coreSlot == 1;
+    // While both are alive, the aggressor supplies the forceful sweep and the tactician sets up the interception.
+    return BossMo_IsAggressorCore(core);
 }
 
 static u8 BossMoFightManager_GetCoreMask(BossMo* core) {
@@ -578,6 +762,9 @@ static void BossMoFightManager_ClearTent(BossMo* tent) {
     BossMo* core = tent->core;
     BossMo* sibling = NULL;
 
+    if (tent->attackType == MO_TENT_ATTACK_RAKE) {
+        BossMoRiptide_Cancel();
+    }
     BossMoFightManager_ReleaseTentSpawn(tent);
 
     if (core != NULL) {
@@ -611,6 +798,73 @@ static bool BossMo_IsTentDangerous(BossMo* tent) {
 
     state = tent->work[MO_TENT_ACTION_STATE];
     return (state >= MO_TENT_ATTACK) && (state <= MO_TENT_SHAKE);
+}
+
+static bool BossMo_IsTacticianTent(BossMo* tent) {
+    return (tent != NULL) && BossMo_IsTacticianCore(BossMo_GetCore(tent));
+}
+
+static bool BossMoFightManager_CoreHasOtherTentThreat(BossMo* tent) {
+    BossMo* core = BossMo_GetCore(tent);
+
+    if (core == NULL) {
+        return false;
+    }
+
+    return ((core->tent1 != tent) &&
+            (BossMo_IsTentWindingUp(core->tent1) || BossMo_IsTentDangerous(core->tent1))) ||
+           ((core->tent2 != tent) &&
+            (BossMo_IsTentWindingUp(core->tent2) || BossMo_IsTentDangerous(core->tent2)));
+}
+
+static bool BossMoFightManager_HasAggressorSurfaceThreat(void) {
+    BossMo* core = sBossMoFightManager.cores[0];
+    bool bodyCheckThreat = (core != NULL) && BossMo_IsAggressorBodyCheckActive(core) &&
+                           (core->attackType != MO_CORE_BODY_CHECK_RECOVER);
+
+    return (core != NULL) &&
+           (bodyCheckThreat || BossMo_IsTentDangerous(core->tent1) ||
+            BossMo_IsTentDangerous(core->tent2));
+}
+
+static bool BossMoFightManager_HasOtherTentWindup(BossMo* tent);
+
+static bool BossMoFightManager_HasTacticianSupportAttack(void) {
+    BossMo* core = sBossMoFightManager.cores[1];
+    BossMo* tents[2];
+    s32 i;
+
+    if (core == NULL) {
+        return false;
+    }
+    tents[0] = core->tent1;
+    tents[1] = core->tent2;
+    for (i = 0; i < 2; i++) {
+        BossMo* tent = tents[i];
+
+        if ((tent != NULL) && (tent->attackType == MO_TENT_ATTACK_TACTICIAN_SUPPORT) &&
+            ((tent->work[MO_TENT_ACTION_STATE] == MO_TENT_SWING) ||
+             (tent->work[MO_TENT_ACTION_STATE] == MO_TENT_ATTACK))) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static bool BossMoFightManager_CanLayerTacticianAttack(BossMo* tent) {
+    if (!BossMo_IsTacticianTent(tent) ||
+        (sBossMoFightManager.riptideState != MO_RIPTIDE_IDLE) ||
+        BossMoFightManager_CoreHasOtherTentThreat(tent)) {
+        return false;
+    }
+
+    if (tent->attackType == MO_TENT_ATTACK_TACTICIAN_SUPPORT) {
+        return (tent->work[MO_TENT_ACTION_STATE] == MO_TENT_SWING) ||
+               (tent->work[MO_TENT_ACTION_STATE] == MO_TENT_ATTACK);
+    }
+    return (tent->work[MO_TENT_ACTION_STATE] == MO_TENT_READY) &&
+           BossMoFightManager_HasAggressorSurfaceThreat() &&
+           !BossMoFightManager_HasOtherTentWindup(tent);
 }
 
 static bool BossMoFightManager_HasOtherTentWindup(BossMo* tent) {
@@ -671,7 +925,36 @@ static void BossMoFightManager_ClearCoreAttackFlags(void) {
         BossMo* core = sBossMoFightManager.cores[i];
 
         if (core != NULL) {
-            core->coreCollider.base.atFlags &= ~(AT_ON | AT_HIT);
+            core->coreCollider.base.atFlags &= ~(AT_ON | AT_HIT | AT_BOUNCED);
+        }
+    }
+}
+
+static void BossMoFightManager_ClearCombatCollisionFlags(void) {
+    s32 i;
+
+    for (i = 0; i < BOSSMO_CORE_COUNT; i++) {
+        BossMo* core = sBossMoFightManager.cores[i];
+        BossMo* tents[2];
+        s32 j;
+
+        if (core == NULL) {
+            continue;
+        }
+        core->coreCollider.base.acFlags &= ~(AC_ON | AC_HIT);
+        core->coreCollider.base.atFlags &= ~(AT_ON | AT_HIT | AT_BOUNCED);
+        core->coreCollider.base.ocFlags1 &= ~(OC1_ON | OC1_HIT);
+        tents[0] = core->tent1;
+        tents[1] = core->tent2;
+        for (j = 0; j < 2; j++) {
+            BossMo* tent = tents[j];
+
+            if (tent == NULL) {
+                continue;
+            }
+            tent->tentCollider.base.acFlags &= ~(AC_ON | AC_HIT);
+            tent->tentCollider.base.atFlags &= ~(AT_ON | AT_HIT | AT_BOUNCED);
+            tent->tentCollider.base.ocFlags1 &= ~(OC1_ON | OC1_HIT);
         }
     }
 }
@@ -740,16 +1023,45 @@ static BossMo* BossMoFightManager_SelectRelayWindup(void) {
     return NULL;
 }
 
-static bool BossMoFightManager_CanBeginWindup(BossMo* tent) {
-    return !GameInteractor_SecondCollisionUpdate() && (sBossMoFightManager.phaseTransitionTimer == 0) &&
-           !BossMoFightManager_HasOtherTentWindup(tent) && !BossMoFightManager_OtherTentHasLink(tent) &&
+static bool BossMoFightManager_CanBeginWindup(BossMo* tent, PlayState* play) {
+    bool commonWindow = !GameInteractor_SecondCollisionUpdate() &&
+                        (sBossMoFightManager.phaseTransitionTimer == 0) &&
+                        (sBossMoFightManager.riptideState == MO_RIPTIDE_IDLE) &&
+                        !BossMoFightManager_IsPunishActive(play) &&
+                        !BossMoFightManager_OtherTentHasLink(tent);
+
+    if (!commonWindow) {
+        return false;
+    }
+    if (BossMoFightManager_CanLayerTacticianAttack(tent)) {
+        return true;
+    }
+    if (BossMoFightManager_HasAggressorSurfaceThreat() ||
+        BossMoFightManager_HasTacticianSupportAttack()) {
+        return false;
+    }
+
+    return !BossMoFightManager_HasAggressorBodyCheck() &&
+           !BossMoFightManager_HasOtherTentWindup(tent) &&
            (BossMoFightManager_SelectRelayWindup() == tent);
 }
 
 static bool BossMoFightManager_CanBeginAttack(BossMo* tent, PlayState* play) {
-    return !GameInteractor_SecondCollisionUpdate() && (sBossMoFightManager.phaseTransitionTimer == 0) &&
-           !BossMoFightManager_HasOtherDangerousTent(tent) && !BossMoFightManager_OtherTentHasLink(tent) &&
-           !BossMoFightManager_IsPunishActive(play);
+    bool riptideAllowsAttack =
+        (sBossMoFightManager.riptideState == MO_RIPTIDE_IDLE) ||
+        ((sBossMoFightManager.riptideState == MO_RIPTIDE_RAKE) && (tent->attackType == MO_TENT_ATTACK_RAKE));
+
+    if (GameInteractor_SecondCollisionUpdate() || !riptideAllowsAttack ||
+        (sBossMoFightManager.phaseTransitionTimer != 0) ||
+        BossMoFightManager_OtherTentHasLink(tent) || BossMoFightManager_IsPunishActive(play)) {
+        return false;
+    }
+    if (BossMoFightManager_CanLayerTacticianAttack(tent)) {
+        return true;
+    }
+
+    return !BossMoFightManager_HasAggressorBodyCheck() &&
+           !BossMoFightManager_HasOtherDangerousTent(tent);
 }
 
 static void BossMoFightManager_AdvanceRelay(BossMo* tent) {
@@ -767,6 +1079,51 @@ static void BossMoFightManager_AdvanceRelay(BossMo* tent) {
 
     sBossMoFightManager.relayNextCoreSlot = (coreSlot + 1) % BOSSMO_CORE_COUNT;
     sBossMoFightManager.relayNextTentSlot[coreSlot] = (tent == core->tent1) ? 1 : 0;
+}
+
+static bool BossMoFightManager_TryBeginAggressorBodyCheck(BossMo* tent, PlayState* play) {
+    Player* player = GET_PLAYER(play);
+    BossMo* core = BossMo_GetCore(tent);
+    bool launchWindow;
+    f32 distSq;
+
+    if (!BossMo_UsesAggressorPersonality(core) || (core->csState != MO_BATTLE) ||
+        (core->work[MO_TENT_ACTION_STATE] != MO_CORE_MOVE) ||
+        (core->attackType != MO_CORE_BODY_CHECK_IDLE) ||
+        (core->timers[MO_CORE_AGGRESSOR_BODY_CHECK_TIMER] != 0) ||
+        (sBossMoFightManager.phaseTransitionTimer != 0) ||
+        (sBossMoFightManager.riptideState != MO_RIPTIDE_IDLE) ||
+        BossMoFightManager_IsPunishActive(play) || BossMoFightManager_AnyTentHasLink() ||
+        (player->actor.parent != NULL) || BossMoFightManager_HasOtherTentWindup(NULL) ||
+        BossMoFightManager_HasOtherDangerousTent(NULL) ||
+        (BossMoFightManager_SelectRelayWindup() != tent)) {
+        return false;
+    }
+
+    launchWindow = (fabsf(core->actor.world.pos.y - MO_WATER_LEVEL(play)) <= 25.0f) ||
+                   (core->actor.bgCheckFlags & BGCHECKFLAG_GROUND);
+    if (!launchWindow) {
+        return false;
+    }
+
+    distSq = SQ(player->actor.world.pos.x - core->actor.world.pos.x) +
+             SQ(player->actor.world.pos.z - core->actor.world.pos.z);
+    if ((distSq < SQ(MO_CORE_AGGRESSOR_BODY_CHECK_MIN_DIST)) ||
+        (distSq > SQ(MO_CORE_AGGRESSOR_BODY_CHECK_MAX_DIST))) {
+        return false;
+    }
+
+    core->targetPos = player->actor.world.pos;
+    core->targetPos.x = CLAMP(core->targetPos.x, -650.0f, 650.0f);
+    core->targetPos.z = CLAMP(core->targetPos.z, -650.0f, 650.0f);
+    core->attackAngleMod = Math_Vec3f_Yaw(&core->actor.world.pos, &core->targetPos);
+    core->attackType = MO_CORE_BODY_CHECK_TELL;
+    core->timers[MO_CORE_AGGRESSOR_BODY_CHECK_TIMER] = MO_CORE_AGGRESSOR_BODY_CHECK_TELL_TIME + 1;
+    core->actor.speedXZ = 0.0f;
+    core->coreCollider.base.atFlags &= ~(AT_ON | AT_HIT | AT_BOUNCED);
+    BossMoFightManager_AdvanceRelay(tent);
+    Audio_PlayActorSound2(&core->actor, NA_SE_EN_MOFER_CORE_MOVE_WT);
+    return true;
 }
 
 static BossMo* BossMoFightManager_GetFlankAnchor(BossMo* tent) {
@@ -990,6 +1347,10 @@ static void BossMoFightManager_TransferPresentation(BossMo* core, PlayState* pla
 static void BossMoFightManager_DeregisterCore(BossMo* core) {
     s32 i;
 
+    if ((core != NULL) && (core->coreSlot == sBossMoFightManager.riptideCoreSlot)) {
+        BossMoRiptide_Cancel();
+    }
+
     if ((core->coreSlot >= 0) && (core->coreSlot < BOSSMO_CORE_COUNT) &&
         (sBossMoFightManager.cores[core->coreSlot] == core)) {
         sBossMoFightManager.cores[core->coreSlot] = NULL;
@@ -1197,7 +1558,7 @@ static void BossMo_KillTent(BossMo* tent, PlayState* play) {
     BossMo_ReleaseTentControl(tent, play);
     Audio_StopSfxByPos(&tent->tentTipPos);
     tent->tentCollider.base.acFlags &= ~(AC_ON | AC_HIT);
-    tent->tentCollider.base.atFlags &= ~(AT_ON | AT_HIT);
+    tent->tentCollider.base.atFlags &= ~(AT_ON | AT_HIT | AT_BOUNCED);
     tent->tentCollider.base.ocFlags1 &= ~(OC1_ON | OC1_HIT);
     BossMo_DetachTentEffects(tent);
     BossMoFightManager_ClearTent(tent);
@@ -1257,10 +1618,11 @@ static void BossMo_ForceTentRetreat(BossMo* tent, PlayState* play, s16 retreatTi
     BossMo_ReleaseTentControl(tent, play);
     tent->actor.flags &= ~ACTOR_FLAG_ATTENTION_ENABLED;
     tent->tentCollider.base.acFlags &= ~(AC_ON | AC_HIT);
-    tent->tentCollider.base.atFlags &= ~(AT_ON | AT_HIT);
+    tent->tentCollider.base.atFlags &= ~(AT_ON | AT_HIT | AT_BOUNCED);
     tent->tentCollider.base.ocFlags1 &= ~(OC1_ON | OC1_HIT);
     tent->work[MO_TENT_ACTION_STATE] = MO_TENT_RETREAT;
     tent->work[MO_TENT_RELAY_TIMER] = 0;
+    tent->attackType = MO_TENT_ATTACK_NORMAL;
     tent->linkHitTimer = 0;
     tent->timers[0] = retreatTime;
     tent->tentMaxAngle = 0.005f;
@@ -1269,7 +1631,7 @@ static void BossMo_ForceTentRetreat(BossMo* tent, PlayState* play, s16 retreatTi
     tent->fwork[MO_TENT_SWING_SIZE_Z] = 5000.0f;
 }
 
-static void BossMoFightManager_ProtectPunishWindow(PlayState* play) {
+static void BossMoFightManager_ProtectGrab(BossMo* grabbingTent, PlayState* play) {
     s32 i;
 
     for (i = 0; i < BOSSMO_CORE_COUNT; i++) {
@@ -1280,8 +1642,442 @@ static void BossMoFightManager_ProtectPunishWindow(PlayState* play) {
         if (core == NULL) {
             continue;
         }
+        BossMo_EndAggressorBodyCheck(core);
+        core->coreCollider.base.atFlags &= ~(AT_ON | AT_HIT | AT_BOUNCED);
+        tents[0] = core->tent1;
+        tents[1] = core->tent2;
+        for (j = 0; j < 2; j++) {
+            BossMo* tent = tents[j];
 
-        core->coreCollider.base.atFlags &= ~(AT_ON | AT_HIT);
+            if ((tent == NULL) || (tent == grabbingTent)) {
+                continue;
+            }
+            tent->tentCollider.base.atFlags &= ~(AT_ON | AT_HIT | AT_BOUNCED);
+            if (BossMo_IsTentWindingUp(tent) || BossMo_IsTentDangerous(tent)) {
+                BossMo_ForceTentRetreat(tent, play, MO_TENT_RELAY_SAFETY_TIME);
+            }
+        }
+    }
+}
+
+static bool BossMoRiptide_IsActive(void) {
+    return sBossMoFightManager.riptideState != MO_RIPTIDE_IDLE;
+}
+
+static BossMo* BossMoRiptide_GetCore(void) {
+    s8 slot = sBossMoFightManager.riptideCoreSlot;
+
+    if ((slot < 0) || (slot >= BOSSMO_CORE_COUNT)) {
+        return NULL;
+    }
+    return sBossMoFightManager.cores[slot];
+}
+
+static void BossMoRiptide_Cancel(void) {
+    BossMo* selectedCore;
+    s32 i;
+
+    if (!BossMoRiptide_IsActive()) {
+        return;
+    }
+
+    selectedCore = BossMoRiptide_GetCore();
+    sBossMoFightManager.riptideState = MO_RIPTIDE_IDLE;
+    sBossMoFightManager.riptideTimer = 0;
+    sBossMoFightManager.riptideCoreSlot = -1;
+    sBossMoFightManager.riptideSupport = MO_SUPPORT_NONE;
+
+    if ((selectedCore != NULL) &&
+        (selectedCore->work[MO_TENT_ACTION_STATE] == MO_CORE_UNDERWATER)) {
+        selectedCore->work[MO_CORE_WAIT_IN_WATER] = true;
+        selectedCore->timers[0] = MAX(selectedCore->timers[0], 20);
+        selectedCore->actor.speedXZ = 0.0f;
+        selectedCore->actor.velocity.x = selectedCore->actor.velocity.y = selectedCore->actor.velocity.z = 0.0f;
+    }
+
+    for (i = 0; i < BOSSMO_CORE_COUNT; i++) {
+        BossMo* core = sBossMoFightManager.cores[i];
+        BossMo* tents[2];
+        s32 j;
+
+        if (core == NULL) {
+            continue;
+        }
+        core->coreCollider.base.atFlags &= ~(AT_ON | AT_HIT | AT_BOUNCED);
+        tents[0] = core->tent1;
+        tents[1] = core->tent2;
+        for (j = 0; j < 2; j++) {
+            BossMo* tent = tents[j];
+
+            if ((tent == NULL) || (tent->attackType != MO_TENT_ATTACK_RAKE)) {
+                continue;
+            }
+            tent->attackType = MO_TENT_ATTACK_NORMAL;
+            tent->tentCollider.base.atFlags &= ~(AT_ON | AT_HIT | AT_BOUNCED);
+            if ((tent->work[MO_TENT_ACTION_STATE] == MO_TENT_SWING) ||
+                (tent->work[MO_TENT_ACTION_STATE] == MO_TENT_ATTACK)) {
+                tent->work[MO_TENT_ACTION_STATE] = MO_TENT_RETREAT;
+                tent->timers[0] = MO_TENT_RELAY_SAFETY_TIME;
+                tent->work[MO_TENT_RELAY_TIMER] = 0;
+            }
+        }
+    }
+}
+
+static s8 BossMoRiptide_ClassifySupportXZ(Vec3f* pos) {
+    f32 absX = fabsf(pos->x);
+    f32 absZ = fabsf(pos->z);
+
+    if ((pos->x >= -270.0f) && (pos->x <= -90.0f) &&
+        (pos->z >= -270.0f) && (pos->z <= -90.0f)) {
+        return MO_SUPPORT_INNER_SW;
+    }
+    if ((pos->x >= 90.0f) && (pos->x <= 270.0f) &&
+        (pos->z >= -270.0f) && (pos->z <= -90.0f)) {
+        return MO_SUPPORT_INNER_SE;
+    }
+    if ((pos->x >= -270.0f) && (pos->x <= -90.0f) &&
+        (pos->z >= 90.0f) && (pos->z <= 270.0f)) {
+        return MO_SUPPORT_INNER_NW;
+    }
+    if ((pos->x >= 90.0f) && (pos->x <= 270.0f) &&
+        (pos->z >= 90.0f) && (pos->z <= 270.0f)) {
+        return MO_SUPPORT_INNER_NE;
+    }
+
+    if ((absX > 680.0f) || (absZ > 680.0f) || ((absX < 450.0f) && (absZ < 450.0f))) {
+        return MO_SUPPORT_NONE;
+    }
+    if ((absX >= 450.0f) && (absZ >= 450.0f)) {
+        if (pos->x < 0.0f) {
+            return (pos->z < 0.0f) ? MO_SUPPORT_RIM_SW : MO_SUPPORT_RIM_NW;
+        }
+        return (pos->z < 0.0f) ? MO_SUPPORT_RIM_SE : MO_SUPPORT_RIM_NE;
+    }
+    if (absX >= 450.0f) {
+        return (pos->x < 0.0f) ? MO_SUPPORT_RIM_W : MO_SUPPORT_RIM_E;
+    }
+    return (pos->z < 0.0f) ? MO_SUPPORT_RIM_S : MO_SUPPORT_RIM_N;
+}
+
+static s8 BossMoRiptide_GetPlayerSupport(Player* player) {
+    s8 support = BossMoRiptide_ClassifySupportXZ(&player->actor.world.pos);
+
+    if ((support == MO_SUPPORT_NONE) || !(player->actor.bgCheckFlags & BGCHECKFLAG_GROUND)) {
+        return MO_SUPPORT_NONE;
+    }
+    if ((player->actor.floorHeight < -2.0f) || (player->actor.floorHeight > 42.0f)) {
+        return MO_SUPPORT_NONE;
+    }
+    return support;
+}
+
+static void BossMoRiptide_GetRakeGeometry(BossMo* tent, Player* player, s8 support, Vec3f* target, s16* rakeYaw,
+                                          s16* ejectYaw) {
+    Vec3f waterPoint = { 0.0f, MO_STARTING_WATER_LEVEL, 0.0f };
+    f32 centerX;
+    f32 centerZ;
+
+    target->y = MO_STARTING_WATER_LEVEL;
+    switch (support) {
+        case MO_SUPPORT_INNER_SW:
+        case MO_SUPPORT_INNER_SE:
+        case MO_SUPPORT_INNER_NW:
+        case MO_SUPPORT_INNER_NE: {
+            f32 westDist;
+            f32 eastDist;
+            f32 southDist;
+            f32 northDist;
+            f32 nearestDist;
+
+            centerX = ((support == MO_SUPPORT_INNER_SW) || (support == MO_SUPPORT_INNER_NW)) ? -180.0f : 180.0f;
+            centerZ = ((support == MO_SUPPORT_INNER_SW) || (support == MO_SUPPORT_INNER_SE)) ? -180.0f : 180.0f;
+            target->x = centerX;
+            target->z = centerZ;
+            westDist = player->actor.world.pos.x - (centerX - 90.0f);
+            eastDist = (centerX + 90.0f) - player->actor.world.pos.x;
+            southDist = player->actor.world.pos.z - (centerZ - 90.0f);
+            northDist = (centerZ + 90.0f) - player->actor.world.pos.z;
+            if (fabsf(tent->actor.world.pos.x - centerX) > fabsf(tent->actor.world.pos.z - centerZ)) {
+                if (tent->actor.world.pos.x < centerX) {
+                    nearestDist = westDist;
+                    *ejectYaw = -0x4000;
+                } else {
+                    nearestDist = eastDist;
+                    *ejectYaw = 0x4000;
+                }
+            } else if (tent->actor.world.pos.z < centerZ) {
+                nearestDist = southDist;
+                *ejectYaw = 0x8000;
+            } else {
+                nearestDist = northDist;
+                *ejectYaw = 0;
+            }
+            if (westDist < nearestDist) {
+                nearestDist = westDist;
+                *ejectYaw = -0x4000;
+            }
+            if (eastDist < nearestDist) {
+                nearestDist = eastDist;
+                *ejectYaw = 0x4000;
+            }
+            if (southDist < nearestDist) {
+                nearestDist = southDist;
+                *ejectYaw = 0x8000;
+            }
+            if (northDist < nearestDist) {
+                *ejectYaw = 0;
+            }
+            break;
+        }
+        case MO_SUPPORT_RIM_W:
+            target->x = CLAMP(player->actor.world.pos.x, -650.0f, -470.0f);
+            target->z = CLAMP(player->actor.world.pos.z, -440.0f, 440.0f);
+            *ejectYaw = 0x4000;
+            break;
+        case MO_SUPPORT_RIM_E:
+            target->x = CLAMP(player->actor.world.pos.x, 470.0f, 650.0f);
+            target->z = CLAMP(player->actor.world.pos.z, -440.0f, 440.0f);
+            *ejectYaw = -0x4000;
+            break;
+        case MO_SUPPORT_RIM_S:
+            target->x = CLAMP(player->actor.world.pos.x, -440.0f, 440.0f);
+            target->z = CLAMP(player->actor.world.pos.z, -650.0f, -470.0f);
+            *ejectYaw = 0;
+            break;
+        case MO_SUPPORT_RIM_N:
+            target->x = CLAMP(player->actor.world.pos.x, -440.0f, 440.0f);
+            target->z = CLAMP(player->actor.world.pos.z, 470.0f, 650.0f);
+            *ejectYaw = 0x8000;
+            break;
+        case MO_SUPPORT_RIM_SW:
+        case MO_SUPPORT_RIM_SE:
+        case MO_SUPPORT_RIM_NW:
+        case MO_SUPPORT_RIM_NE:
+            if ((support == MO_SUPPORT_RIM_SW) || (support == MO_SUPPORT_RIM_NW)) {
+                target->x = CLAMP(player->actor.world.pos.x, -650.0f, -470.0f);
+                waterPoint.x = -440.0f;
+            } else {
+                target->x = CLAMP(player->actor.world.pos.x, 470.0f, 650.0f);
+                waterPoint.x = 440.0f;
+            }
+            if ((support == MO_SUPPORT_RIM_SW) || (support == MO_SUPPORT_RIM_SE)) {
+                target->z = CLAMP(player->actor.world.pos.z, -650.0f, -470.0f);
+                waterPoint.z = -440.0f;
+            } else {
+                target->z = CLAMP(player->actor.world.pos.z, 470.0f, 650.0f);
+                waterPoint.z = 440.0f;
+            }
+            *ejectYaw = Math_Vec3f_Yaw(target, &waterPoint);
+            break;
+        default:
+            target->x = player->actor.world.pos.x;
+            target->z = player->actor.world.pos.z;
+            *ejectYaw = Math_Vec3f_Yaw(target, &waterPoint);
+            break;
+    }
+    *rakeYaw = Math_Vec3f_Yaw(&tent->actor.world.pos, target);
+}
+
+static void BossMoRiptide_GetRakeWarningPos(Vec3f* warningPos) {
+    *warningPos = sBossMoFightManager.riptideRakeTarget;
+    switch (sBossMoFightManager.riptideSupport) {
+        case MO_SUPPORT_RIM_W:
+            warningPos->x = -440.0f;
+            warningPos->z = CLAMP(warningPos->z, -440.0f, 440.0f);
+            break;
+        case MO_SUPPORT_RIM_E:
+            warningPos->x = 440.0f;
+            warningPos->z = CLAMP(warningPos->z, -440.0f, 440.0f);
+            break;
+        case MO_SUPPORT_RIM_S:
+            warningPos->x = CLAMP(warningPos->x, -440.0f, 440.0f);
+            warningPos->z = -440.0f;
+            break;
+        case MO_SUPPORT_RIM_N:
+            warningPos->x = CLAMP(warningPos->x, -440.0f, 440.0f);
+            warningPos->z = 440.0f;
+            break;
+        case MO_SUPPORT_RIM_SW:
+            warningPos->x = -440.0f;
+            warningPos->z = -440.0f;
+            break;
+        case MO_SUPPORT_RIM_SE:
+            warningPos->x = 440.0f;
+            warningPos->z = -440.0f;
+            break;
+        case MO_SUPPORT_RIM_NW:
+            warningPos->x = -440.0f;
+            warningPos->z = 440.0f;
+            break;
+        case MO_SUPPORT_RIM_NE:
+            warningPos->x = 440.0f;
+            warningPos->z = 440.0f;
+            break;
+        default:
+            warningPos->x += Math_SinS(sBossMoFightManager.riptideEjectYaw) * 110.0f;
+            warningPos->z += Math_CosS(sBossMoFightManager.riptideEjectYaw) * 110.0f;
+            break;
+    }
+}
+
+static s16 BossMoRiptide_GetPreferredSpawn(BossMo* tent, Player* player) {
+    Vec3f target;
+    Vec3f desiredSpawn;
+    s16 rakeYaw;
+    s16 ejectYaw;
+    s8 support = BossMoRiptide_GetPlayerSupport(player);
+    f32 bestDistSq = 1000000000.0f;
+    s16 bestSpawn = -1;
+    s16 i;
+
+    if ((support == MO_SUPPORT_NONE) || !BossMo_IsStrikerTent(tent)) {
+        return -1;
+    }
+    BossMoRiptide_GetRakeGeometry(tent, player, support, &target, &rakeYaw, &ejectYaw);
+    desiredSpawn = target;
+    desiredSpawn.x += Math_SinS(ejectYaw) * 180.0f;
+    desiredSpawn.z += Math_CosS(ejectYaw) * 180.0f;
+
+    for (i = 0; i < BOSSMO_TENT_SPAWN_COUNT; i++) {
+        BossMo* owner = sBossMoFightManager.tentSpawnOwners[i];
+        f32 distSq;
+
+        if ((owner != NULL) && (owner != tent)) {
+            continue;
+        }
+        distSq = SQ(sTentSpawnPos[i].x - desiredSpawn.x) + SQ(sTentSpawnPos[i].y - desiredSpawn.z);
+        if (distSq < bestDistSq) {
+            bestDistSq = distSq;
+            bestSpawn = i;
+        }
+    }
+    return bestSpawn;
+}
+
+static bool BossMoRiptide_TryBeginRake(BossMo* tent, PlayState* play) {
+    Player* player = GET_PLAYER(play);
+    BossMo* core = BossMo_GetCore(tent);
+    Vec3f warningPos;
+    Vec3f sprayPos;
+    Vec3f sprayVelocity;
+    s8 support;
+    f32 targetDistSq;
+    s32 i;
+
+    tent->attackType = MO_TENT_ATTACK_NORMAL;
+    if (!BossMo_IsStrikerTent(tent) || BossMoRiptide_IsActive() ||
+        BossMoFightManager_HasAggressorBodyCheck() ||
+        BossMoFightManager_HasOtherDangerousTent(tent)) {
+        return false;
+    }
+
+    support = BossMoRiptide_GetPlayerSupport(player);
+    if (support == MO_SUPPORT_NONE) {
+        return false;
+    }
+    BossMoRiptide_GetRakeGeometry(tent, player, support, &sBossMoFightManager.riptideRakeTarget,
+                                  &sBossMoFightManager.riptideRakeYaw, &sBossMoFightManager.riptideEjectYaw);
+    targetDistSq = SQ(tent->actor.world.pos.x - sBossMoFightManager.riptideRakeTarget.x) +
+                   SQ(tent->actor.world.pos.z - sBossMoFightManager.riptideRakeTarget.z);
+    if (targetDistSq > SQ(600.0f)) {
+        BossMo_ForceTentRetreat(tent, play, MO_TENT_RELAY_SAFETY_TIME);
+        return false;
+    }
+
+    tent->attackType = MO_TENT_ATTACK_RAKE;
+    tent->tentCollider.base.atFlags &= ~(AT_ON | AT_HIT | AT_BOUNCED);
+    for (i = 0; i < ARRAY_COUNT(tent->tentElements); i++) {
+        tent->tentCollider.elements[i].info.toucherFlags &= ~TOUCH_HIT;
+    }
+    sBossMoFightManager.riptideState = MO_RIPTIDE_RAKE;
+    sBossMoFightManager.riptideTimer = MO_RIPTIDE_RAKE_TIMEOUT;
+    sBossMoFightManager.riptideCoreSlot = core->coreSlot;
+    sBossMoFightManager.riptideSupport = support;
+    BossMoFightManager_ClearCombatCollisionFlags();
+
+    BossMoRiptide_GetRakeWarningPos(&warningPos);
+    warningPos.y = MO_WATER_LEVEL(play);
+    BossMo_SpawnRipple(sEffects, &warningPos, 180.0f, 650.0f, 150, ARRAY_COUNT(sEffects), MO_FX_BIG_RIPPLE);
+    BossMo_SpawnRipple(sEffects, &tent->actor.world.pos, 280.0f, 750.0f, 170, ARRAY_COUNT(sEffects),
+                       MO_FX_BIG_RIPPLE);
+    sprayPos = sBossMoFightManager.riptideRakeTarget;
+    sprayPos.y = player->actor.floorHeight + 5.0f;
+    for (i = 0; i < 8; i++) {
+        sprayVelocity.x = Rand_CenteredFloat(4.0f);
+        sprayVelocity.y = Rand_ZeroFloat(3.0f) + 3.0f;
+        sprayVelocity.z = Rand_CenteredFloat(4.0f);
+        BossMo_SpawnDroplet(MO_FX_DROPLET, sEffects, &sprayPos, &sprayVelocity, Rand_ZeroFloat(0.06f) + 0.1f);
+    }
+    return true;
+}
+
+static void BossMoRiptide_FinishRake(PlayState* play, bool connected) {
+    Player* player = GET_PLAYER(play);
+
+    if (sBossMoFightManager.riptideState != MO_RIPTIDE_RAKE) {
+        return;
+    }
+    if (!connected && !BossMoRiptide_IsPlayerInWater(player, play)) {
+        BossMoRiptide_Cancel();
+        return;
+    }
+    sBossMoFightManager.riptideState = MO_RIPTIDE_WAIT_WATER;
+    sBossMoFightManager.riptideTimer = connected ? MO_RIPTIDE_WATER_ENTRY_TIME : MO_RIPTIDE_RAKE_MISS_TIME;
+}
+
+static bool BossMoRiptide_HandleRakeContact(BossMo* tent, PlayState* play) {
+    Player* player = GET_PLAYER(play);
+    bool braced = (player->currentBoots == PLAYER_BOOTS_IRON) &&
+                  (player->actor.bgCheckFlags & BGCHECKFLAG_GROUND);
+    bool bounced;
+    s32 i;
+
+    if ((tent->attackType != MO_TENT_ATTACK_RAKE) ||
+        (sBossMoFightManager.riptideState != MO_RIPTIDE_RAKE) ||
+        (tent->tentCollider.base.at != &player->actor)) {
+        return false;
+    }
+
+    bounced = (tent->tentCollider.base.atFlags & AT_BOUNCED) != 0;
+    tent->tentCollider.base.atFlags &= ~(AT_ON | AT_HIT | AT_BOUNCED);
+    for (i = 0; i < ARRAY_COUNT(tent->tentElements); i++) {
+        tent->tentCollider.elements[i].info.toucherFlags &= ~TOUCH_HIT;
+    }
+    tent->linkHitTimer = 5;
+    if (bounced || braced) {
+        if (braced && !bounced) {
+            player->knockbackType = PLAYER_KNOCKBACK_NONE;
+            player->knockbackDamage = 0;
+            player->knockbackSpeed = 0.0f;
+            player->knockbackYVelocity = 0.0f;
+            player->cylinder.base.acFlags &= ~AC_HIT;
+            Rumble_Request(0, 100, 6, 2);
+        }
+        BossMoRiptide_Cancel();
+        return true;
+    }
+    Actor_SetPlayerKnockbackLargeNoDamage(play, &tent->actor, 12.0f, sBossMoFightManager.riptideEjectYaw, 2.0f);
+    BossMoRiptide_FinishRake(play, true);
+    return true;
+}
+
+static void BossMoFightManager_ProtectPunishWindow(PlayState* play) {
+    s32 i;
+
+    BossMoRiptide_Cancel();
+
+    for (i = 0; i < BOSSMO_CORE_COUNT; i++) {
+        BossMo* core = sBossMoFightManager.cores[i];
+        BossMo* tents[2];
+        s32 j;
+
+        if (core == NULL) {
+            continue;
+        }
+
+        BossMo_EndAggressorBodyCheck(core);
+        core->coreCollider.base.atFlags &= ~(AT_ON | AT_HIT | AT_BOUNCED);
         if (!BossMo_IsCorePunishTarget(core, play)) {
             core->actor.flags &= ~ACTOR_FLAG_ATTENTION_ENABLED;
             core->coreCollider.base.acFlags &= ~(AC_ON | AC_HIT);
@@ -1296,14 +2092,540 @@ static void BossMoFightManager_ProtectPunishWindow(PlayState* play) {
             }
 
             tents[j]->tentCollider.base.acFlags &= ~(AC_ON | AC_HIT);
-            tents[j]->tentCollider.base.atFlags &= ~(AT_ON | AT_HIT);
+            tents[j]->tentCollider.base.atFlags &= ~(AT_ON | AT_HIT | AT_BOUNCED);
             tents[j]->tentCollider.base.ocFlags1 &= ~(OC1_ON | OC1_HIT);
-            if (BossMo_IsTentDangerous(tents[j])) {
+            if (BossMo_IsTentWindingUp(tents[j]) || BossMo_IsTentDangerous(tents[j])) {
                 BossMo_ForceTentRetreat(tents[j], play,
                                         BossMoFightManager_IsFinalCorePhase() ? MO_TENT_FINAL_MISS_RETREAT_TIME
                                                                             : MO_TENT_MISS_RETREAT_TIME);
             }
         }
+    }
+}
+
+static bool BossMoRiptide_IsPlayerInWater(Player* player, PlayState* play) {
+    return (player->actor.bgCheckFlags & BGCHECKFLAG_WATER) &&
+           (player->actor.world.pos.y < (MO_WATER_LEVEL(play) - 5.0f));
+}
+
+static bool BossMoRiptide_IsUsableCore(BossMo* core) {
+    s16 state;
+
+    if ((core == NULL) || (core->actor.update == NULL) || (core->csState != MO_BATTLE) ||
+        ((s8)core->actor.colChkInfo.health <= 0) || (core->csState >= MO_DEATH_START)) {
+        return false;
+    }
+    state = core->work[MO_TENT_ACTION_STATE];
+    return (state == MO_CORE_MOVE) || (state == MO_CORE_MAKE_TENT) || (state == MO_CORE_UNDERWATER);
+}
+
+static BossMo* BossMoRiptide_SelectHunter(s8 excludedSlot) {
+    BossMo* fallback = NULL;
+    s32 pass;
+
+    // The tactician owns predictive underwater pursuit while it remains available.
+    if (BossMoRiptide_IsUsableCore(sBossMoFightManager.cores[1])) {
+        return sBossMoFightManager.cores[1];
+    }
+
+    for (pass = 0; pass < BOSSMO_CORE_COUNT; pass++) {
+        s32 slot = (sBossMoFightManager.relayNextCoreSlot + pass) % BOSSMO_CORE_COUNT;
+        BossMo* core = sBossMoFightManager.cores[slot];
+
+        if (!BossMoRiptide_IsUsableCore(core)) {
+            continue;
+        }
+        if (slot != excludedSlot) {
+            return core;
+        }
+        fallback = core;
+    }
+    return fallback;
+}
+
+static bool BossMoRiptide_IsSafeHunterStart(Player* player, Vec3f* startPos) {
+    f32 distSq = SQ(startPos->x - player->actor.world.pos.x) + SQ(startPos->z - player->actor.world.pos.z);
+
+    return (fabsf(startPos->x) <= 410.0f) && (fabsf(startPos->z) <= 410.0f) &&
+           (BossMoRiptide_ClassifySupportXZ(startPos) == MO_SUPPORT_NONE) && (distSq >= SQ(120.0f));
+}
+
+static bool BossMoRiptide_GetHunterStart(BossMo* hunter, Player* player, Vec3f* startPos) {
+    static s16 sYawOffsets[] = { 0, 0x8000, 0x4000, -0x4000 };
+    Vec3f pursuitPos;
+    Vec3f desiredPos;
+    Vec3f candidate;
+    f32 bestScore = 1000000000.0f;
+    s32 i;
+
+    BossMo_GetPursuitTarget(hunter, player, &pursuitPos);
+    desiredPos = pursuitPos;
+    desiredPos.x += Math_SinS(sBossMoFightManager.riptideEjectYaw) * 160.0f;
+    desiredPos.z += Math_CosS(sBossMoFightManager.riptideEjectYaw) * 160.0f;
+    desiredPos.x = CLAMP(desiredPos.x, -410.0f, 410.0f);
+    desiredPos.z = CLAMP(desiredPos.z, -410.0f, 410.0f);
+
+    for (i = 0; i < ARRAY_COUNT(sYawOffsets); i++) {
+        s16 yaw = sBossMoFightManager.riptideEjectYaw + sYawOffsets[i];
+
+        candidate = pursuitPos;
+        candidate.x += Math_SinS(yaw) * 160.0f;
+        candidate.z += Math_CosS(yaw) * 160.0f;
+        candidate.x = CLAMP(candidate.x, -410.0f, 410.0f);
+        candidate.z = CLAMP(candidate.z, -410.0f, 410.0f);
+        if (BossMoRiptide_IsSafeHunterStart(player, &candidate)) {
+            *startPos = candidate;
+            return true;
+        }
+    }
+
+    // The authored tent grid consists entirely of water lanes and makes a stable last-resort search set.
+    for (i = 0; i < BOSSMO_TENT_SPAWN_COUNT; i++) {
+        f32 score;
+
+        candidate = pursuitPos;
+        candidate.x = sTentSpawnPos[i].x;
+        candidate.z = sTentSpawnPos[i].y;
+        if (!BossMoRiptide_IsSafeHunterStart(player, &candidate)) {
+            continue;
+        }
+        score = SQ(candidate.x - desiredPos.x) + SQ(candidate.z - desiredPos.z);
+        if (score < bestScore) {
+            bestScore = score;
+            *startPos = candidate;
+        }
+    }
+    return bestScore < 1000000000.0f;
+}
+
+static void BossMoRiptide_SilenceTents(PlayState* play) {
+    s32 i;
+
+    for (i = 0; i < BOSSMO_CORE_COUNT; i++) {
+        BossMo* core = sBossMoFightManager.cores[i];
+        BossMo* tents[2];
+        s32 j;
+
+        if (core == NULL) {
+            continue;
+        }
+        tents[0] = core->tent1;
+        tents[1] = core->tent2;
+        for (j = 0; j < 2; j++) {
+            BossMo* tent = tents[j];
+
+            if ((tent != NULL) && !HAS_LINK(tent) &&
+                ((tent->work[MO_TENT_ACTION_STATE] == MO_TENT_SWING) ||
+                 (tent->work[MO_TENT_ACTION_STATE] == MO_TENT_ATTACK) ||
+                 (tent->work[MO_TENT_ACTION_STATE] == MO_TENT_CURL))) {
+                BossMo_ForceTentRetreat(tent, play, MO_TENT_RELAY_SAFETY_TIME);
+            }
+        }
+    }
+}
+
+static bool BossMoRiptide_BeginHunter(PlayState* play, s8 excludedSlot) {
+    Player* player = GET_PLAYER(play);
+    BossMo* previousHunter = BossMoRiptide_GetCore();
+    BossMo* hunter = BossMoRiptide_SelectHunter(excludedSlot);
+    Vec3f startPos;
+    Vec3f ripplePos;
+
+    if ((hunter == NULL) || (player->actor.parent != NULL) ||
+        !BossMoRiptide_GetHunterStart(hunter, player, &startPos)) {
+        return false;
+    }
+
+    if ((previousHunter != NULL) && (previousHunter != hunter) &&
+        (previousHunter->work[MO_TENT_ACTION_STATE] == MO_CORE_UNDERWATER)) {
+        previousHunter->work[MO_TENT_ACTION_STATE] = MO_CORE_MOVE;
+        previousHunter->work[MO_CORE_WAIT_IN_WATER] = false;
+        previousHunter->timers[0] = 20;
+        previousHunter->actor.speedXZ = 0.0f;
+    }
+
+    BossMoRiptide_SilenceTents(play);
+    BossMoFightManager_ClearCombatCollisionFlags();
+    sBossMoFightManager.riptideState = MO_RIPTIDE_CHARGE_TELL;
+    sBossMoFightManager.riptideTimer = BossMoFightManager_IsFinalCorePhase()
+                                                ? MO_RIPTIDE_FINAL_CHARGE_TELL_TIME
+                                                : MO_RIPTIDE_CHARGE_TELL_TIME;
+    sBossMoFightManager.riptideCoreSlot = hunter->coreSlot;
+    sBossMoFightManager.relayNextCoreSlot = (hunter->coreSlot + 1) % BOSSMO_CORE_COUNT;
+
+    startPos.y = MIN(player->actor.world.pos.y + 20.0f, MO_WATER_LEVEL(play) - 25.0f);
+    hunter->actor.world.pos = hunter->actor.prevPos = startPos;
+    hunter->actor.speedXZ = 0.0f;
+    hunter->actor.velocity.x = hunter->actor.velocity.y = hunter->actor.velocity.z = 0.0f;
+    hunter->work[MO_TENT_ACTION_STATE] = MO_CORE_UNDERWATER;
+    hunter->work[MO_CORE_WAIT_IN_WATER] = false;
+    hunter->timers[0] = 0;
+    hunter->actor.flags &= ~ACTOR_FLAG_ATTENTION_ENABLED;
+    hunter->coreCollider.base.acFlags &= ~(AC_ON | AC_HIT);
+    hunter->coreCollider.base.atFlags &= ~(AT_ON | AT_HIT | AT_BOUNCED);
+    hunter->coreCollider.base.ocFlags1 &= ~(OC1_ON | OC1_HIT);
+
+    ripplePos = startPos;
+    ripplePos.y = MO_WATER_LEVEL(play);
+    BossMo_SpawnRipple(sEffects, &ripplePos, 160.0f, 700.0f, 160, ARRAY_COUNT(sEffects), MO_FX_BIG_RIPPLE);
+    Audio_PlayActorSound2(&hunter->actor, NA_SE_EN_MOFER_CORE_MOVE_WT);
+    return true;
+}
+
+static bool BossMoRiptide_ControlsCore(BossMo* core) {
+    return (core != NULL) && (BossMoRiptide_GetCore() == core) &&
+           ((sBossMoFightManager.riptideState == MO_RIPTIDE_CHARGE_TELL) ||
+            (sBossMoFightManager.riptideState == MO_RIPTIDE_CHARGE) ||
+            (sBossMoFightManager.riptideState == MO_RIPTIDE_CRASH_PENDING) ||
+            (sBossMoFightManager.riptideState == MO_RIPTIDE_RECOVER));
+}
+
+static void BossMoRiptide_EnterRecover(BossMo* core, PlayState* play) {
+    bool impactPending;
+    Vec3f ripplePos;
+
+    if (!BossMoRiptide_ControlsCore(core)) {
+        return;
+    }
+    impactPending = sBossMoFightManager.riptideState == MO_RIPTIDE_CRASH_PENDING;
+    sBossMoFightManager.riptideState = MO_RIPTIDE_RECOVER;
+    sBossMoFightManager.riptideTimer = BossMoFightManager_IsFinalCorePhase() ? MO_RIPTIDE_FINAL_RECOVER_TIME
+                                                                            : MO_RIPTIDE_RECOVER_TIME;
+    core->work[MO_TENT_ACTION_STATE] = MO_CORE_UNDERWATER;
+    core->work[MO_CORE_WAIT_IN_WATER] = true;
+    if (impactPending) {
+        core->actor.world.pos = core->actor.prevPos = core->targetPos;
+        ripplePos = core->targetPos;
+        ripplePos.y = MO_WATER_LEVEL(play);
+        BossMo_SpawnRipple(sEffects, &ripplePos, 100.0f, 500.0f, 130, ARRAY_COUNT(sEffects), MO_FX_SMALL_RIPPLE);
+    }
+    core->actor.speedXZ = 0.0f;
+    core->actor.velocity.x = core->actor.velocity.y = core->actor.velocity.z = 0.0f;
+    core->coreCollider.base.atFlags &= ~(AT_ON | AT_HIT | AT_BOUNCED);
+}
+
+static bool BossMoRiptide_GetCrashPos(BossMo* core, PlayState* play, s8 support, Vec3f* impactPos,
+                                      Vec3f* crashPos) {
+    CollisionPoly* floorPoly = NULL;
+    Vec3f probe;
+    f32 floorY;
+    s32 bgId;
+
+    *crashPos = *impactPos;
+    switch (support) {
+        case MO_SUPPORT_INNER_SW:
+            crashPos->x = CLAMP(impactPos->x, -250.0f, -110.0f);
+            crashPos->z = CLAMP(impactPos->z, -250.0f, -110.0f);
+            break;
+        case MO_SUPPORT_INNER_SE:
+            crashPos->x = CLAMP(impactPos->x, 110.0f, 250.0f);
+            crashPos->z = CLAMP(impactPos->z, -250.0f, -110.0f);
+            break;
+        case MO_SUPPORT_INNER_NW:
+            crashPos->x = CLAMP(impactPos->x, -250.0f, -110.0f);
+            crashPos->z = CLAMP(impactPos->z, 110.0f, 250.0f);
+            break;
+        case MO_SUPPORT_INNER_NE:
+            crashPos->x = CLAMP(impactPos->x, 110.0f, 250.0f);
+            crashPos->z = CLAMP(impactPos->z, 110.0f, 250.0f);
+            break;
+        case MO_SUPPORT_RIM_W:
+            crashPos->x = CLAMP(impactPos->x, -610.0f, -470.0f);
+            crashPos->z = CLAMP(impactPos->z, -430.0f, 430.0f);
+            break;
+        case MO_SUPPORT_RIM_E:
+            crashPos->x = CLAMP(impactPos->x, 470.0f, 610.0f);
+            crashPos->z = CLAMP(impactPos->z, -430.0f, 430.0f);
+            break;
+        case MO_SUPPORT_RIM_S:
+            crashPos->x = CLAMP(impactPos->x, -430.0f, 430.0f);
+            crashPos->z = CLAMP(impactPos->z, -610.0f, -470.0f);
+            break;
+        case MO_SUPPORT_RIM_N:
+            crashPos->x = CLAMP(impactPos->x, -430.0f, 430.0f);
+            crashPos->z = CLAMP(impactPos->z, 470.0f, 610.0f);
+            break;
+        case MO_SUPPORT_RIM_SW:
+            crashPos->x = CLAMP(impactPos->x, -610.0f, -470.0f);
+            crashPos->z = CLAMP(impactPos->z, -610.0f, -470.0f);
+            break;
+        case MO_SUPPORT_RIM_SE:
+            crashPos->x = CLAMP(impactPos->x, 470.0f, 610.0f);
+            crashPos->z = CLAMP(impactPos->z, -610.0f, -470.0f);
+            break;
+        case MO_SUPPORT_RIM_NW:
+            crashPos->x = CLAMP(impactPos->x, -610.0f, -470.0f);
+            crashPos->z = CLAMP(impactPos->z, 470.0f, 610.0f);
+            break;
+        case MO_SUPPORT_RIM_NE:
+            crashPos->x = CLAMP(impactPos->x, 470.0f, 610.0f);
+            crashPos->z = CLAMP(impactPos->z, 470.0f, 610.0f);
+            break;
+        default:
+            return false;
+    }
+
+    probe = *crashPos;
+    probe.y = 100.0f;
+    floorY = BgCheck_EntityRaycastFloor4(&play->colCtx, &floorPoly, &bgId, &core->actor, &probe);
+    if ((floorPoly == NULL) || (floorY < -2.0f) || (floorY > 42.0f)) {
+        return false;
+    }
+    crashPos->y = floorY + 10.0f;
+    core->actor.floorHeight = floorY;
+    core->actor.floorPoly = floorPoly;
+    core->actor.floorBgId = bgId;
+    return true;
+}
+
+static void BossMoRiptide_CrashCore(BossMo* core, PlayState* play, s8 support) {
+    Vec3f crashPos;
+
+    if (!BossMoRiptide_GetCrashPos(core, play, support, &core->actor.world.pos, &crashPos)) {
+        BossMoRiptide_EnterRecover(core, play);
+        return;
+    }
+    BossMoRiptide_Cancel();
+    core->work[MO_TENT_ACTION_STATE] = MO_CORE_STUNNED;
+    core->work[MO_CORE_WAIT_IN_WATER] = false;
+    core->work[MO_TENT_INVINC_TIMER] = 0;
+    core->timers[0] = MO_RIPTIDE_CRASH_STUN_TIME;
+    core->actor.world.pos = core->actor.prevPos = crashPos;
+    core->actor.speedXZ = 0.0f;
+    core->actor.velocity.x = core->actor.velocity.y = core->actor.velocity.z = 0.0f;
+    core->actor.flags |= ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_HOOKSHOT_PULLS_ACTOR;
+    core->coreCollider.base.atFlags &= ~(AT_ON | AT_HIT | AT_BOUNCED);
+    BossMoFightManager_ProtectPunishWindow(play);
+}
+
+static bool BossMoRiptide_BeginCrashPending(BossMo* core, PlayState* play, s8 support) {
+    Vec3f crashPos;
+    Vec3f velocity;
+    s32 i;
+
+    if (!BossMoRiptide_GetCrashPos(core, play, support, &core->actor.world.pos, &crashPos)) {
+        BossMoRiptide_EnterRecover(core, play);
+        return false;
+    }
+
+    // Preserve a submerged retreat point in case the impact connects with Link or his shield.
+    core->targetPos = core->actor.prevPos;
+    core->targetPos.y = MIN(core->targetPos.y, MO_WATER_LEVEL(play) - 25.0f);
+    core->actor.world.pos = crashPos;
+    core->actor.speedXZ = 0.0f;
+    core->actor.velocity.x = core->actor.velocity.y = core->actor.velocity.z = 0.0f;
+    core->coreCollider.base.atFlags &= ~(AT_HIT | AT_BOUNCED);
+    core->coreCollider.base.atFlags |= AT_ON;
+    sBossMoFightManager.riptideSupport = support;
+    sBossMoFightManager.riptideState = MO_RIPTIDE_CRASH_PENDING;
+    sBossMoFightManager.riptideTimer = 1;
+    Audio_PlayActorSound2(&core->actor, NA_SE_EN_MOFER_CORE_LAND);
+    Rumble_Request(0, 180, 12, 4);
+    for (i = 0; i < 18; i++) {
+        velocity.x = Rand_CenteredFloat(8.0f);
+        velocity.y = Rand_ZeroFloat(5.0f) + 5.0f;
+        velocity.z = Rand_CenteredFloat(8.0f);
+        BossMo_SpawnDroplet(MO_FX_DROPLET, sEffects, &crashPos, &velocity, Rand_ZeroFloat(0.08f) + 0.14f);
+    }
+    return true;
+}
+
+static bool BossMoRiptide_MoveHunterCore(BossMo* core, PlayState* play) {
+    Player* player = GET_PLAYER(play);
+    s8 currentSupport;
+    f32 dx;
+    f32 dy;
+    f32 dz;
+    f32 distXZ;
+    s16 targetYaw;
+    s16 targetPitch;
+    s32 bgCheckMode;
+    Vec3f previousPos;
+    Vec3f wakePos;
+
+    if (!BossMoRiptide_ControlsCore(core)) {
+        return false;
+    }
+
+    if (((sBossMoFightManager.riptideState == MO_RIPTIDE_CHARGE) ||
+         (sBossMoFightManager.riptideState == MO_RIPTIDE_CRASH_PENDING)) &&
+        (core->coreCollider.base.atFlags & (AT_HIT | AT_BOUNCED))) {
+        BossMoRiptide_EnterRecover(core, play);
+        return true;
+    }
+
+    if (sBossMoFightManager.riptideState == MO_RIPTIDE_CHARGE_TELL) {
+        if (sBossMoFightManager.riptideTimer > MO_RIPTIDE_CHARGE_LOCK_TIME) {
+            BossMo_GetPursuitTarget(core, player, &core->targetPos);
+            core->targetPos.y = MIN(player->actor.world.pos.y + 20.0f, MO_WATER_LEVEL(play) - 25.0f);
+            dx = core->targetPos.x - core->actor.world.pos.x;
+            dy = core->targetPos.y - core->actor.world.pos.y;
+            dz = core->targetPos.z - core->actor.world.pos.z;
+            targetYaw = Math_Vec3f_Yaw(&core->actor.world.pos, &core->targetPos);
+            distXZ = sqrtf(SQ(dx) + SQ(dz));
+            targetPitch = (s16)(Math_FAtan2F(dy, distXZ) * (0x8000 / M_PI));
+            Math_ApproachS(&core->actor.world.rot.y, targetYaw, 4, 0x1000);
+            Math_ApproachS(&core->actor.world.rot.x, targetPitch, 4, 0x800);
+            Math_ApproachF(&core->actor.speedXZ, 6.0f, 1.0f, 1.0f);
+        } else {
+            f32 wakeDist = (MO_RIPTIDE_CHARGE_LOCK_TIME - sBossMoFightManager.riptideTimer + 4) * 14.0f;
+
+            core->actor.world.rot.y = sBossMoFightManager.riptideChargeYaw;
+            core->actor.world.rot.x = 0;
+            Math_ApproachF(&core->actor.speedXZ, 0.0f, 1.0f, 2.0f);
+            if ((sBossMoFightManager.riptideTimer > 0) && ((sBossMoFightManager.riptideTimer & 3) == 0)) {
+                wakePos = core->actor.world.pos;
+                wakePos.x += Math_SinS(sBossMoFightManager.riptideChargeYaw) * wakeDist;
+                wakePos.z += Math_CosS(sBossMoFightManager.riptideChargeYaw) * wakeDist;
+                wakePos.y = MO_WATER_LEVEL(play);
+                if (BossMoRiptide_ClassifySupportXZ(&wakePos) == MO_SUPPORT_NONE) {
+                    BossMo_SpawnRipple(sEffects, &wakePos, 45.0f, 220.0f, 100, ARRAY_COUNT(sEffects),
+                                       MO_FX_SMALL_RIPPLE);
+                }
+            }
+        }
+        previousPos = core->actor.world.pos;
+        Actor_UpdateVelocityXYZ(&core->actor);
+        Actor_UpdatePos(&core->actor);
+        if (BossMoRiptide_ClassifySupportXZ(&core->actor.world.pos) != MO_SUPPORT_NONE) {
+            core->actor.world.pos = previousPos;
+            core->actor.speedXZ = 0.0f;
+            core->actor.velocity.x = core->actor.velocity.y = core->actor.velocity.z = 0.0f;
+        }
+    } else if (sBossMoFightManager.riptideState == MO_RIPTIDE_CHARGE) {
+        core->actor.world.rot.y = sBossMoFightManager.riptideChargeYaw;
+        core->actor.world.rot.x = 0;
+        core->actor.speedXZ = BossMoFightManager_IsFinalCorePhase() ? MO_RIPTIDE_FINAL_CHARGE_SPEED
+                                                                   : MO_RIPTIDE_NORMAL_CHARGE_SPEED;
+        Actor_UpdateVelocityXYZ(&core->actor);
+        Actor_UpdatePos(&core->actor);
+        currentSupport = BossMoRiptide_ClassifySupportXZ(&core->actor.world.pos);
+        if (currentSupport != MO_SUPPORT_NONE) {
+            BossMoRiptide_BeginCrashPending(core, play, currentSupport);
+            return true;
+        }
+    } else if (sBossMoFightManager.riptideState == MO_RIPTIDE_CRASH_PENDING) {
+        core->actor.speedXZ = 0.0f;
+        core->actor.velocity.x = core->actor.velocity.y = core->actor.velocity.z = 0.0f;
+        if (sBossMoFightManager.riptideTimer == 0) {
+            BossMoRiptide_CrashCore(core, play, sBossMoFightManager.riptideSupport);
+            return true;
+        }
+    } else {
+        core->actor.speedXZ = 0.0f;
+        core->actor.velocity.x = core->actor.velocity.y = core->actor.velocity.z = 0.0f;
+    }
+
+    bgCheckMode = (core->actor.world.pos.y < -200.0f) ? 5 : 1;
+    core->actor.world.pos.y -= 20.0f;
+    Actor_UpdateBgCheckInfo(play, &core->actor, 50.0f, 20.0f, 100.0f, bgCheckMode);
+    core->actor.world.pos.y += 20.0f;
+    return true;
+}
+
+static void BossMoRiptide_Update(PlayState* play) {
+    Player* player = GET_PLAYER(play);
+    BossMo* core;
+    Vec3f arenaCenter = { 0.0f, 0.0f, 0.0f };
+    Vec3f ripplePos;
+
+    if (GameInteractor_SecondCollisionUpdate()) {
+        return;
+    }
+
+    if (sBossMoFightManager.riptideState == MO_RIPTIDE_IDLE) {
+        if (sBossMoFightManager.battleStarted && (sBossMoFightManager.totalCoreCount > 1) &&
+            (sBossMoFightManager.phaseTransitionTimer == 0) && !BossMoFightManager_IsPunishActive(play) &&
+            !BossMoFightManager_HasAggressorBodyCheck() && !BossMoFightManager_AnyTentHasLink() &&
+            (player->actor.parent == NULL) &&
+            BossMoRiptide_IsPlayerInWater(player, play)) {
+            sBossMoFightManager.riptideEjectYaw = Math_Vec3f_Yaw(&player->actor.world.pos, &arenaCenter);
+            BossMoRiptide_BeginHunter(play, -1);
+        }
+        return;
+    }
+
+    if ((sBossMoFightManager.phaseTransitionTimer != 0) || BossMoFightManager_IsPunishActive(play)) {
+        BossMoRiptide_Cancel();
+        return;
+    }
+    if (sBossMoFightManager.riptideTimer > 0) {
+        sBossMoFightManager.riptideTimer--;
+    }
+
+    switch (sBossMoFightManager.riptideState) {
+        case MO_RIPTIDE_RAKE:
+            if (sBossMoFightManager.riptideTimer == 0) {
+                BossMoRiptide_Cancel();
+            }
+            break;
+        case MO_RIPTIDE_WAIT_WATER:
+            if (BossMoRiptide_IsPlayerInWater(player, play)) {
+                s8 rakeCoreSlot = sBossMoFightManager.riptideCoreSlot;
+
+                if (!BossMoRiptide_BeginHunter(play, rakeCoreSlot)) {
+                    BossMoRiptide_Cancel();
+                }
+            } else if (sBossMoFightManager.riptideTimer == 0) {
+                BossMoRiptide_Cancel();
+            }
+            break;
+        case MO_RIPTIDE_CHARGE_TELL:
+            core = BossMoRiptide_GetCore();
+            if (!BossMoRiptide_IsUsableCore(core) ||
+                (core->work[MO_TENT_ACTION_STATE] != MO_CORE_UNDERWATER)) {
+                BossMoRiptide_Cancel();
+            } else if (sBossMoFightManager.riptideTimer == MO_RIPTIDE_CHARGE_LOCK_TIME) {
+                Vec3f chargeTarget;
+
+                BossMo_GetPursuitTarget(core, player, &chargeTarget);
+                sBossMoFightManager.riptideChargeYaw = Math_Vec3f_Yaw(&core->actor.world.pos, &chargeTarget);
+                core->actor.world.rot.y = sBossMoFightManager.riptideChargeYaw;
+                core->actor.world.rot.x = 0;
+                ripplePos = core->actor.world.pos;
+                ripplePos.y = MO_WATER_LEVEL(play);
+                BossMo_SpawnRipple(sEffects, &ripplePos, 80.0f, 500.0f, 140, ARRAY_COUNT(sEffects),
+                                   MO_FX_SMALL_RIPPLE);
+            } else if (sBossMoFightManager.riptideTimer == 0) {
+                sBossMoFightManager.riptideState = MO_RIPTIDE_CHARGE;
+                sBossMoFightManager.riptideTimer = MO_RIPTIDE_CHARGE_TIME;
+                core->coreCollider.base.atFlags &= ~(AT_HIT | AT_BOUNCED);
+                core->coreCollider.base.atFlags |= AT_ON;
+                Audio_PlayActorSound2(&core->actor, NA_SE_EN_MOFER_ATTACK);
+            }
+            break;
+        case MO_RIPTIDE_CHARGE:
+            core = BossMoRiptide_GetCore();
+            if (!BossMoRiptide_IsUsableCore(core) ||
+                (core->work[MO_TENT_ACTION_STATE] != MO_CORE_UNDERWATER)) {
+                BossMoRiptide_Cancel();
+            } else if (sBossMoFightManager.riptideTimer == 0) {
+                BossMoRiptide_EnterRecover(core, play);
+            }
+            break;
+        case MO_RIPTIDE_CRASH_PENDING:
+            core = BossMoRiptide_GetCore();
+            if (!BossMoRiptide_IsUsableCore(core) ||
+                (core->work[MO_TENT_ACTION_STATE] != MO_CORE_UNDERWATER)) {
+                BossMoRiptide_Cancel();
+            }
+            break;
+        case MO_RIPTIDE_RECOVER:
+            core = BossMoRiptide_GetCore();
+            if (!BossMoRiptide_IsUsableCore(core)) {
+                BossMoRiptide_Cancel();
+            } else if (sBossMoFightManager.riptideTimer == 0) {
+                if (BossMoRiptide_IsPlayerInWater(player, play)) {
+                    s8 previousHunterSlot = sBossMoFightManager.riptideCoreSlot;
+
+                    if (!BossMoRiptide_BeginHunter(play, previousHunterSlot)) {
+                        BossMoRiptide_Cancel();
+                    }
+                } else {
+                    BossMoRiptide_Cancel();
+                }
+            }
+            break;
     }
 }
 
@@ -1318,6 +2640,8 @@ static void BossMo_StartSurvivorPhase(BossMo* survivor, PlayState* play) {
         return;
     }
 
+    BossMoRiptide_Cancel();
+    BossMo_EndAggressorBodyCheck(survivor);
     sBossMoFightManager.finalCore = survivor;
     sBossMoFightManager.phaseTransitionTimer = MO_TENT_SURVIVOR_PHASE_TIME;
     if ((survivor->coreSlot >= 0) && (survivor->coreSlot < BOSSMO_CORE_COUNT)) {
@@ -1328,7 +2652,7 @@ static void BossMo_StartSurvivorPhase(BossMo* survivor, PlayState* play) {
         MAX(survivor->work[MO_TENT_INVINC_TIMER], MO_TENT_SURVIVOR_PHASE_TIME);
     survivor->actor.flags &= ~ACTOR_FLAG_ATTENTION_ENABLED;
     survivor->coreCollider.base.acFlags &= ~(AC_ON | AC_HIT);
-    survivor->coreCollider.base.atFlags &= ~(AT_ON | AT_HIT);
+    survivor->coreCollider.base.atFlags &= ~(AT_ON | AT_HIT | AT_BOUNCED);
     survivor->coreCollider.base.ocFlags1 &= ~(OC1_ON | OC1_HIT);
 
     BossMo_SetTentSurvivorPhase(survivor->tent1, play);
@@ -1469,6 +2793,8 @@ void BossMo_Init(Actor* thisx, PlayState* play2) {
     if (!isTentacle) {
         Flags_SetSwitch(play, 0x14);
         this->core = this;
+        this->attackType = MO_CORE_BODY_CHECK_IDLE;
+        this->timers[MO_CORE_AGGRESSOR_BODY_CHECK_TIMER] = 0;
         this->waterLevel = (isSecondaryCore && (sBossMoFightManager.cores[0] != NULL))
                                ? sBossMoFightManager.cores[0]->waterLevel
                                : sBossMoFightManager.sharedWaterLevel;
@@ -1594,6 +2920,7 @@ void BossMo_SetupTentacle(BossMo* this, PlayState* play) {
     this->actionFunc = BossMo_Tentacle;
     this->work[MO_TENT_ACTION_STATE] = MO_TENT_WAIT;
     this->work[MO_TENT_RELAY_TIMER] = 0;
+    this->attackType = MO_TENT_ATTACK_NORMAL;
     this->timers[0] = 30 + (s16)Rand_ZeroFloat(10.0f);
 }
 
@@ -1609,7 +2936,6 @@ void BossMo_Tentacle(BossMo* this, PlayState* play) {
     BossMo* core = BossMo_GetCore(this);
     bool otherTentHasLink = BossMoFightManager_OtherTentHasLink(this);
     bool finalCorePhase = BossMoFightManager_IsFinalCorePhase();
-    bool singleCoreFallback = sBossMoFightManager.totalCoreCount <= 1;
     bool isStriker = BossMo_IsStrikerTent(this);
     bool isPrimaryTent = this == core->tent1;
     s16 flankingSpawn;
@@ -1647,6 +2973,7 @@ void BossMo_Tentacle(BossMo* this, PlayState* play) {
     Vec3f spE0;
     Vec3f spD4;
     Vec3f spC8;
+    Vec3f pursuitTarget;
 
     if (this->work[MO_TENT_ACTION_STATE] <= MO_TENT_DEATH_3) {
         this->actor.world.pos.y = MO_WATER_LEVEL(play);
@@ -1812,10 +3139,36 @@ void BossMo_Tentacle(BossMo* this, PlayState* play) {
             this->targetPos = this->actor.world.pos;
             Math_ApproachF(&this->actor.speedXZ, 0.75f, 1.0f, 0.04f);
             if (this->work[MO_TENT_ACTION_STATE] == MO_TENT_SWING) {
-                Math_ApproachS(&this->actor.shape.rot.y, this->actor.yawTowardsPlayer + this->attackAngleMod, 0xA,
-                               0x1F4);
+                if (this->attackType == MO_TENT_ATTACK_RAKE) {
+                    s16 windupYaw = sBossMoFightManager.riptideRakeYaw + this->attackAngleMod;
+
+                    Math_ApproachS(&this->actor.shape.rot.y, windupYaw, 0xA, 0x1F4);
+                } else if (BossMo_IsTacticianTent(this)) {
+                    // Track Link's route early, then commit for the final twelve frames of the tell.
+                    if (this->work[MO_TENT_RELAY_TIMER] > MO_TENT_RELAY_SAFETY_TIME) {
+                        BossMo_GetPursuitTarget(core, player, &pursuitTarget);
+                        Math_ApproachS(&this->actor.shape.rot.y,
+                                       Math_Vec3f_Yaw(&this->actor.world.pos, &pursuitTarget),
+                                       0xA, 0x1F4);
+                    }
+                } else {
+                    Math_ApproachS(&this->actor.shape.rot.y,
+                                   this->actor.yawTowardsPlayer + this->attackAngleMod,
+                                   0xA, 0x1F4);
+                }
+                if ((this->attackType == MO_TENT_ATTACK_RAKE) && ((this->timers[0] & 3) == 0)) {
+                    BossMoRiptide_GetRakeWarningPos(&ripplePos);
+                    ripplePos.y = MO_WATER_LEVEL(play);
+                    BossMo_SpawnRipple(sEffects, &ripplePos, 90.0f, 360.0f, 110, ARRAY_COUNT(sEffects),
+                                       MO_FX_SMALL_RIPPLE);
+                }
             }
-            Math_ApproachF(&this->fwork[MO_TENT_MAX_STRETCH], 1.0f, 0.5f, 0.04);
+            Math_ApproachF(&this->fwork[MO_TENT_MAX_STRETCH],
+                           ((this->attackType == MO_TENT_ATTACK_RAKE) &&
+                            (this->work[MO_TENT_ACTION_STATE] == MO_TENT_SWING))
+                               ? MO_RIPTIDE_RAKE_MAX_STRETCH
+                               : 1.0f,
+                           0.5f, 0.04);
             if (core->csState != MO_BATTLE) {
                 Math_ApproachF(&this->tentMaxAngle, 1.0f, 1.0f, 0.001f);
                 Math_ApproachF(&this->tentSpeed, 240.0f, 1.0f, 3.0);
@@ -1824,9 +3177,29 @@ void BossMo_Tentacle(BossMo* this, PlayState* play) {
                 Math_ApproachF(&this->tentSpeed, 400.0f, 1.0f, 6.0f);
             }
             if (this->work[MO_TENT_ACTION_STATE] == MO_TENT_READY) {
-                if ((this->timers[0] == 0) && BossMoFightManager_CanBeginWindup(this)) {
+                if ((this->timers[0] == 0) && BossMoFightManager_CanBeginWindup(this, play)) {
+                    bool layeredTactician = BossMoFightManager_CanLayerTacticianAttack(this);
+                    bool beganRake;
+
+                    if (BossMoFightManager_TryBeginAggressorBodyCheck(this, play)) {
+                        break;
+                    }
+                    beganRake = BossMoRiptide_TryBeginRake(this, play);
+                    if (!beganRake && (this->work[MO_TENT_ACTION_STATE] != MO_TENT_READY)) {
+                        break;
+                    }
+                    if (!beganRake) {
+                        this->attackType = layeredTactician ? MO_TENT_ATTACK_TACTICIAN_SUPPORT
+                                                            : MO_TENT_ATTACK_NORMAL;
+                        if (layeredTactician) {
+                            core->coreCollider.base.atFlags &= ~(AT_ON | AT_HIT | AT_BOUNCED);
+                        }
+                    }
                     this->work[MO_TENT_ACTION_STATE] = MO_TENT_SWING;
-                    this->timers[0] = finalCorePhase ? MO_TENT_FINAL_SWING_TIME : MO_TENT_SWING_TIME;
+                    this->timers[0] = beganRake ? (finalCorePhase ? MO_RIPTIDE_FINAL_RAKE_TELL_TIME
+                                                                  : MO_RIPTIDE_RAKE_TELL_TIME)
+                                                : layeredTactician ? MO_TENT_TACTICIAN_SUPPORT_SWING_TIME
+                                                : (finalCorePhase ? MO_TENT_FINAL_SWING_TIME : MO_TENT_SWING_TIME);
                     this->work[MO_TENT_RELAY_TIMER] = this->timers[0];
                     BossMoFightManager_AdvanceRelay(this);
                     Audio_ResetIncreasingTranspose();
@@ -1834,6 +3207,8 @@ void BossMo_Tentacle(BossMo* this, PlayState* play) {
                         this->attackAngleMod = ((this->work[MO_TENT_MOVE_TIMER] & 1) != 0)
                                                    ? MO_TENT_STRIKER_SWEEP_ANGLE
                                                    : -MO_TENT_STRIKER_SWEEP_ANGLE;
+                    } else if (BossMo_IsTacticianTent(this)) {
+                        this->attackAngleMod = 0;
                     } else {
                         this->attackAngleMod = Rand_CenteredFloat(0x1000);
                     }
@@ -1844,7 +3219,7 @@ void BossMo_Tentacle(BossMo* this, PlayState* play) {
                 tentXrot = this->tentRot[28].x;
                 attackPoseCrossed = (tentXrot >= 0) && (sp1B4 < 0);
                 if ((this->timers[0] == 0) && (this->work[MO_TENT_RELAY_TIMER] <= 0) &&
-                    (attackPoseCrossed ||
+                    (attackPoseCrossed || (this->attackType == MO_TENT_ATTACK_RAKE) ||
                      (this->work[MO_TENT_RELAY_TIMER] == MO_TENT_RELAY_ATTACK_READY))) {
                     if (GameInteractor_SecondCollisionUpdate()) {
                         if (attackPoseCrossed) {
@@ -1853,7 +3228,12 @@ void BossMo_Tentacle(BossMo* this, PlayState* play) {
                     } else if (BossMoFightManager_CanBeginAttack(this, play)) {
                         this->work[MO_TENT_RELAY_TIMER] = 0;
                         this->work[MO_TENT_ACTION_STATE] = MO_TENT_ATTACK;
-                        if (isPrimaryTent) {
+                        if (this->attackType == MO_TENT_ATTACK_RAKE) {
+                            this->timers[0] = MO_RIPTIDE_RAKE_ATTACK_TIME;
+                        } else if (this->attackType == MO_TENT_ATTACK_TACTICIAN_SUPPORT) {
+                            this->timers[0] = finalCorePhase ? MO_TENT_FINAL_SECONDARY_ATTACK_TIME
+                                                            : MO_TENT_SECONDARY_ATTACK_TIME;
+                        } else if (isPrimaryTent) {
                             this->timers[0] =
                                 finalCorePhase ? MO_TENT_FINAL_PRIMARY_ATTACK_TIME : MO_TENT_PRIMARY_ATTACK_TIME;
                         } else {
@@ -1877,8 +3257,10 @@ void BossMo_Tentacle(BossMo* this, PlayState* play) {
                 Math_ApproachS(&this->tentRot[indS1].z, 0, 1.0f / this->tentMaxAngle, this->tentSpeed);
             }
             this->targetPos = this->actor.world.pos;
-            if (isStriker) {
-                sweepTarget = this->actor.yawTowardsPlayer - this->attackAngleMod;
+            if (isStriker || (this->attackType == MO_TENT_ATTACK_RAKE)) {
+                sweepTarget = (this->attackType == MO_TENT_ATTACK_RAKE)
+                                  ? sBossMoFightManager.riptideRakeYaw - this->attackAngleMod
+                                  : this->actor.yawTowardsPlayer - this->attackAngleMod;
                 Math_ApproachS(&this->actor.shape.rot.y, sweepTarget, 4, MO_TENT_STRIKER_SWEEP_SPEED);
             }
             Math_ApproachF(&this->tentMaxAngle, 0.5f, 1.0f, 0.01);
@@ -1889,6 +3271,8 @@ void BossMo_Tentacle(BossMo* this, PlayState* play) {
                 dz = this->tentPos[22].z - player->actor.world.pos.z;
                 if (!isStriker && (fabsf(dy) < 50.0f) && !otherTentHasLink &&
                     (sqrtf(SQ(dx) + SQ(dy) + SQ(dz)) < 120.0f)) {
+                    BossMoFightManager_ProtectGrab(this, play);
+                    this->attackType = MO_TENT_ATTACK_NORMAL;
                     this->tentMaxAngle = .001f;
                     this->work[MO_TENT_ACTION_STATE] = MO_TENT_CURL;
                     this->timers[0] = 40;
@@ -1899,6 +3283,13 @@ void BossMo_Tentacle(BossMo* this, PlayState* play) {
                         this->linkToLeft = true;
                     }
                 } else {
+                    bool wasRake = this->attackType == MO_TENT_ATTACK_RAKE;
+
+                    if (wasRake) {
+                        BossMoRiptide_FinishRake(play, false);
+                    } else {
+                        this->attackType = MO_TENT_ATTACK_NORMAL;
+                    }
                     this->tentMaxAngle = .001f;
                     this->work[MO_TENT_ACTION_STATE] = MO_TENT_READY;
                     this->tentSpeed = 0;
@@ -1906,13 +3297,14 @@ void BossMo_Tentacle(BossMo* this, PlayState* play) {
                     this->fwork[MO_TENT_SWING_RATE_Z] = 0;
                     this->fwork[MO_TENT_SWING_SIZE_X] = 0;
                     this->fwork[MO_TENT_SWING_SIZE_Z] = 0;
-                    this->timers[0] = 20;
-                    if (isStriker ||
-                        (fabsf(player->actor.world.pos.x - this->actor.world.pos.x) >
-                         MO_TENT_NEAR_MAX_AXIS_DIST) ||
-                        (player->actor.world.pos.y < MO_WATER_LEVEL(play)) || otherTentHasLink ||
-                        (fabsf(player->actor.world.pos.z - this->actor.world.pos.z) >
-                         MO_TENT_NEAR_MAX_AXIS_DIST)) {
+                    this->timers[0] = wasRake ? (finalCorePhase ? 12 : 16) : 20;
+                    if (!wasRake &&
+                        (isStriker ||
+                         (fabsf(player->actor.world.pos.x - this->actor.world.pos.x) >
+                          MO_TENT_NEAR_MAX_AXIS_DIST) ||
+                         (player->actor.world.pos.y < MO_WATER_LEVEL(play)) || otherTentHasLink ||
+                         (fabsf(player->actor.world.pos.z - this->actor.world.pos.z) >
+                          MO_TENT_NEAR_MAX_AXIS_DIST))) {
 
                         this->work[MO_TENT_ACTION_STATE] = MO_TENT_RETREAT;
                         this->timers[0] =
@@ -2152,12 +3544,15 @@ void BossMo_Tentacle(BossMo* this, PlayState* play) {
             if ((this->timers[0] == 0) && !GameInteractor_SecondCollisionUpdate()) {
                 this->actor.flags &= ~ACTOR_FLAG_ATTENTION_ENABLED;
                 Math_ApproachF(&this->baseAlpha, 0.0, 1.0f, 5.0f);
-                flankingSpawn = BossMoFightManager_FindFlankingSpawn(this, &player->actor.world.pos);
+                BossMo_GetPursuitTarget(core, player, &pursuitTarget);
+                flankingSpawn = BossMoRiptide_GetPreferredSpawn(this, player);
                 if ((flankingSpawn < 0) || !BossMoFightManager_ReserveTentSpawn(this, flankingSpawn)) {
-                    flankingSpawn = BossMoFightManager_FindNearbySpawn(this, &player->actor.world.pos);
+                    flankingSpawn = BossMoFightManager_FindFlankingSpawn(this, &pursuitTarget);
+                }
+                if ((flankingSpawn < 0) || !BossMoFightManager_ReserveTentSpawn(this, flankingSpawn)) {
+                    flankingSpawn = BossMoFightManager_FindNearbySpawn(this, &pursuitTarget);
                     if ((flankingSpawn < 0) || !BossMoFightManager_ReserveTentSpawn(this, flankingSpawn)) {
-                        flankingSpawn =
-                            BossMoFightManager_FindClosestFreeSpawn(this, &player->actor.world.pos);
+                        flankingSpawn = BossMoFightManager_FindClosestFreeSpawn(this, &pursuitTarget);
                         if ((flankingSpawn < 0) ||
                             !BossMoFightManager_ReserveTentSpawn(this, flankingSpawn)) {
                             flankingSpawn = -1;
@@ -2171,24 +3566,34 @@ void BossMo_Tentacle(BossMo* this, PlayState* play) {
                     this->work[MO_TENT_ACTION_STATE] = MO_TENT_DESPAWN;
                 }
             }
-            if (!GameInteractor_SecondCollisionUpdate() && (finalCorePhase || singleCoreFallback) &&
-                (this == core->tent1) &&
+            // Preserve Morpha's vanilla reinforcement independently for each living core.
+            if (!GameInteractor_SecondCollisionUpdate() && (this == core->tent1) &&
                 (core->hitCount >= (finalCorePhase ? 2 : 3)) && (core->tent2 == NULL) && (this->timers[1] == 0)) {
-                BossMo* newTent =
-                    (BossMo*)Actor_Spawn(&play->actorCtx, play, ACTOR_BOSS_MO, this->actor.world.pos.x,
-                                         this->actor.world.pos.y, this->actor.world.pos.z, 0, 0, 0, BOSSMO_TENTACLE);
+                BossMo* newTent;
+
+                BossMo_GetPursuitTarget(core, player, &pursuitTarget);
+                newTent = (BossMo*)Actor_Spawn(&play->actorCtx, play, ACTOR_BOSS_MO, this->actor.world.pos.x,
+                                               this->actor.world.pos.y, this->actor.world.pos.z, 0, 0, 0,
+                                               BOSSMO_TENTACLE);
 
                 if (newTent != NULL) {
-                    s16 selectedSpawn = -1;
+                    s16 selectedSpawn;
 
                     BossMoFightManager_SetTent(core, newTent, 1);
-                    selectedSpawn = BossMoFightManager_FindFlankingSpawn(newTent, &player->actor.world.pos);
+                    selectedSpawn = BossMoRiptide_GetPreferredSpawn(newTent, player);
                     if ((selectedSpawn >= 0) && !BossMoFightManager_ReserveTentSpawn(newTent, selectedSpawn)) {
                         selectedSpawn = -1;
                     }
 
                     if (selectedSpawn < 0) {
-                        selectedSpawn = BossMoFightManager_FindNearbySpawn(newTent, &player->actor.world.pos);
+                        selectedSpawn = BossMoFightManager_FindFlankingSpawn(newTent, &pursuitTarget);
+                    }
+                    if ((selectedSpawn >= 0) && !BossMoFightManager_ReserveTentSpawn(newTent, selectedSpawn)) {
+                        selectedSpawn = -1;
+                    }
+
+                    if (selectedSpawn < 0) {
+                        selectedSpawn = BossMoFightManager_FindNearbySpawn(newTent, &pursuitTarget);
                         if ((selectedSpawn >= 0) &&
                             !BossMoFightManager_ReserveTentSpawn(newTent, selectedSpawn)) {
                             selectedSpawn = -1;
@@ -2196,8 +3601,7 @@ void BossMo_Tentacle(BossMo* this, PlayState* play) {
                     }
 
                     if (selectedSpawn < 0) {
-                        selectedSpawn =
-                            BossMoFightManager_FindClosestFreeSpawn(newTent, &player->actor.world.pos);
+                        selectedSpawn = BossMoFightManager_FindClosestFreeSpawn(newTent, &pursuitTarget);
                         if ((selectedSpawn >= 0) &&
                             !BossMoFightManager_ReserveTentSpawn(newTent, selectedSpawn)) {
                             selectedSpawn = -1;
@@ -2210,7 +3614,7 @@ void BossMo_Tentacle(BossMo* this, PlayState* play) {
                         newTent->actor.world.pos.x = sTentSpawnPos[selectedSpawn].x;
                         newTent->actor.world.pos.z = sTentSpawnPos[selectedSpawn].y;
                         newTent->actor.prevPos = newTent->actor.world.pos;
-                        spawnYaw = Actor_WorldYawTowardActor(&newTent->actor, &player->actor);
+                        spawnYaw = Math_Vec3f_Yaw(&newTent->actor.world.pos, &pursuitTarget);
                         newTent->actor.world.rot.y = newTent->actor.shape.rot.y = newTent->actor.yawTowardsPlayer =
                             spawnYaw;
                         newTent->targetPos.x = sTentSpawnPos[selectedSpawn].x;
@@ -2399,6 +3803,12 @@ void BossMo_Tentacle(BossMo* this, PlayState* play) {
 void BossMo_TentCollisionCheck(BossMo* this, PlayState* play) {
     s16 i1;
 
+    if ((this->attackType == MO_TENT_ATTACK_RAKE) &&
+        (this->tentCollider.base.atFlags & (AT_HIT | AT_BOUNCED)) &&
+        BossMoRiptide_HandleRakeContact(this, play)) {
+        return;
+    }
+
     for (i1 = 0; i1 < ARRAY_COUNT(this->tentElements); i1++) {
         if (this->tentCollider.elements[i1].info.bumperFlags & BUMP_HIT) {
             s16 i2;
@@ -2412,6 +3822,7 @@ void BossMo_TentCollisionCheck(BossMo* this, PlayState* play) {
             this->work[MO_TENT_INVINC_TIMER] = 5;
             if (hurtbox->toucher.dmgFlags & 0x00020000) {
                 Sfx_PlaySfxAtPos(&this->tentTipPos, NA_SE_EN_MOFER_CUT);
+                this->attackType = MO_TENT_ATTACK_NORMAL;
                 this->cutIndex = 15;
                 this->meltIndex = this->cutIndex + 1;
                 this->work[MO_TENT_ACTION_STATE] = MO_TENT_CUT;
@@ -2439,6 +3850,9 @@ void BossMo_TentCollisionCheck(BossMo* this, PlayState* play) {
             }
             break;
         } else if (this->tentCollider.elements[i1].info.toucherFlags & TOUCH_HIT) {
+            if (BossMoRiptide_HandleRakeContact(this, play)) {
+                break;
+            }
             this->tentCollider.elements[i1].info.toucherFlags &= ~TOUCH_HIT;
             this->linkHitTimer = 5;
             break;
@@ -3013,6 +4427,87 @@ void BossMo_DeathCs(BossMo* this, PlayState* play) {
     }
 }
 
+static void BossMo_BeginAggressorBodyCheckRecover(BossMo* core) {
+    if (!BossMo_IsAggressorBodyCheckActive(core)) {
+        return;
+    }
+
+    core->attackType = MO_CORE_BODY_CHECK_RECOVER;
+    core->timers[MO_CORE_AGGRESSOR_BODY_CHECK_TIMER] =
+        MO_CORE_AGGRESSOR_BODY_CHECK_RECOVER_TIME + 1;
+    core->actor.speedXZ = 0.0f;
+    core->coreCollider.base.atFlags &= ~(AT_ON | AT_HIT | AT_BOUNCED);
+}
+
+static void BossMo_ResolveAggressorBodyCheckContact(BossMo* core) {
+    if (BossMo_IsAggressorBodyCheckCharging(core) &&
+        (core->coreCollider.base.atFlags & (AT_HIT | AT_BOUNCED))) {
+        BossMo_BeginAggressorBodyCheckRecover(core);
+    }
+}
+
+static bool BossMo_UpdateAggressorBodyCheck(BossMo* core) {
+    f32 nextX;
+    f32 nextZ;
+    bool reachedBoundary;
+
+    if (!BossMo_IsAggressorBodyCheckActive(core)) {
+        return false;
+    }
+    if (!BossMo_UsesAggressorPersonality(core) || (core->csState != MO_BATTLE) ||
+        (core->work[MO_TENT_ACTION_STATE] != MO_CORE_MOVE) ||
+        (sBossMoFightManager.phaseTransitionTimer != 0) || BossMoRiptide_IsActive()) {
+        BossMo_EndAggressorBodyCheck(core);
+        return false;
+    }
+
+    switch (core->attackType) {
+        case MO_CORE_BODY_CHECK_TELL:
+            core->actor.speedXZ = 0.0f;
+            Math_ApproachS(&core->actor.world.rot.y, core->attackAngleMod, 4, 0x1000);
+            Math_ApproachS(&core->actor.shape.rot.y, core->attackAngleMod, 4, 0x1000);
+            if (core->timers[MO_CORE_AGGRESSOR_BODY_CHECK_TIMER] == 0) {
+                core->attackType = MO_CORE_BODY_CHECK_CHARGE;
+                core->timers[MO_CORE_AGGRESSOR_BODY_CHECK_TIMER] =
+                    MO_CORE_AGGRESSOR_BODY_CHECK_TIME + 1;
+                core->coreCollider.base.atFlags &= ~(AT_HIT | AT_BOUNCED);
+                Audio_PlayActorSound2(&core->actor, NA_SE_EN_MOFER_ATTACK);
+            }
+            break;
+
+        case MO_CORE_BODY_CHECK_CHARGE:
+            if (core->timers[MO_CORE_AGGRESSOR_BODY_CHECK_TIMER] == 0) {
+                BossMo_BeginAggressorBodyCheckRecover(core);
+                break;
+            }
+            core->actor.world.rot.y = core->actor.shape.rot.y = core->attackAngleMod;
+            core->actor.speedXZ = MO_CORE_AGGRESSOR_BODY_CHECK_SPEED;
+            nextX = core->actor.world.pos.x +
+                    (Math_SinS(core->attackAngleMod) * MO_CORE_AGGRESSOR_BODY_CHECK_SPEED);
+            nextZ = core->actor.world.pos.z +
+                    (Math_CosS(core->attackAngleMod) * MO_CORE_AGGRESSOR_BODY_CHECK_SPEED);
+            reachedBoundary = (fabsf(nextX) > 650.0f) || (fabsf(nextZ) > 650.0f);
+            core->actor.world.pos.x = CLAMP(nextX, -650.0f, 650.0f);
+            core->actor.world.pos.z = CLAMP(nextZ, -650.0f, 650.0f);
+            if (reachedBoundary) {
+                BossMo_BeginAggressorBodyCheckRecover(core);
+            }
+            break;
+
+        case MO_CORE_BODY_CHECK_RECOVER:
+            core->actor.speedXZ = 0.0f;
+            if (core->timers[MO_CORE_AGGRESSOR_BODY_CHECK_TIMER] == 0) {
+                BossMo_EndAggressorBodyCheck(core);
+            }
+            break;
+
+        default:
+            BossMo_EndAggressorBodyCheck(core);
+            break;
+    }
+    return true;
+}
+
 void BossMo_CoreCollisionCheck(BossMo* this, PlayState* play) {
     s16 i;
     Player* player = GET_PLAYER(play);
@@ -3020,15 +4515,26 @@ void BossMo_CoreCollisionCheck(BossMo* this, PlayState* play) {
 
     osSyncPrintf(VT_FGCOL(YELLOW));
     osSyncPrintf("Core_Damage_check START\n");
-    if (this->coreCollider.base.atFlags & AT_HIT) {
-        this->coreCollider.base.atFlags &= ~AT_HIT;
-        if (this->work[MO_TENT_ACTION_STATE] == MO_CORE_UNDERWATER) {
+    if (this->coreCollider.base.atFlags & (AT_HIT | AT_BOUNCED)) {
+        bool bodyCheckHit = BossMo_IsAggressorBodyCheckCharging(core);
+        bool riptideChargeHit = BossMoRiptide_ControlsCore(core) &&
+                                 ((sBossMoFightManager.riptideState == MO_RIPTIDE_CHARGE) ||
+                                  (sBossMoFightManager.riptideState == MO_RIPTIDE_CRASH_PENDING));
+
+        this->coreCollider.base.atFlags &= ~(AT_HIT | AT_BOUNCED);
+        if (bodyCheckHit) {
+            BossMo_BeginAggressorBodyCheckRecover(core);
+        } else if (riptideChargeHit) {
+            BossMoRiptide_EnterRecover(core, play);
+        } else if (this->work[MO_TENT_ACTION_STATE] == MO_CORE_UNDERWATER) {
             this->work[MO_CORE_WAIT_IN_WATER] = true;
             this->timers[0] = 150;
         }
     }
     if (this->coreCollider.base.acFlags & AC_HIT) {
         ColliderInfo* hurtbox = this->coreCollider.info.acHitInfo;
+
+        BossMo_EndAggressorBodyCheck(core);
         // "hit!!"
         osSyncPrintf("Core_Damage_check 当り！！\n");
         this->coreCollider.base.acFlags &= ~AC_HIT;
@@ -3196,11 +4702,14 @@ void BossMo_Core(BossMo* this, PlayState* play) {
     f32 sp7C;
     Vec3f sp70;
     Vec3f sp64;
+    Vec3f riptideDiveTarget;
     f32 sp60;
     f32 sp5C;
     f32 sp58;
+    f32 riptideLandHeight;
     BossMo* core = BossMo_GetCore(this);
     BossMo* tent1 = core->tent1;
+    bool riptideSubmergesCore = BossMoRiptide_IsActive() && !BossMoRiptide_ControlsCore(core);
 
     this->waterTex1x += -1.0f;
     this->waterTex1y += -1.0f;
@@ -3235,7 +4744,11 @@ void BossMo_Core(BossMo* this, PlayState* play) {
     Math_ApproachF(&this->actor.scale.y, yScaleTarget, 0.2f, 0.001f);
     this->work[MO_CORE_DRAW_SHADOW] = BossMo_NearLand(&this->actor.world.pos, 15.0f);
     nearLand = BossMo_NearLand(&this->actor.world.pos, 0.0f);
-    if ((player->actor.world.pos.y < (MO_WATER_LEVEL(play) - 50.0f)) &&
+    if (BossMoRiptide_MoveHunterCore(core, play)) {
+        goto core_effects;
+    }
+    if ((sBossMoFightManager.totalCoreCount <= 1) &&
+        (player->actor.world.pos.y < (MO_WATER_LEVEL(play) - 50.0f)) &&
         ((this->work[MO_TENT_ACTION_STATE] == MO_CORE_MOVE) ||
          (this->work[MO_TENT_ACTION_STATE] == MO_CORE_MAKE_TENT))) {
         this->work[MO_TENT_ACTION_STATE] = MO_CORE_UNDERWATER;
@@ -3245,12 +4758,24 @@ void BossMo_Core(BossMo* this, PlayState* play) {
     switch (this->work[MO_TENT_ACTION_STATE]) {
         case MO_CORE_MOVE:
             this->actor.flags |= ACTOR_FLAG_ATTENTION_ENABLED;
-            if ((this->timers[0] == 0) &&
-                ((tent1->work[MO_TENT_ACTION_STATE] == MO_TENT_WAIT) ||
-                 (tent1->work[MO_TENT_ACTION_STATE] == MO_TENT_READY)) &&
-                (this->actor.world.pos.y < MO_WATER_LEVEL(play))) {
+            if (tent1->work[MO_TENT_ACTION_STATE] == MO_TENT_CUT) {
+                this->work[MO_TENT_ACTION_STATE] = MO_CORE_ATTACK;
+                this->work[MO_CORE_POS_IN_TENT] = 0;
+                this->timers[0] = 0;
+            } else if ((tent1->work[MO_TENT_ACTION_STATE] == MO_TENT_ATTACK) &&
+                       (tent1->attackType != MO_TENT_ATTACK_RAKE)) {
+                this->work[MO_TENT_ACTION_STATE] = MO_CORE_ATTACK;
+                this->work[MO_CORE_POS_IN_TENT] = 0;
+                this->timers[0] = 0;
                 this->actor.speedXZ = 0.0f;
-                this->work[MO_TENT_ACTION_STATE] = MO_CORE_MAKE_TENT;
+            } else if ((this->timers[0] == 0) &&
+                       ((tent1->work[MO_TENT_ACTION_STATE] == MO_TENT_WAIT) ||
+                        (tent1->work[MO_TENT_ACTION_STATE] == MO_TENT_READY)) &&
+                       (this->actor.world.pos.y < MO_WATER_LEVEL(play))) {
+                if (!BossMo_UsesAggressorPersonality(core)) {
+                    this->actor.speedXZ = 0.0f;
+                    this->work[MO_TENT_ACTION_STATE] = MO_CORE_MAKE_TENT;
+                }
                 if (tent1->work[MO_TENT_ACTION_STATE] == MO_TENT_WAIT) {
                     tent1->work[MO_TENT_ACTION_STATE] = MO_TENT_SPAWN;
                     tent1->timers[0] = 70;
@@ -3259,21 +4784,21 @@ void BossMo_Core(BossMo* this, PlayState* play) {
             }
             break;
         case MO_CORE_MAKE_TENT:
-            if ((tent1->work[MO_TENT_ACTION_STATE] == MO_TENT_DESPAWN) ||
-                (tent1->work[MO_TENT_ACTION_STATE] == MO_TENT_WAIT)) {
-                this->work[MO_TENT_ACTION_STATE] = MO_CORE_MOVE;
-                this->timers[0] = 70;
-            }
             if (tent1->work[MO_TENT_ACTION_STATE] == MO_TENT_CUT) {
                 this->work[MO_TENT_ACTION_STATE] = MO_CORE_ATTACK;
                 this->work[MO_CORE_POS_IN_TENT] = 0;
                 this->timers[0] = 0;
-            }
-            if (tent1->work[MO_TENT_ACTION_STATE] == MO_TENT_ATTACK) {
+            } else if ((tent1->work[MO_TENT_ACTION_STATE] == MO_TENT_ATTACK) &&
+                       (tent1->attackType != MO_TENT_ATTACK_RAKE)) {
                 this->work[MO_TENT_ACTION_STATE] = MO_CORE_ATTACK;
                 this->work[MO_CORE_POS_IN_TENT] = 0;
                 this->timers[0] = 0;
                 this->actor.speedXZ = 0.0f;
+            } else if (BossMo_UsesAggressorPersonality(core) ||
+                       (tent1->work[MO_TENT_ACTION_STATE] == MO_TENT_DESPAWN) ||
+                       (tent1->work[MO_TENT_ACTION_STATE] == MO_TENT_WAIT)) {
+                this->work[MO_TENT_ACTION_STATE] = MO_CORE_MOVE;
+                this->timers[0] = 70;
             }
             break;
         case MO_CORE_UNDERWATER:
@@ -3366,11 +4891,29 @@ void BossMo_Core(BossMo* this, PlayState* play) {
     } else {
         switch (this->work[MO_TENT_ACTION_STATE]) {
             case MO_CORE_MOVE:
-                sp80 = Math_SinS(this->work[MO_TENT_VAR_TIMER] * 0x800) * 100.0f;
-                sp7C = Math_CosS(this->work[MO_TENT_VAR_TIMER] * 0x800) * 100.0f;
-                Math_ApproachF(&this->actor.world.pos.x, tent1->targetPos.x + sp80, 0.05f, this->actor.speedXZ);
-                Math_ApproachF(&this->actor.world.pos.z, tent1->targetPos.z + sp7C, 0.05f, this->actor.speedXZ);
-                Math_ApproachF(&this->actor.speedXZ, 10.0f, 1.0f, 0.5f);
+                if (riptideSubmergesCore) {
+                    this->actor.speedXZ = 0.0f;
+                } else if (BossMo_UpdateAggressorBodyCheck(core)) {
+                    // The committed body-check owns horizontal movement; the normal jump arc continues below.
+                } else if (BossMo_UsesAggressorPersonality(core) && (this->csState == MO_BATTLE)) {
+                    sp80 = Math_SinS(this->work[MO_TENT_VAR_TIMER] * MO_CORE_AGGRESSOR_ORBIT_RATE) *
+                           MO_CORE_AGGRESSOR_ORBIT_RADIUS;
+                    sp7C = Math_CosS(this->work[MO_TENT_VAR_TIMER] * MO_CORE_AGGRESSOR_ORBIT_RATE) *
+                           MO_CORE_AGGRESSOR_ORBIT_RADIUS;
+                    Math_ApproachF(&this->actor.speedXZ, MO_CORE_AGGRESSOR_MOVE_SPEED, 1.0f, 0.75f);
+                    Math_ApproachF(&this->actor.world.pos.x, tent1->targetPos.x + sp80, 0.1f,
+                                   this->actor.speedXZ);
+                    Math_ApproachF(&this->actor.world.pos.z, tent1->targetPos.z + sp7C, 0.1f,
+                                   this->actor.speedXZ);
+                } else {
+                    sp80 = Math_SinS(this->work[MO_TENT_VAR_TIMER] * 0x800) * 100.0f;
+                    sp7C = Math_CosS(this->work[MO_TENT_VAR_TIMER] * 0x800) * 100.0f;
+                    Math_ApproachF(&this->actor.speedXZ, 10.0f, 1.0f, 0.5f);
+                    Math_ApproachF(&this->actor.world.pos.x, tent1->targetPos.x + sp80, 0.05f,
+                                   this->actor.speedXZ);
+                    Math_ApproachF(&this->actor.world.pos.z, tent1->targetPos.z + sp7C, 0.05f,
+                                   this->actor.speedXZ);
+                }
                 break;
             case MO_CORE_STUNNED:
                 this->actor.velocity.x = Math_SinS(this->actor.world.rot.y) * this->actor.speedXZ;
@@ -3379,8 +4922,22 @@ void BossMo_Core(BossMo* this, PlayState* play) {
                 this->actor.world.pos.z += this->actor.velocity.z;
                 break;
         }
-        if ((this->work[MO_TENT_ACTION_STATE] == MO_CORE_MOVE) ||
-            (this->work[MO_TENT_ACTION_STATE] == MO_CORE_STUNNED)) {
+        nearLand = BossMo_NearLand(&this->actor.world.pos, 0.0f);
+        // Riptide disables non-hunter vulnerability, so those cores dive instead of presenting a false weak point.
+        if (riptideSubmergesCore && (this->work[MO_TENT_ACTION_STATE] == MO_CORE_MOVE)) {
+            BossMo_GetWaterLaneTarget(&this->actor.world.pos, &riptideDiveTarget);
+            Math_ApproachF(&this->actor.world.pos.x, riptideDiveTarget.x, 1.0f, 16.0f);
+            Math_ApproachF(&this->actor.world.pos.z, riptideDiveTarget.z, 1.0f, 16.0f);
+            if (BossMo_NearLand(&this->actor.world.pos, 15.0f)) {
+                riptideLandHeight = BossMo_GetPlatformHoldHeight(this, play);
+                Math_ApproachF(&this->actor.world.pos.y, riptideLandHeight, 1.0f, 12.0f);
+            } else {
+                Math_ApproachF(&this->actor.world.pos.y, MO_WATER_LEVEL(play) - 45.0f, 1.0f, 12.0f);
+            }
+            this->actor.velocity.y = 0.0f;
+            Actor_UpdateBgCheckInfo(play, &this->actor, 50.0f, 20.0f, 100.0f, 1);
+        } else if ((this->work[MO_TENT_ACTION_STATE] == MO_CORE_MOVE) ||
+                   (this->work[MO_TENT_ACTION_STATE] == MO_CORE_STUNNED)) {
             this->actor.world.pos.y += this->actor.velocity.y;
             this->actor.velocity.y -= 1.0f;
             Actor_UpdateBgCheckInfo(play, &this->actor, 50.0f, 20.0f, 100.0f, 1);
@@ -3394,12 +4951,15 @@ void BossMo_Core(BossMo* this, PlayState* play) {
             };
 
             if (nearLand) {
-                if (this->actor.world.pos.y <= 10) {
-                    this->actor.world.pos.y = 10;
+                if (this->actor.world.pos.y <= (this->actor.floorHeight + 10.0f)) {
+                    this->actor.world.pos.y = this->actor.floorHeight + 10.0f;
                     this->actor.velocity.y = -0.01f;
                     if (this->timers[1] != 0) {
                         if (this->timers[1] == 1) {
-                            this->actor.velocity.y = 6.0f;
+                            this->actor.velocity.y = ((this->work[MO_TENT_ACTION_STATE] == MO_CORE_MOVE) &&
+                                                      BossMo_UsesAggressorPersonality(core))
+                                                         ? MO_CORE_AGGRESSOR_JUMP_SPEED
+                                                         : 6.0f;
                         }
                     } else {
                         this->timers[1] = 2;
@@ -3416,13 +4976,20 @@ void BossMo_Core(BossMo* this, PlayState* play) {
                         }
                         effectVelocity.x = effectVelocity.y = effectVelocity.z = 0.0f;
                         effectPos = this->actor.world.pos;
-                        effectPos.y = 0.0f;
+                        effectPos.y = this->actor.floorHeight;
                         BossMo_SpawnDroplet(MO_FX_DROPLET, (BossMoEffect*)play->specialEffects, &effectPos,
                                             &effectVelocity, 0.4f);
                     }
                 }
             } else if (this->actor.world.pos.y < MO_WATER_LEVEL(play)) {
-                this->actor.velocity.y = BossMo_NearLand(&this->actor.world.pos, 40.0f) ? 15.0f : 6.0f;
+                if (BossMo_NearLand(&this->actor.world.pos, 40.0f)) {
+                    this->actor.velocity.y = 15.0f;
+                } else if ((this->work[MO_TENT_ACTION_STATE] == MO_CORE_MOVE) &&
+                           BossMo_UsesAggressorPersonality(core)) {
+                    this->actor.velocity.y = MO_CORE_AGGRESSOR_JUMP_SPEED;
+                } else {
+                    this->actor.velocity.y = 6.0f;
+                }
                 if ((this->actor.world.pos.y + 15.0f) >= MO_WATER_LEVEL(play)) {
                     Audio_PlayActorSound2(&this->actor, NA_SE_EN_MOFER_CORE_JUMP);
                 }
@@ -3437,16 +5004,19 @@ void BossMo_Core(BossMo* this, PlayState* play) {
                 } else if (this->work[MO_TENT_ACTION_STATE] == MO_CORE_UNDERWATER) {
                     switch (this->work[MO_CORE_WAIT_IN_WATER]) {
                         case false:
-                            this->targetPos = player->actor.world.pos;
-                            this->targetPos.y += 30.0f;
-                            sp70.x = 0.0f;
-                            sp70.y = 0.0f;
-                            sp70.z = 100.0f;
-                            Matrix_RotateY((player->actor.world.rot.y / (f32)0x8000) * M_PI, MTXMODE_NEW);
-                            Matrix_MultVec3f(&sp70, &sp64);
-                            this->targetPos.x = player->actor.world.pos.x + sp64.x;
-                            this->targetPos.y = player->actor.world.pos.y + 30.0f;
-                            this->targetPos.z = player->actor.world.pos.z + sp64.z;
+                            if (BossMo_IsTacticianCore(core)) {
+                                BossMo_GetPursuitTarget(core, player, &this->targetPos);
+                                this->targetPos.y = player->actor.world.pos.y + 30.0f;
+                            } else {
+                                sp70.x = 0.0f;
+                                sp70.y = 0.0f;
+                                sp70.z = 100.0f;
+                                Matrix_RotateY((player->actor.world.rot.y / (f32)0x8000) * M_PI, MTXMODE_NEW);
+                                Matrix_MultVec3f(&sp70, &sp64);
+                                this->targetPos.x = player->actor.world.pos.x + sp64.x;
+                                this->targetPos.y = player->actor.world.pos.y + 30.0f;
+                                this->targetPos.z = player->actor.world.pos.z + sp64.z;
+                            }
                             Math_ApproachF(&this->actor.speedXZ, 10.0f, 1.0f, 1.0f);
                             if (this->timers[0] == 0) {
                                 this->work[MO_CORE_WAIT_IN_WATER] = true;
@@ -3487,6 +5057,7 @@ void BossMo_Core(BossMo* this, PlayState* play) {
             this->actor.world.pos.y += 20.0f;
         }
     }
+core_effects:
     if ((this->actor.world.pos.y < MO_WATER_LEVEL(play)) && (MO_WATER_LEVEL(play) <= this->actor.prevPos.y)) {
         if (this->actor.velocity.y < -5.0f) {
             Audio_PlayActorSound2(&this->actor, NA_SE_EN_MOFER_CORE_JUMP);
@@ -3546,6 +5117,16 @@ static void BossMo_UpdateCoreCollisionState(BossMo* core, PlayState* play) {
                         (sBossMoFightManager.phaseTransitionTimer == 0);
     bool punishActive = BossMoFightManager_IsPunishActive(play);
     bool punishTarget = BossMo_IsCorePunishTarget(core, play);
+    bool riptideActive = BossMoRiptide_IsActive();
+    bool riptideHunter = BossMoRiptide_ControlsCore(core);
+    bool riptideCharge = riptideHunter &&
+                          ((sBossMoFightManager.riptideState == MO_RIPTIDE_CHARGE) ||
+                           (sBossMoFightManager.riptideState == MO_RIPTIDE_CRASH_PENDING));
+    bool aggressorBodyCheckCharge = BossMo_IsAggressorBodyCheckCharging(core);
+    bool tacticianSupportActive = BossMo_IsTacticianCore(core) &&
+                                   BossMoFightManager_HasTacticianSupportAttack();
+    bool normalCoreAttack = !BossMo_UsesAggressorPersonality(core) && !riptideActive &&
+                            !tacticianSupportActive;
     bool stunnedAboveWater =
         (core->work[MO_TENT_ACTION_STATE] == MO_CORE_STUNNED) && (core->actor.world.pos.y >= MO_WATER_LEVEL(play));
 
@@ -3553,22 +5134,27 @@ static void BossMo_UpdateCoreCollisionState(BossMo* core, PlayState* play) {
     CollisionCheck_SetAT(play, &play->colChkCtx, &core->coreCollider.base);
     CollisionCheck_SetOC(play, &play->colChkCtx, &core->coreCollider.base);
 
-    if (battleActive && (!punishActive || punishTarget)) {
+    if (battleActive && !riptideActive && (!punishActive || punishTarget)) {
         core->coreCollider.base.acFlags |= AC_ON;
     } else {
         core->coreCollider.base.acFlags &= ~(AC_ON | AC_HIT);
     }
 
-    if (battleActive && !punishActive && !stunnedAboveWater && !BossMoFightManager_AnyTentHasLink()) {
+    if (battleActive && !punishActive && !BossMoFightManager_AnyTentHasLink() &&
+        (riptideCharge || aggressorBodyCheckCharge || (normalCoreAttack && !stunnedAboveWater))) {
         core->coreCollider.base.atFlags |= AT_ON;
     } else {
-        core->coreCollider.base.atFlags &= ~(AT_ON | AT_HIT);
+        core->coreCollider.base.atFlags &= ~(AT_ON | AT_HIT | AT_BOUNCED);
     }
 
-    if (battleActive && punishTarget && stunnedAboveWater) {
+    if (battleActive && !riptideActive && punishTarget && stunnedAboveWater) {
         core->coreCollider.base.ocFlags1 |= OC1_ON;
     } else {
         core->coreCollider.base.ocFlags1 &= ~(OC1_ON | OC1_HIT);
+    }
+
+    if (riptideActive) {
+        core->actor.flags &= ~ACTOR_FLAG_ATTENTION_ENABLED;
     }
 }
 
@@ -3602,9 +5188,19 @@ void BossMo_UpdateCore(Actor* thisx, PlayState* play) {
         return;
     }
 
-    if (BossMoFightManager_IsPresentationOwner(core) && !GameInteractor_SecondCollisionUpdate() &&
-        (sBossMoFightManager.phaseTransitionTimer > 0)) {
-        sBossMoFightManager.phaseTransitionTimer--;
+    if (BossMo_IsAggressorBodyCheckActive(core) &&
+        ((core->csState != MO_BATTLE) || (core->work[MO_TENT_ACTION_STATE] != MO_CORE_MOVE) ||
+         (sBossMoFightManager.phaseTransitionTimer != 0) || BossMoRiptide_IsActive() ||
+         BossMoFightManager_IsPunishActive(play) || BossMoFightManager_AnyTentHasLink())) {
+        BossMo_EndAggressorBodyCheck(core);
+    }
+    BossMo_ResolveAggressorBodyCheckContact(core);
+
+    if (BossMoFightManager_IsPresentationOwner(core) && !GameInteractor_SecondCollisionUpdate()) {
+        BossMoRiptide_Update(play);
+        if (sBossMoFightManager.phaseTransitionTimer > 0) {
+            sBossMoFightManager.phaseTransitionTimer--;
+        }
     }
 
     if ((sBossMoFightManager.phaseTransitionTimer != 0) && GameInteractor_SecondCollisionUpdate()) {
@@ -3656,6 +5252,21 @@ void BossMo_UpdateCore(Actor* thisx, PlayState* play) {
         return;
     }
 
+    if (BossMoRiptide_ControlsCore(core) && GameInteractor_SecondCollisionUpdate()) {
+        Collider_UpdateCylinder(&this->actor, &this->coreCollider);
+        BossMo_UpdateCoreCollisionState(this, play);
+        return;
+    }
+
+    // Red's jump arc, lunge clock, and calm orbit all stay on the authored real-frame cadence under Hyper.
+    if (BossMo_UsesAggressorPersonality(core) &&
+        (core->work[MO_TENT_ACTION_STATE] == MO_CORE_MOVE) &&
+        GameInteractor_SecondCollisionUpdate()) {
+        Collider_UpdateCylinder(&this->actor, &this->coreCollider);
+        BossMo_UpdateCoreCollisionState(this, play);
+        return;
+    }
+
     if (BossMoFightManager_IsPresentationOwner(core)) {
         if (core->tent1 == NULL) {
             BossMoFightManager_UpdateSharedWater(core, play, (s16)this->waterLevel);
@@ -3680,7 +5291,10 @@ void BossMo_UpdateCore(Actor* thisx, PlayState* play) {
     this->work[MO_TENT_MOVE_TIMER]++;
 
     for (i = 0; i < ARRAY_COUNT(this->timers); i++) {
-        if (this->timers[i] != 0) {
+        bool bodyCheckClock = (i == MO_CORE_AGGRESSOR_BODY_CHECK_TIMER) && BossMo_IsAggressorCore(core);
+
+        if ((this->timers[i] != 0) &&
+            (!bodyCheckClock || !GameInteractor_SecondCollisionUpdate())) {
             this->timers[i]--;
         }
     }
@@ -3705,14 +5319,19 @@ static void BossMo_UpdateTentCollisionState(BossMo* tent, PlayState* play) {
     bool punishActive = BossMoFightManager_IsPunishActive(play);
     bool visible = tent->drawActor && (state < MO_TENT_DEATH_START) &&
                    (sBossMoFightManager.phaseTransitionTimer == 0);
+    bool riptideAllowsTent = !BossMoRiptide_IsActive() ||
+                              ((sBossMoFightManager.riptideState == MO_RIPTIDE_RAKE) &&
+                               (tent->attackType == MO_TENT_ATTACK_RAKE));
     bool collidableState = (state >= MO_TENT_READY) && (state <= MO_TENT_SHAKE);
-    bool bodyCollisionActive = visible && !punishActive && (tent->work[MO_TENT_INVINC_TIMER] == 0) &&
+    bool bodyCollisionActive = visible && riptideAllowsTent && !punishActive &&
+                               (tent->work[MO_TENT_INVINC_TIMER] == 0) &&
                                ((state == MO_TENT_ATTACK) || (state == MO_TENT_CURL)) &&
                                !BossMoFightManager_OtherTentHasLink(tent) && (tent->cutIndex == 0);
     bool damageActive =
         bodyCollisionActive && (tent->linkHitTimer == 0) &&
         ((state == MO_TENT_ATTACK) || (state == MO_TENT_CURL));
-    bool counterActive = visible && !punishActive && collidableState && (tent->cutIndex == 0);
+    bool counterActive = visible && riptideAllowsTent && !punishActive && collidableState &&
+                         (tent->attackType != MO_TENT_ATTACK_RAKE) && (tent->cutIndex == 0);
 
     CollisionCheck_SetAC(play, &play->colChkCtx, &tent->tentCollider.base);
     CollisionCheck_SetAT(play, &play->colChkCtx, &tent->tentCollider.base);
@@ -3727,7 +5346,7 @@ static void BossMo_UpdateTentCollisionState(BossMo* tent, PlayState* play) {
     if (damageActive) {
         tent->tentCollider.base.atFlags |= AT_ON;
     } else {
-        tent->tentCollider.base.atFlags &= ~(AT_ON | AT_HIT);
+        tent->tentCollider.base.atFlags &= ~(AT_ON | AT_HIT | AT_BOUNCED);
     }
 
     if (bodyCollisionActive) {
@@ -3787,6 +5406,18 @@ void BossMo_UpdateTent(Actor* thisx, PlayState* play) {
         return;
     }
 
+    // Riptide tells and swipes use real-frame timing so their locked lane and collider stay in sync.
+    if ((this->attackType == MO_TENT_ATTACK_RAKE) && GameInteractor_SecondCollisionUpdate()) {
+        BossMo_UpdateTentCollisionState(this, play);
+        return;
+    }
+
+    // Resolve the previous collision pass before the attack timer can expire and discard a last-frame hit.
+    if ((this->attackType == MO_TENT_ATTACK_RAKE) &&
+        (this->tentCollider.base.atFlags & (AT_HIT | AT_BOUNCED))) {
+        BossMoRiptide_HandleRakeContact(this, play);
+    }
+
     SkinMatrix_Vec3fMtxFMultXYZW(&play->viewProjectionMtxF, &this->tentPos[40], &this->tentTipPos,
                                  &this->actor.projectedW);
     osSyncPrintf("MO : Move mode = <%d>\n", this->work[MO_TENT_ACTION_STATE]);
@@ -3835,8 +5466,9 @@ void BossMo_UpdateTent(Actor* thisx, PlayState* play) {
     Math_ApproachF(&this->tentPulse, 0.2f, 0.5f, 0.01f);
     if (!GameInteractor_SecondCollisionUpdate() &&
         (this->work[MO_TENT_ACTION_STATE] == MO_TENT_SWING)) {
+        bool layeredTactician = BossMoFightManager_CanLayerTacticianAttack(this);
         bool relayBlocked = BossMoFightManager_OtherTentHasLink(this) ||
-                            BossMoFightManager_HasOtherDangerousTent(this) ||
+                            (BossMoFightManager_HasOtherDangerousTent(this) && !layeredTactician) ||
                             BossMoFightManager_IsPunishActive(play) ||
                             (sBossMoFightManager.phaseTransitionTimer != 0);
 
@@ -4123,7 +5755,7 @@ void BossMo_DrawCore(Actor* thisx, PlayState* play) {
     BossMo* core = BossMo_GetCore(this);
     BossMo* tent1 = (core->tent1 != NULL) ? core->tent1 : core;
     bool isPresentationOwner = BossMoFightManager_IsPresentationOwner(core);
-    bool isStrikerCore = BossMo_IsStrikerTent(core->tent1);
+    bool isTacticianCore = BossMo_IsTacticianCore(core);
 
     OPEN_DISPS(play->state.gfxCtx);
     if (isPresentationOwner && (this->actor.world.pos.y > MO_WATER_LEVEL(play))) {
@@ -4145,7 +5777,7 @@ void BossMo_DrawCore(Actor* thisx, PlayState* play) {
         Matrix_RotateZ(this->work[MO_TENT_MOVE_TIMER] * 0.8f, MTXMODE_APPLY);
         gSPMatrix(POLY_XLU_DISP++, MATRIX_NEWMTX(play->state.gfxCtx), G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
 
-        if (isStrikerCore) {
+        if (isTacticianCore) {
             gDPSetPrimColor(POLY_XLU_DISP++, 0x80, 0x80, 180, 255, 210, (s8)this->baseAlpha);
         } else {
             gDPSetPrimColor(POLY_XLU_DISP++, 0x80, 0x80, 255, 255, 255, (s8)this->baseAlpha);
@@ -4157,14 +5789,14 @@ void BossMo_DrawCore(Actor* thisx, PlayState* play) {
 
         gDPPipeSync(POLY_XLU_DISP++);
 
-        if (isStrikerCore) {
+        if (isTacticianCore) {
             gDPSetEnvColor(POLY_XLU_DISP++, 0, 210, 120, 128);
         } else {
             gDPSetEnvColor(POLY_XLU_DISP++, 0, 220, 255, 128);
         }
         if ((this->work[MO_CORE_DMG_FLASH_TIMER] % 2) != 0) {
             gDPSetPrimColor(POLY_XLU_DISP++, 0x80, 0x80, 255, 60, 0, 255);
-        } else if (isStrikerCore) {
+        } else if (isTacticianCore) {
             gDPSetPrimColor(POLY_XLU_DISP++, 0x80, 0x80, 180, 255, 210, 255);
         } else {
             gDPSetPrimColor(POLY_XLU_DISP++, 0x80, 0x80, 255, 255, 255, 255);
@@ -4260,33 +5892,21 @@ void BossMo_DrawCore(Actor* thisx, PlayState* play) {
 void BossMo_DrawTent(Actor* thisx, PlayState* play) {
     s32 pad;
     BossMo* this = (BossMo*)thisx;
-    bool isStriker = BossMo_IsStrikerTent(this);
     u16 scroll;
 
     OPEN_DISPS(play->state.gfxCtx);
     Gfx_SetupDL_25Opa(play->state.gfxCtx);
-    if (isStriker) {
-        gDPSetPrimColor(POLY_OPA_DISP++, 0, 0, 180, 255, 210, (s8)(this->baseAlpha * 1.5f));
-        gDPSetEnvColor(POLY_OPA_DISP++, 100, 180, 120, 0);
-    } else {
-        gDPSetPrimColor(POLY_OPA_DISP++, 0, 0, 255, 255, 255, (s8)(this->baseAlpha * 1.5f));
-        gDPSetEnvColor(POLY_OPA_DISP++, 150, 150, 150, 0);
-    }
+    gDPSetPrimColor(POLY_OPA_DISP++, 0, 0, 255, 255, 255, (s8)(this->baseAlpha * 1.5f));
+    gDPSetEnvColor(POLY_OPA_DISP++, 150, 150, 150, 0);
 
     Gfx_SetupDL_25Xlu(play->state.gfxCtx);
     gSPSegment(POLY_XLU_DISP++, 0x08,
                Gfx_TwoTexScrollEx(play->state.gfxCtx, 0, this->work[MO_TENT_BASE_TEX1_X],
                                   this->work[MO_TENT_BASE_TEX1_Y], 32, 32, 1, this->work[MO_TENT_BASE_TEX2_X],
                                   this->work[MO_TENT_BASE_TEX2_Y], 32, 32, 1, 1, 1, 1));
-    if (isStriker) {
-        gDPSetPrimColor(POLY_XLU_DISP++, 0xFF, 0xFF, 180, 255, 210,
-                        (s8)((this->baseAlpha * 12.0f) / 10.0f));
-        gDPSetEnvColor(POLY_XLU_DISP++, 0, 180, 100, (s8)this->baseAlpha);
-    } else {
-        gDPSetPrimColor(POLY_XLU_DISP++, 0xFF, 0xFF, 200, 255, 255,
-                        (s8)((this->baseAlpha * 12.0f) / 10.0f));
-        gDPSetEnvColor(POLY_XLU_DISP++, 0, 100, 255, (s8)this->baseAlpha);
-    }
+    gDPSetPrimColor(POLY_XLU_DISP++, 0xFF, 0xFF, 200, 255, 255,
+                    (s8)((this->baseAlpha * 12.0f) / 10.0f));
+    gDPSetEnvColor(POLY_XLU_DISP++, 0, 100, 255, (s8)this->baseAlpha);
     scroll = (s16)(Math_SinS(this->work[MO_TENT_VAR_TIMER] * 0xB00) * 30.0f) + 350;
     gSPTexture(POLY_XLU_DISP++, scroll, scroll, 0, G_TX_RENDERTILE, G_ON);
 

@@ -56,4 +56,15 @@ typedef enum {
     ENBB_KILL_TRAIL = 11
 } EnBbType;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void EnBb_KillFlameTrailImmediate(EnBb* enBb, PlayState* play);
+void EnBb_ActivateRedImmediately(EnBb* enBb, PlayState* play);
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif

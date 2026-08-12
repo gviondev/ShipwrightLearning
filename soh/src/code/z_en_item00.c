@@ -1668,6 +1668,10 @@ void Item_DropCollectibleRandom(PlayState* play, Actor* fromActor, Vec3f* spawnP
         return;
     }
 
+    if (fromActor != NULL && (fromActor->dropFlag & ACTOR_DROP_FLAG_NO_DROP)) {
+        return;
+    }
+
     if (fromActor != NULL) {
         if (fromActor->dropFlag) {
             if (fromActor->dropFlag & 0x01) {

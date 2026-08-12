@@ -85,7 +85,7 @@ typedef struct BossMo {
     /* 0x01C8 */ f32 waterLevelMod;
     /* 0x01CC */ s16 baseBubblesTimer;
     /* 0x01CE */ s16 attackAngleMod;
-    /* 0x01D0 */ u8 unk_1D0; // unused?
+    /* 0x01D0 */ u8 attackType;
     /* 0x01D1 */ u8 drawActor;
     /* 0x01D2 */ u8 linkHitTimer;
     /* 0x01D4 */ Vec3f targetPos;

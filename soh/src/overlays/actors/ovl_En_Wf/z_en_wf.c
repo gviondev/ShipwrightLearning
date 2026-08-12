@@ -425,6 +425,16 @@ void EnWf_SetupWait(EnWf* this) {
     EnWf_SetupAction(this, EnWf_Wait);
 }
 
+void EnWf_ActivateImmediately(EnWf* this) {
+    this->actor.world.pos.y = this->actor.home.pos.y;
+    this->actor.scale.y = this->actor.scale.x;
+    this->actor.velocity.y = 0.0f;
+    this->actor.gravity = -2.0f;
+    this->actor.flags |= ACTOR_FLAG_ATTENTION_ENABLED;
+    this->actor.shape.shadowScale = 70.0f;
+    EnWf_SetupWait(this);
+}
+
 void EnWf_Wait(EnWf* this, PlayState* play) {
     Player* player;
     s32 pad;
