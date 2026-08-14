@@ -17,7 +17,9 @@ typedef enum {
     /* 0x6A */ TW_FIRE_SIEGE_ZONE,
     /* 0x6B */ TW_ICE_SIEGE_ZONE,
     /* 0x6C */ TW_FIRE_WARNING_SIGIL,
-    /* 0x6D */ TW_ICE_WARNING_SIGIL
+    /* 0x6D */ TW_ICE_WARNING_SIGIL,
+    /* 0x6E */ TW_FIRE_SUMMON_SIGIL,
+    /* 0x6F */ TW_ICE_SUMMON_SIGIL
 } BossTwType;
 
 typedef enum {
@@ -189,7 +191,19 @@ typedef struct BossTw {
     /* 0x0618 */ Vec3f attackPortalPos;
     /* 0x0624 */ Vec3f subCamEye2;
     /* 0x0630 */ Vec3f subCamAt2;
-    /* 0x063C */ char unused_63C[0x18];
+    /* 0x063C */ u8 minefieldSecondWaveFired;
+    /* 0x063D */ u8 conjurationSeen;
+    /* 0x063E */ s16 conjurationCooldown;
+    /* 0x0640 */ u8 fusedChainCount;
+    /* 0x0641 */ u8 fusedChainShot;
+    /* 0x0642 */ u8 fusedProjectileLastElement;
+    /* 0x0643 */ u8 fusedProjectileElementStreak;
+    /* 0x0644 */ u8 fusedChainQueued;
+    /* 0x0645 */ u8 fusedShotElement;
+    /* 0x0646 */ u8 fusedShotIsBreaker;
+    /* 0x0647 */ u8 fusedShotPackageSequence;
+    /* 0x0648 */ u8 fusedShotActive;
+    /* 0x0649 */ char unused_649[0xB];
     /* 0x0654 */ Vec3f subCamEyeStep;
     /* 0x0660 */ Vec3f subCamAtStep;
     /* 0x066C */ Vec3f subCamEyeTarget;

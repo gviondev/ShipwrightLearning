@@ -108,7 +108,9 @@ HyperSpeed::Health GetBossHealth(Actor* actor) {
         case ACTOR_BOSS_SST:
             return GetOwnerHealth(ACTOR_BOSS_SST, 36, true, -1);
         case ACTOR_BOSS_TW:
-            return GetOwnerHealth(ACTOR_BOSS_TW, 24, true, 2);
+            // Twinrova's enhanced fused phase has 32 HP. Keeping the vanilla 24 here flattened Hyper's speed curve
+            // through the first quarter of the fight and made its low-health escalation disagree with boss logic.
+            return GetOwnerHealth(ACTOR_BOSS_TW, 32, true, 2);
         case ACTOR_BOSS_GANON:
             return GetGanonOwnerHealth();
         case ACTOR_BOSS_GANON2:

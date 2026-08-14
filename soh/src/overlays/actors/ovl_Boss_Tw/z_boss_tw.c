@@ -47,6 +47,10 @@
 #define TWINROVA_PHASE_ONE_BODY_SEPARATION 150.0f
 #define TWINROVA_PHASE_ONE_SEPARATION_HEIGHT 140.0f
 #define TWINROVA_PHASE_ONE_SEPARATION_STEP 12.0f
+// The phase-one formations now routinely place the redirect target on an opposite pillar. Keep the reflected hit
+// envelope aligned with the sister's visible cylinder instead of the old, much narrower root-point test.
+#define TWINROVA_BEAM_REDIRECT_TARGET_RADIUS 70.0f
+#define TWINROVA_BEAM_REDIRECT_TARGET_HEIGHT 80.0f
 #define TWINROVA_SPIN_TELL_TIME 16
 #define TWINROVA_SPIN_ACTIVE_TIME 20
 #define TWINROVA_FUSED_SPIN_RECOVERY_TIME 12
@@ -73,6 +77,23 @@
 #define TWINROVA_CURVE_PITCH_STEP 0xC0
 #define TWINROVA_PHASE_ONE_SPECIAL_CHANCE 0.55f
 #define TWINROVA_ESCALATED_PHASE_ONE_SPECIAL_CHANCE 0.70f
+#define TWINROVA_CONJURATION_CHANNEL_TIME 75
+#define TWINROVA_CONJURATION_OPENING_PULSE_TIME 16
+#define TWINROVA_CONJURATION_BUILDUP_PULSE_TIME 10
+#define TWINROVA_CONJURATION_FINAL_PULSE_TIME 5
+#define TWINROVA_CONJURATION_FINAL_WINDOW 24
+#define TWINROVA_CONJURATION_RING_SCALE 0.22f
+#define TWINROVA_CONJURATION_RING_EDGE_SCALE 0.14f
+#define TWINROVA_CONJURATION_HOVER_HEIGHT 185.0f
+#define TWINROVA_CONJURATION_ORBIT_SPEED 0x500
+#define TWINROVA_CONJURATION_ORBIT_HEIGHT 26.0f
+#define TWINROVA_CONJURATION_APPROACH_XZ_STEP 42.0f
+#define TWINROVA_CONJURATION_APPROACH_Y_STEP 28.0f
+#define TWINROVA_CONJURATION_APPROACH_DISTANCE 18.0f
+#define TWINROVA_CONJURATION_SUPPORT_MIN_RADIUS 320.0f
+#define TWINROVA_CONJURATION_STAGE_APPROACH 0
+#define TWINROVA_CONJURATION_STAGE_START 1
+#define TWINROVA_CONJURATION_STAGE_LOOP 2
 #define TWINROVA_SPIRAL_RADIUS 650.0f
 #define TWINROVA_SPIRAL_HEIGHT 440.0f
 #define TWINROVA_SPIRAL_ANGULAR_SPEED 0x100
@@ -154,11 +175,25 @@
 #define TWINROVA_UPPER_FLOOR_MIN_Y 190.0f
 #define TWINROVA_SUMMON_FRUSTUM_MARGIN 1.1f
 #define TWINROVA_ATTACK_FRUSTUM_MARGIN 0.9f
+#define TWINROVA_FUSED_CONJURATION_COOLDOWN 240
+#define TWINROVA_FINAL_FUSED_CONJURATION_COOLDOWN 200
+#define TWINROVA_BERSERK_FUSED_CONJURATION_COOLDOWN 150
+#define TWINROVA_FUSED_CONJURATION_CHANNEL_TIME 40
+#define TWINROVA_FINAL_FUSED_CONJURATION_CHANNEL_TIME 32
+#define TWINROVA_BERSERK_FUSED_CONJURATION_CHANNEL_TIME 26
+#define TWINROVA_FUSED_CONJURATION_WAVE_GAP 8
+#define TWINROVA_FUSED_CONJURATION_OPENING_PULSE_TIME 8
+#define TWINROVA_FUSED_CONJURATION_FINAL_PULSE_TIME 4
+#define TWINROVA_FUSED_CONJURATION_FINAL_WINDOW 16
+#define TWINROVA_FUSED_CONJURATION_RING_SCALE 0.055f
+#define TWINROVA_FUSED_CONJURATION_RING_EDGE_SCALE 0.06f
 #define TWINROVA_BREAKER_SEQUENCE_COOLDOWN 180
-#define TWINROVA_FINAL_CYCLE_HEALTH 12
+#define TWINROVA_FINAL_CYCLE_HEALTH 16
 #define TWINROVA_FINAL_BREAKER_SEQUENCE_COOLDOWN 150
-#define TWINROVA_BREAKER_SEQUENCE_SHOTS 6
+#define TWINROVA_BERSERK_BREAKER_SEQUENCE_COOLDOWN 115
+#define TWINROVA_BREAKER_SEQUENCE_SHOTS 7
 #define TWINROVA_BREAKER_SHOT_INDEX 2
+#define TWINROVA_BREAKER_SECOND_SHOT_INDEX 5
 #define TWINROVA_BREAKER_TELL_TIME 30
 #define TWINROVA_BREAKER_SHOT_GAP 8
 #define TWINROVA_BREAKER_RECOVERY_GAP 16
@@ -168,6 +203,7 @@
 #define TWINROVA_BREAKER_TRAIL_INTERVAL 6
 #define TWINROVA_CYCLONE_COOLDOWN 210
 #define TWINROVA_FINAL_CYCLONE_COOLDOWN 170
+#define TWINROVA_BERSERK_CYCLONE_COOLDOWN 130
 #define TWINROVA_CYCLONE_WINDUP_TIME 24
 #define TWINROVA_CYCLONE_ACTIVE_TIME 176
 #define TWINROVA_CYCLONE_RECOVERY_TIME 12
@@ -175,11 +211,20 @@
 #define TWINROVA_CYCLONE_FLIGHT_HEIGHT 480.0f
 #define TWINROVA_CYCLONE_ANGULAR_SPEED 0x200
 #define TWINROVA_CYCLONE_TILT 0x1800
-#define TWINROVA_CYCLONE_SIGIL_HEIGHT 900.0f
-#define TWINROVA_CYCLONE_SIGIL_SCALE 0.48f
+#define TWINROVA_CYCLONE_ARENA_CEILING_Y 800.0f
+#define TWINROVA_CYCLONE_SIGIL_CEILING_CLEARANCE 150.0f
+#define TWINROVA_CYCLONE_SIGIL_HEIGHT \
+    (TWINROVA_CYCLONE_ARENA_CEILING_Y - TWINROVA_CYCLONE_SIGIL_CEILING_CLEARANCE)
+#define TWINROVA_CYCLONE_SIGIL_SCALE 0.30f
+#define TWINROVA_CYCLONE_SIGIL_INNER_SCALE 0.62f
+#define TWINROVA_CYCLONE_SIGIL_APERTURE_SCALE 0.24f
+#define TWINROVA_CYCLONE_SIGIL_RAYS_SCALE 0.72f
+#define TWINROVA_CYCLONE_RAIN_SOURCE_RADIUS 520.0f
+#define TWINROVA_CYCLONE_RAIN_SOURCE_OFFSET -10.0f
 #define TWINROVA_CYCLONE_RAIN_OPENING_DELAY 8
 #define TWINROVA_CYCLONE_RAIN_INTERVAL 5
 #define TWINROVA_FINAL_CYCLONE_RAIN_INTERVAL 4
+#define TWINROVA_BERSERK_CYCLONE_RAIN_INTERVAL 3
 #define TWINROVA_CYCLONE_RAIN_STOP_TIME ((s16)TWINROVA_RAIN_FLIGHT_FRAMES + 8)
 #define TWINROVA_CYCLONE_RAIN_INITIAL_FALL_SPEED -2.0f
 #define TWINROVA_CYCLONE_RAIN_PROJECTILE_SCALE 0.018f
@@ -190,14 +235,22 @@
 #define TWINROVA_CYCLONE_RAIN_IMPACT_RADIUS 60
 #define TWINROVA_CYCLONE_RAIN_IMPACT_EFFECTS 3
 #define TWINROVA_CYCLONE_RAIN_SPAWN_EFFECTS 2
-#define TWINROVA_CYCLONE_RAIN_MAX_PROJECTILES 32
-#define TWINROVA_FINAL_CYCLONE_RAIN_MAX_PROJECTILES 40
+// Each rain strike owns both a flying blast and a floor marker. Budget the complete pair rather than just the blast:
+// the renderer must draw both, and an uncapped marker half can exhaust its matrix/command pool before actor allocation
+// itself fails.
+#define TWINROVA_CYCLONE_RAIN_MAX_ACTORS 48
+#define TWINROVA_CYCLONE_STORM_BEAT 32
+#define TWINROVA_CYCLONE_RUMBLE_BEAT 16
+#define TWINROVA_CYCLONE_LIGHTNING_WINDOW 3
 #define TWINROVA_FALSE_CHARGE_COOLDOWN 180
 #define TWINROVA_FINAL_FALSE_CHARGE_COOLDOWN 150
+#define TWINROVA_BERSERK_FALSE_CHARGE_COOLDOWN 115
 #define TWINROVA_FALSE_CHARGE_REPOSITION_TIME 8
 #define TWINROVA_FALSE_CHARGE_MOVE_STEP 140.0f
+#define TWINROVA_BERSERK_FALSE_CHARGE_MOVE_STEP 180.0f
 #define TWINROVA_MINEFIELD_COOLDOWN 360
 #define TWINROVA_FINAL_MINEFIELD_COOLDOWN 300
+#define TWINROVA_BERSERK_MINEFIELD_COOLDOWN 240
 #define TWINROVA_MINEFIELD_WINDUP_TIME 24
 #define TWINROVA_MINEFIELD_LAUNCH_GAP 3
 #define TWINROVA_MINEFIELD_CAST_READY 0
@@ -205,21 +258,32 @@
 #define TWINROVA_MINEFIELD_CAST_RECOVER 2
 #define TWINROVA_MINEFIELD_CAST_GAP 3
 #define TWINROVA_MINEFIELD_FLIGHT_TIME 36
-#define TWINROVA_MINEFIELD_SETTLE_TIME 220
+#define TWINROVA_MINEFIELD_SETTLE_TIME 150
 #define TWINROVA_MINEFIELD_DETONATE_TIME 10
 #define TWINROVA_MINEFIELD_FADE_TIME 18
-#define TWINROVA_MINEFIELD_DETONATE_STAGGER 8
-#define TWINROVA_MINEFIELD_FOLLOWUP_SHOTS 3
+#define TWINROVA_MINEFIELD_DETONATE_STAGGER 15
+#define TWINROVA_MINEFIELD_INITIAL_MINE_COUNT 3
+#define TWINROVA_MINEFIELD_SECOND_WAVE_COUNT 2
+#define TWINROVA_MINEFIELD_SECOND_WAVE_FUSE_TIME 52
+#define TWINROVA_MINEFIELD_SECOND_WAVE_STAGGER 12
+#define TWINROVA_MINEFIELD_FOLLOWUP_SHOTS 4
 #define TWINROVA_MINEFIELD_FOLLOWUP_GAP 6
-#define TWINROVA_MINEFIELD_POST_PACKAGE_FUSE_TIME 70
-#define TWINROVA_MINEFIELD_POST_PACKAGE_STAGGER 16
+#define TWINROVA_MINEFIELD_POST_PACKAGE_FUSE_TIME 48
+#define TWINROVA_MINEFIELD_POST_PACKAGE_STAGGER 12
 #define TWINROVA_MINEFIELD_FIRE_POOL_RADIUS 105.0f
 #define TWINROVA_MINEFIELD_ICE_PATCH_RADIUS 115.0f
 #define TWINROVA_MINEFIELD_BURST_HEIGHT 75.0f
-#define TWINROVA_MINEFIELD_POOL_TIME 48
+#define TWINROVA_MINEFIELD_POOL_TIME 72
 #define TWINROVA_MINEFIELD_POOL_FADE_TIME 12
-#define TWINROVA_MINEFIELD_MAX_ACTIVE_MINES 4
-#define TWINROVA_MINEFIELD_MAX_POOL_ACTORS 2
+#define TWINROVA_MINEFIELD_MAX_ACTIVE_MINES 6
+#define TWINROVA_MINEFIELD_MAX_POOL_ACTORS 3
+#define TWINROVA_MINEFIELD_ARM_START_HEIGHT 140.0f
+#define TWINROVA_MINEFIELD_ARM_END_HEIGHT 30.0f
+#define TWINROVA_MINEFIELD_FUSE_WARNING_TIME 90
+#define TWINROVA_MINEFIELD_FUSE_URGENT_TIME 45
+#define TWINROVA_MINEFIELD_FUSE_FINAL_TIME 20
+#define TWINROVA_MINEFIELD_WARNING_PUSH_INTERVAL 6
+#define TWINROVA_MINEFIELD_WARNING_PUSH_SPEED 0.8f
 #define TWINROVA_MINEFIELD_FINAL_LIGHT_PULSE_PEAK_TIME 6
 #define TWINROVA_MINEFIELD_FINAL_LIGHT_PULSE_TIME 12
 #define TWINROVA_MINEFIELD_ORB_FLOAT_SCALE 5.0f
@@ -228,18 +292,29 @@
 #define TWINROVA_MINEFIELD_DETONATION_LIGHTNING_SCALE 4.2f
 #define TWINROVA_FUSED_ATTACK_ANIM_MORPH_TIME -2.0f
 #define TWINROVA_FUSED_ATTACK_ANIM_SPEED 1.2f
+#define TWINROVA_BERSERK_FUSED_ATTACK_ANIM_SPEED 1.35f
 #define TWINROVA_FUSED_CHARGE_ANIM_MORPH_TIME -3.0f
 #define TWINROVA_FUSED_CHARGE_ANIM_SPEED 1.15f
+#define TWINROVA_BERSERK_FUSED_CHARGE_ANIM_SPEED 1.3f
 #define TWINROVA_FUSED_HOVER_ANIM_MORPH_TIME -3.0f
 #define TWINROVA_FALSE_CHARGE_ANIM_SPEED 1.3f
+#define TWINROVA_BERSERK_FALSE_CHARGE_ANIM_SPEED 1.4f
 #define TWINROVA_CYCLONE_HOVER_SPEED 1.25f
+#define TWINROVA_BERSERK_CYCLONE_HOVER_SPEED 1.4f
 #define TWINROVA_FUSED_NORMAL_WEIGHT 30
 #define TWINROVA_FINAL_FUSED_NORMAL_WEIGHT 25
+#define TWINROVA_BERSERK_FUSED_NORMAL_WEIGHT 15
 #define TWINROVA_FUSED_FALSE_CHARGE_WEIGHT 15
 #define TWINROVA_FUSED_BREAKER_WEIGHT 20
 #define TWINROVA_FUSED_MINEFIELD_WEIGHT 15
 #define TWINROVA_FUSED_CYCLONE_WEIGHT 20
+#define TWINROVA_FUSED_CONJURATION_WEIGHT 10
 #define TWINROVA_FINAL_FUSED_CYCLONE_WEIGHT 25
+#define TWINROVA_BERSERK_FUSED_FALSE_CHARGE_WEIGHT 15
+#define TWINROVA_BERSERK_FUSED_BREAKER_WEIGHT 25
+#define TWINROVA_BERSERK_FUSED_MINEFIELD_WEIGHT 20
+#define TWINROVA_BERSERK_FUSED_CYCLONE_WEIGHT 25
+#define TWINROVA_BERSERK_FUSED_CONJURATION_WEIGHT 15
 // Signature projectiles do not use the fused actor's charge-SFX work slot. Reuse it locally to remember that the
 // projectile crossed the plane through its committed aim point and is waiting one update for shield collision data.
 #define TWINROVA_SIGNATURE_PASSED_AIM PLAYED_CHRG_SFX
@@ -249,13 +324,20 @@
 // Projectile timers tick after their action while boss timers tick before it. Thirteen stored ticks guarantee that
 // both paths expose twelve complete controllable updates after the thaw tell before hostile pressure resumes.
 #define TWINROVA_FROZEN_ATTACK_GRACE 13
-#define TWINROVA_NORMAL_SHOT_RECOVERY 14
-#define TWINROVA_FINAL_NORMAL_SHOT_RECOVERY 10
+#define TWINROVA_NORMAL_SHOT_RECOVERY 10
+#define TWINROVA_FINAL_NORMAL_SHOT_RECOVERY 7
+#define TWINROVA_BERSERK_NORMAL_SHOT_RECOVERY 4
+#define TWINROVA_FUSED_CHAIN_CHANCE 0.55f
+#define TWINROVA_FINAL_FUSED_CHAIN_CHANCE 0.68f
+#define TWINROVA_BERSERK_FUSED_CHAIN_CHANCE 0.80f
+#define TWINROVA_FUSED_MAX_CHAIN_COUNT 1
 #define TWINROVA_NORMAL_BLAST_SPAWN_EFFECTS 24
 #define TWINROVA_SPECIAL_SHOT_RECOVERY 20
 #define TWINROVA_FINAL_SPECIAL_SHOT_RECOVERY 15
+#define TWINROVA_BERSERK_SPECIAL_SHOT_RECOVERY 10
 #define TWINROVA_ARRIVAL_WAIT 6
 #define TWINROVA_FINAL_ARRIVAL_WAIT 4
+#define TWINROVA_BERSERK_ARRIVAL_WAIT 2
 #define TWINROVA_SIEGE_TELEGRAPH_TIME 60
 #define TWINROVA_SIEGE_FINAL_WARNING_TIME 20
 #define TWINROVA_SIEGE_ACTIVE_TIME 240
@@ -331,7 +413,9 @@
 #define TWINROVA_STUN_DAMAGE_WARNING 8
 #define TWINROVA_GET_UP_RECOVERY 30
 #define TWINROVA_FINAL_GET_UP_RECOVERY 25
-#define TWINROVA_FUSED_MAX_HEALTH 24
+#define TWINROVA_FUSED_MAX_HEALTH 32
+#define TWINROVA_BERSERK_HEALTH (TWINROVA_FUSED_MAX_HEALTH / 3)
+#define TWINROVA_BERSERK_GET_UP_RECOVERY 20
 
 typedef enum {
     TWINROVA_MAGIC_ICE,
@@ -349,6 +433,7 @@ typedef enum {
     TWINROVA_PHASE_ONE_SPECIAL_CROSSFIRE = 1 << 1,
     TWINROVA_PHASE_ONE_SPECIAL_PRESSURE_TRIANGLE = 1 << 2,
     TWINROVA_PHASE_ONE_SPECIAL_PORTAL = 1 << 3,
+    TWINROVA_PHASE_ONE_SPECIAL_CONJURATION = 1 << 4,
 } TwinrovaPhaseOneSpecial;
 
 typedef enum {
@@ -357,6 +442,7 @@ typedef enum {
     TWINROVA_FUSED_ATTACK_BREAKER,
     TWINROVA_FUSED_ATTACK_MINEFIELD,
     TWINROVA_FUSED_ATTACK_CYCLONE,
+    TWINROVA_FUSED_ATTACK_CONJURATION,
     TWINROVA_FUSED_ATTACK_MAX,
 } TwinrovaFusedAttack;
 
@@ -367,6 +453,7 @@ typedef enum {
     TWINROVA_BLAST_SIEGE,
     TWINROVA_BLAST_BREAKER,
     TWINROVA_BLAST_LOWER_ROUTE,
+    TWINROVA_BLAST_CHAINED,
     TWINROVA_BLAST_MINEFIELD_FOLLOWUP,
     TWINROVA_BLAST_MINEFIELD,
     TWINROVA_BLAST_MINEFIELD_POOL,
@@ -385,6 +472,7 @@ typedef enum {
 // Minefield behavior so regular projectiles retain their original meanings.
 #define TWINROVA_MINE_DETONATION_ORDER TW_PLLR_IDX
 #define TWINROVA_MINE_FINAL_PULSE_PLAYED UNK_S8
+#define TWINROVA_MINE_HOVER_HEIGHT UNK_F9
 
 typedef enum {
     TWINROVA_MINEFIELD_SEQUENCE_NONE,
@@ -428,6 +516,7 @@ typedef struct {
     s16 actorId;
     u8 canFollowBetweenLevels;
     u8 offscreenTimer;
+    u8 element;
 } TwinrovaSummon;
 
 void BossTw_Init(Actor* thisx, PlayState* play);
@@ -473,6 +562,7 @@ void BossTw_BlastVolley(BossTw* this, PlayState* play);
 void BossTw_CrossfireVolley(BossTw* this, PlayState* play);
 void BossTw_SpiralBarrage(BossTw* this, PlayState* play);
 void BossTw_PortalReposition(BossTw* this, PlayState* play);
+void BossTw_ElementalConjuration(BossTw* this, PlayState* play);
 void BossTw_SetupTurnToPlayer(BossTw* this, PlayState* play);
 void BossTw_TurnToPlayer(BossTw* this, PlayState* play);
 void BossTw_TwinrovaUpdate(Actor* thisx, PlayState* play);
@@ -488,6 +578,8 @@ void BossTw_BlastIce(BossTw* this, PlayState* play);
 void BossTw_SiegeZoneUpdate(Actor* thisx, PlayState* play);
 void BossTw_SiegeZoneDraw(Actor* thisx, PlayState* play);
 void BossTw_RainMarkerUpdate(Actor* thisx, PlayState* play);
+void BossTw_SummonMarkerUpdate(Actor* thisx, PlayState* play);
+void BossTw_SummonMarkerDraw(Actor* thisx, PlayState* play);
 void BossTw_DeathBall(BossTw* this, PlayState* play);
 void BossTw_DrawDeathBall(Actor* thisx, PlayState* play);
 void BossTw_TwinrovaStun(BossTw* this, PlayState* play);
@@ -498,23 +590,33 @@ void BossTw_TwinrovaBreakerSequence(BossTw* this, PlayState* play);
 void BossTw_TwinrovaCyclone(BossTw* this, PlayState* play);
 void BossTw_TwinrovaFalseCharge(BossTw* this, PlayState* play);
 void BossTw_TwinrovaMinefield(BossTw* this, PlayState* play);
+void BossTw_TwinrovaElementalConjuration(BossTw* this, PlayState* play);
 static void BossTw_TwinrovaMinefieldFollowup(BossTw* this, PlayState* play);
 void BossTw_TwinrovaSetupSpin(BossTw* this, PlayState* play);
 void BossTw_UpdateEffects(PlayState* play);
 
 static void BossTw_ResetShieldCharge(void);
 static void BossTw_ClearSummonedEnemies(PlayState* play);
+static void BossTw_DismissSummonedEnemies(PlayState* play);
 static void BossTw_ClearPhaseOneMagic(PlayState* play, s32 resolveSummonWarnings);
 static void BossTw_ClearSiegeZones(BossTw* owner, PlayState* play, s32 spawnEffects, s16 burstElement,
                                    s32 preserveMinefield);
 static void BossTw_CancelPhaseTwoMagic(BossTw* owner, PlayState* play, s32 preserveMinefield);
+static void BossTw_StopCycloneAmbience(BossTw* owner, PlayState* play);
+static void BossTw_UpdateCycloneEnvironment(BossTw* owner, PlayState* play);
+static void BossTw_UpdateCycloneActiveFeedback(BossTw* owner, PlayState* play);
 static s32 BossTw_HasActiveGroundPressure(PlayState* play);
 static s32 BossTw_CountActiveMinefieldPools(PlayState* play, BossTw* owner);
 static void BossTw_TwinrovaSetupBreakerSequence(BossTw* this, PlayState* play);
 static void BossTw_SetupAmbushVolley(BossTw* this, PlayState* play);
 static void BossTw_SetupPressureTriangleHandoffVolley(BossTw* this, PlayState* play);
 static void BossTw_SetupPillarDiveRetreatVolley(BossTw* this, PlayState* play);
-static void BossTw_SelectTwinrovaBlastType(void);
+static void BossTw_StartElementalConjuration(BossTw* this, BossTw* otherTw, PlayState* play);
+static void BossTw_CancelElementalConjuration(BossTw* this, PlayState* play);
+static void BossTw_ClearConjurationMarkers(BossTw* owner, PlayState* play, s16 element);
+static void BossTw_CancelFusedElementalConjuration(BossTw* this, PlayState* play);
+static void BossTw_SelectTwinrovaBlastType(BossTw* this);
+static s32 BossTw_IsCurrentFusedPackageBreakerShot(BossTw* this);
 static void BossTw_PrepareSisterForMerge(BossTw* sister);
 static void BossTw_SpawnMagicLaunchEffects(PlayState* play, Vec3f* spawnPos, s16 blastType, s16 count);
 static void BossTw_ShowFailedMagicCast(PlayState* play, Vec3f* castPos, TwinrovaMagicElement element);
@@ -522,6 +624,10 @@ static void BossTw_ClearPlayerBurn(PlayState* play);
 static void BossTw_UpdateMinefieldBlast(BossTw* this, PlayState* play);
 static void BossTw_DrawMinefieldFuse(BossTw* this, PlayState* play);
 static void BossTw_BeginMinefieldFade(BossTw* this);
+static void BossTw_GetMinefieldLandingPoint(BossTw* this, s16 index, Vec3f* point);
+static void BossTw_SpawnMinefieldSecondWave(BossTw* mine, PlayState* play);
+static s32 BossTw_IsFinalMinefieldDetonation(BossTw* mine, PlayState* play);
+f32 BossTw_GetFloorY(Vec3f* pos);
 
 const ActorInit Boss_Tw_InitVars = {
     ACTOR_BOSS_TW,
@@ -1093,13 +1199,25 @@ void BossTw_Init(Actor* thisx, PlayState* play2) {
     this->attackPortalActive = false;
     this->cycloneSeen = false;
     this->cycloneCooldown = 0;
+    this->conjurationSeen = false;
+    this->conjurationCooldown = 0;
     this->pendingFusedAttack = TWINROVA_FUSED_ATTACK_NORMAL;
     this->falseChargeCooldown = 0;
     this->minefieldCooldown = 0;
     this->minefieldSequenceState = TWINROVA_MINEFIELD_SEQUENCE_NONE;
     this->minefieldFollowupSuppressed = false;
+    this->minefieldSecondWaveFired = false;
     this->minefieldSeen = false;
     this->falseChargeSeen = false;
+    this->fusedChainCount = 0;
+    this->fusedChainShot = false;
+    this->fusedProjectileLastElement = 2;
+    this->fusedProjectileElementStreak = 0;
+    this->fusedChainQueued = false;
+    this->fusedShotElement = TWINROVA_MAGIC_ICE;
+    this->fusedShotIsBreaker = false;
+    this->fusedShotPackageSequence = 0;
+    this->fusedShotActive = false;
 
     if (this->actor.params >= TW_FIRE_BLAST) {
         // Blasts
@@ -1116,6 +1234,16 @@ void BossTw_Init(Actor* thisx, PlayState* play2) {
             this->collider.info.toucher.effect = 1;
         } else if (this->actor.params == TW_ICE_BLAST || this->actor.params == TW_ICE_BLAST_GROUND) {
             this->actionFunc = BossTw_BlastIce;
+        } else if (this->actor.params == TW_FIRE_SUMMON_SIGIL || this->actor.params == TW_ICE_SUMMON_SIGIL) {
+            // This is a purely presentational child of a channeling sister. Its parent owns the spell timer and kills
+            // the marker on interruption, keeping the floor tell readable without granting it hazard authority.
+            this->actor.update = BossTw_SummonMarkerUpdate;
+            this->actor.draw = BossTw_SummonMarkerDraw;
+            this->blastType = this->actor.params == TW_FIRE_SUMMON_SIGIL ? TWINROVA_MAGIC_FIRE : TWINROVA_MAGIC_ICE;
+            this->work[UNK_S8] = false;
+            this->workf[UNK_F17] = 0.0f;
+            this->workf[UNK_F18] = 0.0f;
+            return;
         } else if (this->actor.params == TW_FIRE_SIEGE_ZONE || this->actor.params == TW_ICE_SIEGE_ZONE) {
             this->actor.update = BossTw_SiegeZoneUpdate;
             this->actor.draw = BossTw_SiegeZoneDraw;
@@ -1377,6 +1505,9 @@ void BossTw_Destroy(Actor* thisx, PlayState* play) {
     } else if (thisx->params == TW_TWINROVA) {
         // During normal actor-context teardown the younger sisters are freed first. During a live debug/hook removal
         // they may still be active and contain unguarded controller references, so retire both ownership cases here.
+        if (this->actionFunc == BossTw_TwinrovaCyclone) {
+            BossTw_StopCycloneAmbience(this, play);
+        }
         BossTw_ReleaseEncounterControl(this, play);
         BossTw_KillRemainingSistersAndDeathballs(play);
         sKotakePtr = NULL;
@@ -1463,16 +1594,10 @@ static s32 BossTw_CanGroundHazardSummon(PlayState* play) {
         return true;
     }
 
-    // Normal fused blasts may also turn a missed shot into arena pressure. Signature sequences stay add-free so
-    // their shield and floor-pattern rules remain readable.
+    // Reinforcements belong to an explicit, readable ritual in both phases. Missed projectiles may still create
+    // elemental floor pressure, but they never silently promote that miss into an enemy wave.
     return sTwinrovaPtr->visible && sTwinrovaPtr->actor.colChkInfo.health > 0 &&
-           (sTwinrovaPtr->actionFunc == BossTw_TwinrovaArriveAtTarget ||
-            sTwinrovaPtr->actionFunc == BossTw_TwinrovaChargeBlast ||
-            sTwinrovaPtr->actionFunc == BossTw_TwinrovaShootBlast ||
-            sTwinrovaPtr->actionFunc == BossTw_TwinrovaDoneBlastShoot ||
-            sTwinrovaPtr->actionFunc == BossTw_TwinrovaFly ||
-            sTwinrovaPtr->actionFunc == BossTw_TwinrovaSpin ||
-            sTwinrovaPtr->actionFunc == BossTw_TwinrovaLaugh);
+           sTwinrovaPtr->actionFunc == BossTw_TwinrovaElementalConjuration;
 }
 
 static s32 BossTw_GetProjectedSummonPressure(PlayState* play) {
@@ -1483,10 +1608,10 @@ static s32 BossTw_GetProjectedSummonPressure(PlayState* play) {
         BossTw* groundBlast = (BossTw*)actor;
 
         if (actor->id == ACTOR_BOSS_TW && actor->update != NULL &&
-            (actor->params == TW_FIRE_BLAST_GROUND || actor->params == TW_ICE_BLAST_GROUND) &&
-            groundBlast->work[CAN_SHOOT]) {
-            // Reserve against the largest possible committed group. A soft cap deliberately permits one whole
-            // final group, but beam selection must account for the pressure that warning promises.
+            (actor->params == TW_KOTAKE || actor->params == TW_KOUME) &&
+            groundBlast->actionFunc == BossTw_ElementalConjuration && groundBlast->work[CAN_SHOOT]) {
+            // A channel has already promised one complete group. Include its worst-case size in every routine-pressure
+            // decision even though its custom marker is intentionally not an active ground hazard.
             projectedCount += TWINROVA_SUMMON_MAX_GROUP_SIZE;
         }
         actor = actor->next;
@@ -1539,6 +1664,20 @@ static s32 BossTw_IsActorInCameraFrustumWithMargin(PlayState* play, Actor* actor
     return fabsf(clipPos.x) <= horizontalLimit && fabsf(clipPos.y) <= clipW * margin;
 }
 
+static s32 BossTw_IsWorldPointInCameraFrustumWithMargin(PlayState* play, Vec3f* point, f32 margin) {
+    Vec3f clipPos;
+    f32 clipW;
+    f32 horizontalLimit;
+
+    SkinMatrix_Vec3fMtxFMultXYZW(&play->viewProjectionMtxF, point, &clipPos, &clipW);
+    if (clipW <= 0.0f) {
+        return false;
+    }
+
+    horizontalLimit = clipW * margin * Ship_GetExtendedAspectRatioMultiplier();
+    return fabsf(clipPos.x) <= horizontalLimit && fabsf(clipPos.y) <= clipW * margin;
+}
+
 static s32 BossTw_IsActorInCameraFrustum(PlayState* play, Actor* actor) {
     return BossTw_IsActorInCameraFrustumWithMargin(play, actor, TWINROVA_SUMMON_FRUSTUM_MARGIN);
 }
@@ -1564,8 +1703,48 @@ static void BossTw_ClearSummonedEnemies(PlayState* play) {
     }
 }
 
+static void BossTw_DismissSummonedEnemies(PlayState* play) {
+    TwinrovaSummon* summon;
+    Actor* actor;
+    Vec3f collapsePos;
+    s32 dismissedAny = false;
+    s32 i;
+
+    for (i = 0; i < ARRAY_COUNT(sTwinrovaSummons); i++) {
+        summon = &sTwinrovaSummons[i];
+        actor = BossTw_GetActiveSummon(play, summon);
+        if (actor == NULL) {
+            continue;
+        }
+
+        collapsePos = actor->world.pos;
+        collapsePos.y += 20.0f;
+        BossTw_AddRingEffect(play, &collapsePos, 0.65f, 0.08f, 210, summon->element, 1,
+                             ARRAY_COUNT(sEffects));
+        BossTw_SpawnMagicLaunchEffects(play, &collapsePos, summon->element, 3);
+        BossTw_KillSummonedEnemy(summon, actor, play);
+        dismissedAny = true;
+    }
+
+    if (dismissedAny) {
+        // One shared cue keeps a six-to-nine enemy reset satisfying without creating a stack of positional SFX.
+        Sfx_PlaySfxCentered(NA_SE_EN_TWINROBA_TRANSFORM);
+        Rumble_Request(0.0f, 70, 5, 3);
+    }
+}
+
 static void BossTw_ActivateSummonedEnemy(Actor* actor, PlayState* play) {
-    if (actor == NULL || actor->init != NULL || actor->update == NULL) {
+    if (actor == NULL || actor->update == NULL) {
+        return;
+    }
+
+    // Twinrova's summons remain part of the encounter even when a hit reaction or boss attack moves the camera away
+    // from them. In particular, Keese normally use update culling and could otherwise stop in mid-flight until they
+    // re-entered the camera volume. Reassert this for every registered summon so current and future summon types keep
+    // advancing their AI, animation, timers, and movement independently of the camera.
+    actor->flags |= ACTOR_FLAG_UPDATE_CULLING_DISABLED;
+
+    if (actor->init != NULL) {
         return;
     }
 
@@ -1630,7 +1809,7 @@ static void BossTw_UpdateSummonedEnemies(PlayState* play) {
     }
 }
 
-static s32 BossTw_RegisterSummon(Actor* actor, s32 canFollowBetweenLevels) {
+static s32 BossTw_RegisterSummon(Actor* actor, s32 canFollowBetweenLevels, TwinrovaMagicElement element) {
     TwinrovaSummon* summon;
     s32 i;
 
@@ -1641,6 +1820,7 @@ static s32 BossTw_RegisterSummon(Actor* actor, s32 canFollowBetweenLevels) {
             summon->actorId = actor->id;
             summon->canFollowBetweenLevels = canFollowBetweenLevels;
             summon->offscreenTimer = 0;
+            summon->element = element;
             return true;
         }
     }
@@ -1649,7 +1829,8 @@ static s32 BossTw_RegisterSummon(Actor* actor, s32 canFollowBetweenLevels) {
 }
 
 static s32 BossTw_SpawnSummonedEnemy(PlayState* play, Vec3f* origin, TwinrovaMagicElement element, s16 actorId,
-                                      s16 params, f32 heightOffset, f32 spawnRadius, s32 canFollowBetweenLevels) {
+                                      s16 params, f32 heightOffset, f32 spawnRadius, s32 canFollowBetweenLevels,
+                                      s32 showSpawnEffects) {
     Player* player = GET_PLAYER(play);
     Actor* actor;
     Vec3f spawnPos = *origin;
@@ -1696,7 +1877,7 @@ static s32 BossTw_SpawnSummonedEnemy(PlayState* play, Vec3f* origin, TwinrovaMag
     actor->dropFlag |= ACTOR_DROP_FLAG_NO_DROP;
     BossTw_ActivateSummonedEnemy(actor, play);
 
-    if (!BossTw_RegisterSummon(actor, canFollowBetweenLevels)) {
+    if (!BossTw_RegisterSummon(actor, canFollowBetweenLevels, element)) {
         if (actor->id == ACTOR_EN_BB) {
             EnBb_KillFlameTrailImmediate((EnBb*)actor, play);
         }
@@ -1704,16 +1885,26 @@ static s32 BossTw_SpawnSummonedEnemy(PlayState* play, Vec3f* origin, TwinrovaMag
         return false;
     }
 
-    // Resolve the warning at each actual formation point, especially for immediately activated elite enemies.
-    BossTw_SpawnMagicLaunchEffects(play, &spawnPos, element,
-                                   actorId == ACTOR_EN_BB || actorId == ACTOR_EN_WF ? 8 : 4);
+    if (showSpawnEffects) {
+        // Ground-hazard and fused rituals resolve at their actual formation points. Phase-one Conjuration deliberately
+        // hides those individual pops inside its much larger central elemental eruption.
+        BossTw_SpawnMagicLaunchEffects(play, &spawnPos, element,
+                                       actorId == ACTOR_EN_BB || actorId == ACTOR_EN_WF ? 8 : 4);
+    }
     return true;
 }
 
 static Vec3f BossTw_GetSummonFormationPos(Vec3f* origin, s16 baseAngle, s32 index, s32 count, f32 radius) {
     Vec3f spawnPos = *origin;
-    s16 angle = baseAngle + (s16)((0x10000 / count) * index);
+    s16 angle;
 
+    if (count <= 1) {
+        // A singleton has no formation to describe. Offsetting it by an arbitrary angle made Wolfos, Freezards, and
+        // Red Bubbles visibly emerge beside the ritual that advertised their exact center point.
+        return spawnPos;
+    }
+
+    angle = baseAngle + (s16)((0x10000 / count) * index);
     spawnPos.x += Math_SinS(angle) * radius;
     spawnPos.z += Math_CosS(angle) * radius;
     return spawnPos;
@@ -1736,21 +1927,26 @@ static Vec3f BossTw_GetGroundSummonFormationPos(PlayState* play, Vec3f* origin, 
     return spawnPos;
 }
 
-static s32 BossTw_SpawnElementalKeese(PlayState* play, Vec3f* origin, TwinrovaMagicElement element) {
+static s32 BossTw_SpawnElementalKeese(PlayState* play, Vec3f* origin, TwinrovaMagicElement element,
+                                       s32 showSpawnEffects) {
     s16 params = element == TWINROVA_MAGIC_FIRE ? KEESE_FIRE_FLY : KEESE_ICE_FLY;
 
-    return BossTw_SpawnSummonedEnemy(play, origin, element, ACTOR_EN_FIREFLY, params, 75.0f, 18.0f, true);
+    return BossTw_SpawnSummonedEnemy(play, origin, element, ACTOR_EN_FIREFLY, params, 75.0f, 18.0f, true,
+                                     showSpawnEffects);
 }
 
-static s32 BossTw_SpawnElementalGroundEnemy(PlayState* play, Vec3f* origin, TwinrovaMagicElement element) {
+static s32 BossTw_SpawnElementalGroundEnemy(PlayState* play, Vec3f* origin, TwinrovaMagicElement element,
+                                             s32 showSpawnEffects) {
     if (element == TWINROVA_MAGIC_FIRE) {
-        return BossTw_SpawnSummonedEnemy(play, origin, element, ACTOR_EN_BW, 0, 0.0f, 12.0f, false);
+        return BossTw_SpawnSummonedEnemy(play, origin, element, ACTOR_EN_BW, 0, 0.0f, 12.0f, false,
+                                         showSpawnEffects);
     }
-    return BossTw_SpawnSummonedEnemy(play, origin, element, ACTOR_EN_FZ, 0, 0.0f, 0.0f, false);
+    return BossTw_SpawnSummonedEnemy(play, origin, element, ACTOR_EN_FZ, 0, 0.0f, 0.0f, false,
+                                     showSpawnEffects);
 }
 
 static s32 BossTw_SpawnSummonGroup(PlayState* play, Vec3f* origin, TwinrovaMagicElement element,
-                                    TwinrovaSummonGroup group) {
+                                    TwinrovaSummonGroup group, s32 showSpawnEffects) {
     Vec3f spawnPos;
     s16 baseAngle;
     s32 count;
@@ -1758,8 +1954,8 @@ static s32 BossTw_SpawnSummonGroup(PlayState* play, Vec3f* origin, TwinrovaMagic
     s32 expectedCount = 0;
     s32 spawnedCount = 0;
 
-    // The soft-limit decision was reserved when the visible warning began, so simultaneous warned groups remain
-    // valid here. Breaker and Siege never authorize this path.
+    // The dedicated ritual has already validated its crowd budget before presenting the marker. Revalidate ownership
+    // here so an interrupted or phase-transitioned caster cannot spend a stale summon promise.
     if (!BossTw_CanGroundHazardSummon(play)) {
         BossTw_ShowFailedMagicCast(play, origin, element);
         return 0;
@@ -1771,7 +1967,7 @@ static s32 BossTw_SpawnSummonGroup(PlayState* play, Vec3f* origin, TwinrovaMagic
             expectedCount = 3;
             for (i = 0; i < 3; i++) {
                 spawnPos = BossTw_GetSummonFormationPos(origin, baseAngle, i, 3, TWINROVA_SUMMON_FORMATION_RADIUS);
-                spawnedCount += BossTw_SpawnElementalKeese(play, &spawnPos, element);
+                spawnedCount += BossTw_SpawnElementalKeese(play, &spawnPos, element, showSpawnEffects);
             }
             break;
 
@@ -1781,7 +1977,7 @@ static s32 BossTw_SpawnSummonGroup(PlayState* play, Vec3f* origin, TwinrovaMagic
             for (i = 0; i < count; i++) {
                 spawnPos = BossTw_GetGroundSummonFormationPos(play, origin, baseAngle, i, count,
                                                               TWINROVA_SUMMON_FORMATION_RADIUS * 0.65f);
-                spawnedCount += BossTw_SpawnElementalGroundEnemy(play, &spawnPos, element);
+                spawnedCount += BossTw_SpawnElementalGroundEnemy(play, &spawnPos, element, showSpawnEffects);
             }
             break;
 
@@ -1789,11 +1985,11 @@ static s32 BossTw_SpawnSummonGroup(PlayState* play, Vec3f* origin, TwinrovaMagic
             expectedCount = 3;
             for (i = 0; i < 2; i++) {
                 spawnPos = BossTw_GetSummonFormationPos(origin, baseAngle, i, 3, TWINROVA_SUMMON_FORMATION_RADIUS);
-                spawnedCount += BossTw_SpawnElementalKeese(play, &spawnPos, element);
+                spawnedCount += BossTw_SpawnElementalKeese(play, &spawnPos, element, showSpawnEffects);
             }
             spawnPos = BossTw_GetGroundSummonFormationPos(play, origin, baseAngle, 2, 3,
                                                           TWINROVA_SUMMON_FORMATION_RADIUS);
-            spawnedCount += BossTw_SpawnElementalGroundEnemy(play, &spawnPos, element);
+            spawnedCount += BossTw_SpawnElementalGroundEnemy(play, &spawnPos, element, showSpawnEffects);
             break;
 
         case TWINROVA_SUMMON_ELITE_GROUP:
@@ -1803,10 +1999,12 @@ static s32 BossTw_SpawnSummonGroup(PlayState* play, Vec3f* origin, TwinrovaMagic
             if (element == TWINROVA_MAGIC_FIRE) {
                 // A Red Bubble floats, but its AI is tethered to its home floor and cannot return from below.
                 spawnedCount +=
-                    BossTw_SpawnSummonedEnemy(play, &spawnPos, element, ACTOR_EN_BB, ENBB_RED, 80.0f, 0.0f, false);
+                    BossTw_SpawnSummonedEnemy(play, &spawnPos, element, ACTOR_EN_BB, ENBB_RED, 80.0f, 0.0f, false,
+                                              showSpawnEffects);
             } else {
                 spawnedCount +=
-                    BossTw_SpawnSummonedEnemy(play, &spawnPos, element, ACTOR_EN_WF, (s16)0xFF01, 0.0f, 0.0f, false);
+                    BossTw_SpawnSummonedEnemy(play, &spawnPos, element, ACTOR_EN_WF, (s16)0xFF01, 0.0f, 0.0f, false,
+                                              showSpawnEffects);
             }
             break;
 
@@ -1814,8 +2012,9 @@ static s32 BossTw_SpawnSummonGroup(PlayState* play, Vec3f* origin, TwinrovaMagic
             return 0;
     }
 
-    if (spawnedCount < expectedCount) {
-        // Resolve a committed group warning honestly even when only part of its formation fits in the actor pool.
+    if (spawnedCount == 0 && expectedCount != 0) {
+        // A completely rejected formation visibly fizzles. Partial allocation is still a real emergence and uses the
+        // caller's success burst; mixing the failure and triumph cues at the same aperture was contradictory.
         BossTw_ShowFailedMagicCast(play, origin, element);
     }
 
@@ -1843,6 +2042,37 @@ static s32 BossTw_IsSisterActor(Actor* actor) {
            (actor->params == TW_KOTAKE || actor->params == TW_KOUME);
 }
 
+static TwinrovaMagicElement BossTw_SelectFusedProjectileElement(BossTw* owner, TwinrovaMagicElement preferred) {
+    if (owner != NULL && owner->actor.params == TW_TWINROVA && owner->fusedProjectileElementStreak >= 2 &&
+        owner->fusedProjectileLastElement == preferred) {
+        return (TwinrovaMagicElement)!preferred;
+    }
+    return preferred;
+}
+
+static TwinrovaMagicElement BossTw_SelectFusedPairLeadElement(BossTw* owner, TwinrovaMagicElement preferred) {
+    if (owner != NULL && owner->actor.params == TW_TWINROVA && owner->fusedProjectileElementStreak != 0 &&
+        owner->fusedProjectileLastElement == preferred) {
+        // A paired opener always sends this element twice. Flip it while the previous release is still a single match
+        // so the second shot cannot become the third identical projectile in a row.
+        return (TwinrovaMagicElement)!preferred;
+    }
+    return preferred;
+}
+
+static void BossTw_RecordFusedProjectileElement(BossTw* owner, TwinrovaMagicElement element) {
+    if (owner == NULL || owner->actor.params != TW_TWINROVA) {
+        return;
+    }
+
+    if (owner->fusedProjectileLastElement == element) {
+        owner->fusedProjectileElementStreak = CLAMP_MAX(owner->fusedProjectileElementStreak + 1, 2);
+    } else {
+        owner->fusedProjectileLastElement = element;
+        owner->fusedProjectileElementStreak = 1;
+    }
+}
+
 static s32 BossTw_IsPhaseOneVolleyBlast(BossTw* this) {
     return (this->actor.params == TW_FIRE_BLAST || this->actor.params == TW_ICE_BLAST) &&
            BossTw_IsSisterActor(this->actor.parent);
@@ -1850,6 +2080,7 @@ static s32 BossTw_IsPhaseOneVolleyBlast(BossTw* this) {
 
 static s32 BossTw_IsSignatureProjectile(BossTw* this) {
     return this->blastBehavior == TWINROVA_BLAST_SIEGE || this->blastBehavior == TWINROVA_BLAST_BREAKER ||
+           this->blastBehavior == TWINROVA_BLAST_CHAINED ||
            this->blastBehavior == TWINROVA_BLAST_MINEFIELD_FOLLOWUP;
 }
 
@@ -2051,7 +2282,8 @@ static void BossTw_ClearPhaseOneMagic(PlayState* play, s32 resolveSummonWarnings
         next = actor->next;
         if (actor->id == ACTOR_BOSS_TW && actor->update != NULL &&
             ((actor->params == TW_FIRE_BLAST || actor->params == TW_ICE_BLAST) ||
-             actor->params == TW_FIRE_WARNING_SIGIL || actor->params == TW_ICE_WARNING_SIGIL)) {
+             actor->params == TW_FIRE_WARNING_SIGIL || actor->params == TW_ICE_WARNING_SIGIL ||
+             actor->params == TW_FIRE_SUMMON_SIGIL || actor->params == TW_ICE_SUMMON_SIGIL)) {
             Actor_Kill(actor);
         }
         actor = next;
@@ -2098,13 +2330,17 @@ static BossTw* BossTw_SpawnMagicBlast(BossTw* owner, PlayState* play, Vec3f* spa
         }
     }
     if (behavior == TWINROVA_BLAST_SIEGE || behavior == TWINROVA_BLAST_BREAKER ||
-        behavior == TWINROVA_BLAST_LOWER_ROUTE || behavior == TWINROVA_BLAST_MINEFIELD_FOLLOWUP) {
+        behavior == TWINROVA_BLAST_LOWER_ROUTE || behavior == TWINROVA_BLAST_CHAINED ||
+        behavior == TWINROVA_BLAST_MINEFIELD_FOLLOWUP) {
         // Remote routes need an explicit miss timeout just like the signature sequence; they cannot rely on crossing
         // a floor after Link changes elevation.
         magic->timers[1] = TWINROVA_BREAKER_PROJECTILE_LIFETIME;
     }
     if (!BossTw_IsSisterActor(&owner->actor)) {
         sEnvType = magic->blastType + 1;
+    }
+    if (behavior != TWINROVA_BLAST_RAIN) {
+        BossTw_RecordFusedProjectileElement(owner, (TwinrovaMagicElement)magic->blastType);
     }
     return magic;
 }
@@ -2264,6 +2500,12 @@ static BossTw* BossTw_SpawnMinefieldPool(BossTw* mine, PlayState* play) {
     Actor* ownerActor = BossTw_FindActorByAddress(play, mine->actor.parent);
     BossTw* pool;
 
+    // The final detonation closes the escaping lane. Give only that last residual pool a little extra authority;
+    // the preceding pools remain compact enough to leave readable movement routes during the sequence.
+    if (BossTw_IsFinalMinefieldDetonation(mine, play)) {
+        radius += 20.0f;
+    }
+
     if (ownerActor == NULL || ownerActor->update == NULL || ownerActor->id != ACTOR_BOSS_TW ||
         ownerActor->params != TW_TWINROVA) {
         return NULL;
@@ -2299,15 +2541,23 @@ static s32 BossTw_IsCycloneRain(BossTw* blast) {
            BossTw_IsFusedDirectBlast(blast, sTwinrovaPtr);
 }
 
-static s16 BossTw_CountCycloneRainProjectiles(PlayState* play, BossTw* owner) {
+static s16 BossTw_CountCycloneRainActors(PlayState* play, BossTw* owner) {
     Actor* actor = play->actorCtx.actorLists[ACTORCAT_BOSS].head;
     s16 count = 0;
 
     while (actor != NULL) {
         if (actor->id == ACTOR_BOSS_TW && BossTw_IsFusedDirectBlast((BossTw*)actor, owner) &&
             ((BossTw*)actor)->blastBehavior == TWINROVA_BLAST_RAIN) {
-            // Count the short impact fade too. It still occupies an actor slot even though its damage is over.
+            // Count the short impact fade too. It still owns an actor and render work although its damage is over.
             count++;
+        } else if (actor->id == ACTOR_BOSS_TW &&
+                   (actor->params == TW_FIRE_WARNING_SIGIL || actor->params == TW_ICE_WARNING_SIGIL)) {
+            Actor* parentActor = BossTw_FindActorByAddress(play, actor->parent);
+
+            if (parentActor != NULL && BossTw_IsFusedDirectBlast((BossTw*)parentActor, owner) &&
+                ((BossTw*)parentActor)->blastBehavior == TWINROVA_BLAST_RAIN) {
+                count++;
+            }
         }
         actor = actor->next;
     }
@@ -2338,20 +2588,25 @@ static s32 BossTw_HasActiveFusedDirectBlast(PlayState* play, BossTw* owner) {
     return false;
 }
 
-static s32 BossTw_HasActiveFusedNonMineBlast(PlayState* play, BossTw* owner) {
+static s16 BossTw_CountActiveFusedNonMineBlasts(PlayState* play, BossTw* owner) {
     Actor* actor = play->actorCtx.actorLists[ACTORCAT_BOSS].head;
+    s16 count = 0;
 
     while (actor != NULL) {
         BossTw* blast = (BossTw*)actor;
 
         if (actor->id == ACTOR_BOSS_TW && BossTw_IsFusedDirectBlast(blast, owner) &&
             blast->blastBehavior != TWINROVA_BLAST_MINEFIELD && blast->csState1 != 2) {
-            return true;
+            count++;
         }
         actor = actor->next;
     }
 
-    return false;
+    return count;
+}
+
+static s32 BossTw_HasActiveFusedNonMineBlast(PlayState* play, BossTw* owner) {
+    return BossTw_CountActiveFusedNonMineBlasts(play, owner) != 0;
 }
 
 static s32 BossTw_CountActiveMinefieldMines(PlayState* play, BossTw* owner) {
@@ -2505,7 +2760,7 @@ static void BossTw_DisruptShieldCharge(PlayState* play, TwinrovaMagicElement inc
 
     if (!hadCommittedCharge && sTwinrovaPtr != NULL && sTwinrovaPtr->actor.update != NULL &&
         sTwinrovaPtr->visible && sTwinrovaPtr->actionFunc != BossTw_TwinrovaBreakerSequence) {
-        // After an opposing hit, restart a full three-shot package so the player cannot be left in a
+        // After an opposing hit, restart a full A-A-breaker-A package so the player cannot be left in a
         // deterministic reset-at-one / finish-at-two loop. The Breaker already authors its own recovery run.
         sFixedBlastType = sTwinrovaBlastType;
         sFixedBlatSeq = 0;
@@ -2989,10 +3244,74 @@ static void BossTw_GetLowerMagicPortalPos(BossTw* owner, Player* player, Vec3f* 
     }
 }
 
+static s16 BossTw_GetCycloneActiveFrame(BossTw* owner) {
+    return TWINROVA_CYCLONE_ACTIVE_TIME - owner->timers[0];
+}
+
+static void BossTw_StopCycloneAmbience(BossTw* owner, PlayState* play) {
+    s32 ownsEnvironment;
+
+    if (owner == NULL || play == NULL) {
+        return;
+    }
+
+    // Release only the environment identity Cyclone still owns. A concurrently committed Minefield pulse or later
+    // attack may already have replaced it, and must not be flattened by an idempotent second cleanup call.
+    ownsEnvironment = owner->actionFunc == BossTw_TwinrovaCyclone && sEnvType == owner->blastType + 1;
+    if (ownsEnvironment) {
+        sEnvType = 0;
+        if (sMinefieldLightPulseTimer == 0) {
+            play->envCtx.unk_BE = 1;
+            play->envCtx.unk_BD = 1;
+            play->envCtx.unk_D8 = 0.0f;
+        }
+    }
+}
+
+static void BossTw_UpdateCycloneEnvironment(BossTw* owner, PlayState* play) {
+    s16 activeFrame = BossTw_GetCycloneActiveFrame(owner);
+    s16 stormPhase = activeFrame % TWINROVA_CYCLONE_STORM_BEAT;
+    s32 lightningFlash = stormPhase < TWINROVA_CYCLONE_LIGHTNING_WINDOW;
+    f32 stormPulse = 0.62f + (Math_SinS(activeFrame * 0x1000) * 0.10f);
+
+    play->envCtx.unk_BE = 1;
+    play->envCtx.unk_BD = owner->blastType == TWINROVA_MAGIC_FIRE ? 2 : 3;
+    Math_ApproachF(&play->envCtx.unk_D8, lightningFlash ? 1.0f : stormPulse, 1.0f,
+                   lightningFlash ? 0.35f : 0.08f);
+}
+
+static void BossTw_UpdateCycloneActiveFeedback(BossTw* owner, PlayState* play) {
+    s16 activeFrame = BossTw_GetCycloneActiveFrame(owner);
+    s16 stormPhase = activeFrame % TWINROVA_CYCLONE_STORM_BEAT;
+
+    // Flagged audio is sustained only while this function is called, so interruption needs no separate sound handle.
+    Sfx_PlaySfxCentered(NA_SE_EV_EARTHQUAKE - SFX_FLAG);
+    if ((activeFrame % TWINROVA_CYCLONE_RUMBLE_BEAT) == 0) {
+        s16 quakeIndex = Quake_Add(GET_ACTIVE_CAM(play), 3);
+
+        if (quakeIndex >= 0) {
+            Quake_SetSpeed(quakeIndex, 25000);
+            Quake_SetQuakeValues(quakeIndex, stormPhase == 0 ? 2 : 1, 0, 0, 0);
+            Quake_SetCountdown(quakeIndex, stormPhase == 0 ? 10 : 8);
+        }
+        Rumble_Request(0.0f, 50, 8, 3);
+    }
+    if (stormPhase == 0) {
+        Sfx_PlaySfxCentered2(NA_SE_EV_LIGHTNING);
+        Rumble_Request(0.0f, 105, 8, 4);
+    }
+
+}
+
 static void BossTw_CancelPhaseTwoMagic(BossTw* owner, PlayState* play, s32 preserveMinefield) {
     Actor* actor = play->actorCtx.actorLists[ACTORCAT_BOSS].head;
     Actor* next;
     s16 i;
+
+    if (owner != NULL && owner->actionFunc == BossTw_TwinrovaCyclone) {
+        BossTw_StopCycloneAmbience(owner, play);
+    }
+    BossTw_CancelFusedElementalConjuration(owner, play);
 
     // A successful charged hit cancels Twinrova's direct cast package, but a committed Minefield remains independent
     // arena pressure. Death and encounter teardown pass false and still retire every child actor.
@@ -3026,7 +3345,14 @@ static void BossTw_CancelPhaseTwoMagic(BossTw* owner, PlayState* play, s32 prese
             ? TWINROVA_MINEFIELD_SEQUENCE_OVERLAP
             : TWINROVA_MINEFIELD_SEQUENCE_NONE;
     owner->minefieldFollowupSuppressed = false;
+    owner->minefieldSecondWaveFired = false;
     owner->pendingFusedAttack = TWINROVA_FUSED_ATTACK_NORMAL;
+    owner->fusedChainCount = 0;
+    owner->fusedChainShot = false;
+    owner->fusedChainQueued = false;
+    owner->fusedShotIsBreaker = false;
+    owner->fusedShotPackageSequence = 0;
+    owner->fusedShotActive = false;
     BossTw_ResetShieldCharge();
 }
 
@@ -3091,6 +3417,11 @@ static s32 BossTw_TryHitSisterWithMagic(BossTw* target, PlayState* play, Twinrov
             otherSister->timers[4] = target->timers[4];
         }
     }
+    if (target->actionFunc == BossTw_ElementalConjuration) {
+        // A redirected opposite-element beam remains a real phase-one hit, but it must first collapse the ritual it
+        // struck. The marker is a child actor, so cancel synchronously before the hit state hides/repositions her.
+        BossTw_CancelElementalConjuration(target, play);
+    }
 
     for (i = 0; i < 50; i++) {
         pos.x = target->actor.world.pos.x + Rand_CenteredFloat(50.0f);
@@ -3131,7 +3462,7 @@ static s32 BossTw_IsNormalPhaseOneMovement(BossTw* sister) {
 
 static s32 BossTw_HasPhaseOneReservedDestination(BossTw* sister) {
     return sister->actionFunc == BossTw_FlyTo || sister->actionFunc == BossTw_PortalReposition ||
-           sister->actionFunc == BossTw_CrossfireVolley ||
+           sister->actionFunc == BossTw_CrossfireVolley || sister->actionFunc == BossTw_ElementalConjuration ||
            (sister->actionFunc == BossTw_BlastVolley &&
             sister->beamShootState == TWINROVA_VOLLEY_MODE_PILLAR_DIVE) ||
            (sister->actionFunc == BossTw_SpiralBarrage && sister->csState1 == 0);
@@ -3202,10 +3533,34 @@ static void BossTw_SelectSeparatedPhaseOnePillar(BossTw* sister, f32 minTravelDi
     sister->targetPos = sTwinrovaPhaseOnePillarPos[bestIndex];
 }
 
+static void BossTw_SelectNearestPhaseOnePillar(BossTw* sister) {
+    s16 firstIndex = Rand_ZeroFloat(ARRAY_COUNT(sTwinrovaPhaseOnePillarPos) - 0.01f);
+    s16 bestIndex = firstIndex;
+    f32 bestDistanceSq = FLT_MAX;
+    s16 i;
+
+    for (i = 0; i < ARRAY_COUNT(sTwinrovaPhaseOnePillarPos); i++) {
+        s16 index = (firstIndex + i) % ARRAY_COUNT(sTwinrovaPhaseOnePillarPos);
+        Vec3f* candidate = &sTwinrovaPhaseOnePillarPos[index];
+        f32 distanceSq = SQ(candidate->x - sister->actor.world.pos.x) +
+                         SQ(candidate->z - sister->actor.world.pos.z);
+
+        if (distanceSq < bestDistanceSq) {
+            bestDistanceSq = distanceSq;
+            bestIndex = index;
+        }
+    }
+
+    // During Conjuration, moving to the nearest radial pillar sends the support sister outward on her current side.
+    // A random opposite pillar would make her straight FlyTo path cross the center seal.
+    sister->targetPos = sTwinrovaPhaseOnePillarPos[bestIndex];
+}
+
 static s32 BossTw_IsPhaseOneSeparationState(BossTw* sister) {
     return sister->actionFunc == BossTw_FlyTo || sister->actionFunc == BossTw_TurnToPlayer ||
            sister->actionFunc == BossTw_PortalReposition || sister->actionFunc == BossTw_CrossfireVolley ||
            sister->actionFunc == BossTw_Spin || sister->actionFunc == BossTw_PillarDive ||
+           sister->actionFunc == BossTw_ElementalConjuration ||
            (sister->actionFunc == BossTw_SpiralBarrage && sister->csState1 == 0);
 }
 
@@ -3226,7 +3581,7 @@ static void BossTw_SeparatePhaseOneSisters(BossTw* sister) {
         return;
     }
 
-    if (sister->actionFunc == BossTw_Spin) {
+    if (sister->actionFunc == BossTw_Spin || sister->actionFunc == BossTw_ElementalConjuration) {
         // Keep the committed counter centered on its tell; the still-mobile sibling performs the separation.
         return;
     }
@@ -3483,6 +3838,356 @@ static s32 BossTw_CanStartPortalReposition(BossTw* this, BossTw* otherTw, PlaySt
            BossTw_IsNormalPhaseOneMovement(otherTw) && !BossTw_HasActivePhaseOneMagic(play);
 }
 
+static void BossTw_GetConjurationFloorPos(Vec3f* floorPos) {
+    // Phase-one Conjuration is deliberately staged on the raised center platform. A single shared ritual point makes
+    // the 3–4 second channel, its interruption window, and the final group emergence readable from either deck.
+    floorPos->x = 0.0f;
+    floorPos->y = 240.0f;
+    floorPos->z = 0.0f;
+}
+
+static s32 BossTw_CanStartElementalConjuration(BossTw* this, BossTw* otherTw, PlayState* play) {
+    Vec3f floorPos;
+
+    BossTw_GetConjurationFloorPos(&floorPos);
+    // The encounter's add limit is deliberately soft: a group may begin while four enemies are active, allowing the
+    // visible three-enemy emergence to briefly push pressure above that threshold. The registry still caps the full
+    // encounter at nine and routine beams yield once projected pressure is too high.
+    return BossTw_CanStartPortalReposition(this, otherTw, play) && !BossTw_HasActiveGroundPressure(play) &&
+           BossTw_CountActiveSummons(play) <= TWINROVA_SUMMON_SOFT_LIMIT &&
+           BossTw_HasPhaseOneSpacing(this, TWINROVA_PHASE_ONE_TARGET_SEPARATION) &&
+           BossTw_IsActorInCameraFrustumWithMargin(play, &this->actor, TWINROVA_ATTACK_FRUSTUM_MARGIN) &&
+           BossTw_IsWorldPointInCameraFrustumWithMargin(play, &floorPos, TWINROVA_ATTACK_FRUSTUM_MARGIN);
+}
+
+static void BossTw_ClearConjurationMarkers(BossTw* owner, PlayState* play, s16 element) {
+    Actor* actor = play->actorCtx.actorLists[ACTORCAT_BOSS].head;
+    Actor* next;
+
+    while (actor != NULL) {
+        next = actor->next;
+        if (actor->id == ACTOR_BOSS_TW && actor->update != NULL && actor->parent == &owner->actor &&
+            (actor->params == TW_FIRE_SUMMON_SIGIL || actor->params == TW_ICE_SUMMON_SIGIL) &&
+            (element < 0 || (actor->params == TW_FIRE_SUMMON_SIGIL ? TWINROVA_MAGIC_FIRE : TWINROVA_MAGIC_ICE) ==
+                                element)) {
+            Actor_Kill(actor);
+        }
+        actor = next;
+    }
+}
+
+static void BossTw_ClearConjurationSourceEffects(BossTw* this) {
+    // The sister draw path also owns the old forward beam portal. Conjuration deliberately does not use it: leaving
+    // its flame alpha alive turns that old screen-facing effect into a stray orb in front of the caster.
+    this->flameAlpha = 0.0f;
+    this->spawnPortalAlpha = 0.0f;
+    this->spawnPortalScale = 0.0f;
+    this->flameRotation = 0.0f;
+    this->portalRotation = 0.0f;
+    this->updateRate1 = 0.0f;
+    this->updateRate2 = 0.0f;
+}
+
+static Vec3f BossTw_GetConjurationSourcePos(BossTw* this) {
+    Vec3f source = this->actor.world.pos;
+
+    source.y += 45.0f;
+    return source;
+}
+
+static void BossTw_SpawnConjurationFlowEffects(PlayState* play, Vec3f* sourcePos, Vec3f* targetPos,
+                                                TwinrovaMagicElement element, s16 count) {
+    Vec3f target = *targetPos;
+    Vec3f source = *sourcePos;
+    Vec3f pos;
+    Vec3f velocity;
+    Vec3f accel = { 0.0f, 0.0f, 0.0f };
+    s16 i;
+
+    // A few fast motes travel from the caster's core toward the stationary floor ritual. Using the body rather than
+    // the generic beam origin avoids reviving that beam-only forward effect while still making the channel's source
+    // unmistakable.
+    target.y += 10.0f;
+    for (i = 0; i < count; i++) {
+        pos = source;
+        pos.x += Rand_CenteredFloat(14.0f);
+        pos.y += Rand_CenteredFloat(14.0f);
+        pos.z += Rand_CenteredFloat(14.0f);
+        velocity.x = (target.x - pos.x) * 0.075f + Rand_CenteredFloat(0.6f);
+        velocity.y = (target.y - pos.y) * 0.075f;
+        velocity.z = (target.z - pos.z) * 0.075f + Rand_CenteredFloat(0.6f);
+        BossTw_AddDotEffect(play, &pos, &velocity, &accel, Rand_ZeroFloat(4.0f) + 8.0f, element,
+                            ARRAY_COUNT(sEffects));
+    }
+}
+
+static void BossTw_SpawnConjurationChannelEffects(BossTw* this, PlayState* play, TwinrovaMagicElement element,
+                                                   s16 count) {
+    Vec3f source = BossTw_GetConjurationSourcePos(this);
+
+    BossTw_SpawnConjurationFlowEffects(play, &source, &this->groundBlastPos, element, count);
+}
+
+static void BossTw_SpawnConjurationEmergenceEffects(PlayState* play, Vec3f* origin, TwinrovaMagicElement element) {
+    Vec3f pos;
+    Vec3f velocity;
+    Vec3f accel = { 0.0f, -0.7f, 0.0f };
+    s16 angle;
+    s16 i;
+
+    // The group appears through a real elemental burst rather than silently materialising over a floor decal. Keep it
+    // cosmetic: this is the payoff for the already-telegraphed ritual, not an additional hitbox or ground hazard.
+    pos = *origin;
+    pos.y += 12.0f;
+    BossTw_AddRingEffect(play, &pos, 1.35f, 6.5f, 255, element, 1, ARRAY_COUNT(sEffects));
+    BossTw_AddRingEffect(play, &pos, 0.72f, 4.2f, 230, element, 1, ARRAY_COUNT(sEffects));
+
+    for (i = 0; i < 16; i++) {
+        angle = (s16)(i * 0x1000) + (s16)Rand_CenteredFloat(0x600);
+        pos = *origin;
+        pos.x += Math_SinS(angle) * Rand_ZeroFloat(34.0f);
+        pos.y += Rand_ZeroFloat(30.0f) + 8.0f;
+        pos.z += Math_CosS(angle) * Rand_ZeroFloat(34.0f);
+        velocity.x = Math_SinS(angle) * (Rand_ZeroFloat(8.0f) + 5.0f);
+        velocity.y = Rand_ZeroFloat(11.0f) + 8.0f;
+        velocity.z = Math_CosS(angle) * (Rand_ZeroFloat(8.0f) + 5.0f);
+        BossTw_AddFlameEffect(play, &pos, &velocity, &accel, Rand_ZeroFloat(16.0f) + 20.0f, element);
+    }
+
+    for (i = 0; i < 18; i++) {
+        angle = (s16)Rand_ZeroFloat(65536.0f);
+        pos = *origin;
+        pos.y += Rand_ZeroFloat(42.0f) + 6.0f;
+        velocity.x = Math_SinS(angle) * (Rand_ZeroFloat(16.0f) + 7.0f);
+        velocity.y = Rand_ZeroFloat(14.0f) + 5.0f;
+        velocity.z = Math_CosS(angle) * (Rand_ZeroFloat(16.0f) + 7.0f);
+        BossTw_AddDotEffect(play, &pos, &velocity, &accel, Rand_ZeroFloat(12.0f) + 18.0f, element,
+                            ARRAY_COUNT(sEffects));
+    }
+}
+
+static void BossTw_CancelFusedElementalConjuration(BossTw* this, PlayState* play) {
+    if (this == NULL || this->actionFunc != BossTw_TwinrovaElementalConjuration) {
+        return;
+    }
+
+    // Once the opening fire wave has resolved, only the remaining ice aperture is still a live spell contract. Do
+    // not retroactively fizzle the completed formation when a charged hit lands in the short inter-wave gap.
+    if (this->csState1 == 0) {
+        BossTw_ShowFailedMagicCast(play, &this->groundBlastPos, TWINROVA_MAGIC_FIRE);
+    }
+    BossTw_ShowFailedMagicCast(play, &this->groundBlastPos2, TWINROVA_MAGIC_ICE);
+    BossTw_ClearConjurationMarkers(this, play, -1);
+    this->timers[0] = 0;
+    this->work[CAN_SHOOT] = false;
+    // Collision-driven damage resolves after the boss's action for the current frame. Mark the ritual terminal now so
+    // its next update cannot spend one last actor allocation before Twinrova enters the earned stun state.
+    this->csState1 = -1;
+}
+
+static void BossTw_CancelElementalConjuration(BossTw* this, PlayState* play) {
+    TwinrovaMagicElement element =
+        this->actor.params == TW_KOUME ? TWINROVA_MAGIC_FIRE : TWINROVA_MAGIC_ICE;
+    s32 channelWasActive = this->work[CAN_SHOOT];
+
+    // The floor tell is a child rather than a shared effect-pool entry. Retire it synchronously so an interrupted
+    // channel can never leave a false promise on the arena for another update.
+    BossTw_ClearConjurationMarkers(this, play, -1);
+
+    if (channelWasActive) {
+        BossTw_ShowFailedMagicCast(play, &this->groundBlastPos, element);
+    }
+    BossTw_ClearConjurationSourceEffects(this);
+    this->work[CAN_SHOOT] = false;
+    this->timers[0] = 0;
+    this->timers[3] = 2;
+    this->csState1 = -1;
+}
+
+static s32 BossTw_BeginElementalConjurationChannel(BossTw* this, PlayState* play,
+                                                    TwinrovaMagicElement element) {
+    BossTw* marker;
+    s16 markerParams = element == TWINROVA_MAGIC_FIRE ? TW_FIRE_SUMMON_SIGIL : TW_ICE_SUMMON_SIGIL;
+    Vec3f sourcePos;
+
+    // The caster has reached the center before this visual contract is created. This keeps the marker beneath its
+    // actual owner from the first visible frame and prevents the mobile sister from being mistaken for the summoner.
+    BossTw_ClearConjurationMarkers(this, play, -1);
+    marker = (BossTw*)Actor_SpawnAsChild(&play->actorCtx, &this->actor, play, ACTOR_BOSS_TW,
+                                         this->groundBlastPos.x, this->groundBlastPos.y, this->groundBlastPos.z, 0,
+                                         0, 0, markerParams);
+    if (marker == NULL) {
+        BossTw_ShowFailedMagicCast(play, &this->groundBlastPos, element);
+        return false;
+    }
+
+    Animation_MorphToPlayOnce(&this->skelAnime, &gTwinrovaKotakeKoumeChargeUpAttackStartAnim, -3.0f);
+    this->workf[ANIM_SW_TGT] = Animation_GetLastFrame(&gTwinrovaKotakeKoumeChargeUpAttackStartAnim);
+    this->csState1 = TWINROVA_CONJURATION_STAGE_START;
+    this->timers[0] = TWINROVA_CONJURATION_CHANNEL_TIME;
+    this->timers[3] = 2;
+    this->work[CAN_SHOOT] = true;
+    this->work[CS_TIMER_1] = 0;
+    this->scepterAlpha = 255.0f;
+    BossTw_ClearConjurationSourceEffects(this);
+    // Initialize both marker clocks before its first possible draw. Waiting for the child update caused a one-frame
+    // fully-charged flash because a newly spawned marker otherwise begins with a zero authoritative timer.
+    marker->timers[0] = marker->timers[1] = TWINROVA_CONJURATION_CHANNEL_TIME;
+    marker->work[CS_TIMER_1] = 0;
+    sourcePos = BossTw_GetConjurationSourcePos(this);
+    BossTw_SpawnMagicLaunchEffects(play, &sourcePos, element, 18);
+    Audio_PlayActorSound2(&this->actor, NA_SE_EN_TWINROBA_MASIC_SET);
+    Rumble_Request(0.0f, 45, 4, 2);
+    return true;
+}
+
+static void BossTw_StartElementalConjuration(BossTw* this, BossTw* otherTw, PlayState* play) {
+    Vec3f floorPos;
+
+    BossTw_GetConjurationFloorPos(&floorPos);
+    BossTw_ClearConjurationMarkers(this, play, -1);
+    BossTw_ClearConjurationSourceEffects(this);
+
+    this->actionFunc = BossTw_ElementalConjuration;
+    Animation_MorphToLoop(&this->skelAnime, &gTwinrovaKotakeKoumeFlyAnim, -3.0f);
+    this->workf[ANIM_SW_TGT] = 10000.0f;
+    this->csState1 = TWINROVA_CONJURATION_STAGE_APPROACH;
+    this->csState2 = (s16)Rand_ZeroFloat(TWINROVA_SUMMON_GROUP_MAX);
+    this->timers[0] = 0;
+    this->timers[3] = 2;
+    this->timers[4] = BossTw_GetPhaseOneSpecialCooldown();
+    this->work[CAN_SHOOT] = false;
+    this->actor.speedXZ = 0.0f;
+    this->actor.velocity.x = this->actor.velocity.y = this->actor.velocity.z = 0.0f;
+    this->groundBlastPos = floorPos;
+    this->targetPos = floorPos;
+    this->targetPos.y += TWINROVA_CONJURATION_HOVER_HEIGHT;
+    this->work[CS_TIMER_1] = 0;
+
+    if (otherTw != NULL) {
+        // Reserve center for the caster and keep her sister on the arena perimeter. She can still use the intended
+        // solo volley, but she can no longer cross the ritual and steal its visual ownership.
+        BossTw_SetupFlyTo(otherTw, play);
+        otherTw->timers[4] = this->timers[4];
+    }
+}
+
+void BossTw_ElementalConjuration(BossTw* this, PlayState* play) {
+    BossTw* otherTw = (BossTw*)this->actor.parent;
+    TwinrovaMagicElement element =
+        this->actor.params == TW_KOUME ? TWINROVA_MAGIC_FIRE : TWINROVA_MAGIC_ICE;
+    s16 danceAngle;
+    f32 danceX;
+    f32 danceY;
+    f32 danceZ;
+    s16 danceYaw;
+    s16 pulseInterval;
+
+    // Conjuration is interruptible through AC, but its moving body is never an incidental contact attack.
+    this->timers[3] = 2;
+    SkelAnime_Update(&this->skelAnime);
+
+    if (this->csState1 == TWINROVA_CONJURATION_STAGE_APPROACH) {
+        s16 approachYaw = Math_Vec3f_Yaw(&this->actor.world.pos, &this->targetPos);
+        s32 supportSisterIsClear =
+            otherTw == NULL || SQ(otherTw->actor.world.pos.x) + SQ(otherTw->actor.world.pos.z) >=
+                                   SQ(TWINROVA_CONJURATION_SUPPORT_MIN_RADIUS);
+
+        Audio_PlayActorSound2(&this->actor, NA_SE_EN_TWINROBA_FLY - SFX_FLAG);
+        Math_ApproachF(&this->scepterAlpha, 0.0f, 1.0f, 10.0f);
+        Math_ApproachF(&this->actor.world.pos.x, this->targetPos.x, 0.35f,
+                       TWINROVA_CONJURATION_APPROACH_XZ_STEP);
+        Math_ApproachF(&this->actor.world.pos.y, this->targetPos.y, 0.35f,
+                       TWINROVA_CONJURATION_APPROACH_Y_STEP);
+        Math_ApproachF(&this->actor.world.pos.z, this->targetPos.z, 0.35f,
+                       TWINROVA_CONJURATION_APPROACH_XZ_STEP);
+        Math_ApproachS(&this->actor.shape.rot.y, approachYaw, 5, 0xC00);
+        Math_ApproachS(&this->actor.shape.rot.x, 0, 5, 0x700);
+        this->actor.world.rot.y = this->actor.shape.rot.y;
+
+        if (SQ(this->actor.world.pos.x - this->targetPos.x) +
+                    SQ(this->actor.world.pos.z - this->targetPos.z) <=
+                SQ(TWINROVA_CONJURATION_APPROACH_DISTANCE) &&
+            fabsf(this->actor.world.pos.y - this->targetPos.y) <= TWINROVA_CONJURATION_APPROACH_DISTANCE &&
+            supportSisterIsClear) {
+            this->actor.world.pos = this->targetPos;
+            this->actor.speedXZ = 0.0f;
+            this->actor.velocity.x = this->actor.velocity.y = this->actor.velocity.z = 0.0f;
+            if (!BossTw_BeginElementalConjurationChannel(this, play, element)) {
+                BossTw_ClearConjurationSourceEffects(this);
+                BossTw_SetupFlyTo(this, play);
+            }
+        }
+        return;
+    }
+
+    danceAngle = (s16)(this->work[CS_TIMER_1] * TWINROVA_CONJURATION_ORBIT_SPEED) +
+                 (element == TWINROVA_MAGIC_FIRE ? 0 : 0x8000);
+    danceX = this->groundBlastPos.x;
+    danceY = this->targetPos.y + Math_SinS(danceAngle * 2) * TWINROVA_CONJURATION_ORBIT_HEIGHT;
+    danceZ = this->groundBlastPos.z;
+    danceYaw = danceAngle;
+    pulseInterval = this->timers[0] <= TWINROVA_CONJURATION_FINAL_WINDOW
+                        ? TWINROVA_CONJURATION_FINAL_PULSE_TIME
+                        : this->timers[0] <= TWINROVA_CONJURATION_CHANNEL_TIME / 2
+                              ? TWINROVA_CONJURATION_BUILDUP_PULSE_TIME
+                              : TWINROVA_CONJURATION_OPENING_PULSE_TIME;
+
+    // Conjuration owns the exact center point. Keep the caster directly above its gameplay origin; the vertical bob,
+    // continuous turn, and charge animation sell the ritual dance without making the fixed seal look displaced.
+    Math_ApproachF(&this->actor.world.pos.x, danceX, 0.18f, 36.0f);
+    Math_ApproachF(&this->actor.world.pos.y, danceY, 0.18f, 24.0f);
+    Math_ApproachF(&this->actor.world.pos.z, danceZ, 0.18f, 36.0f);
+    Math_ApproachF(&this->actor.speedXZ, 0.0f, 1.0f, 2.0f);
+    Math_ApproachS(&this->actor.shape.rot.y, danceYaw, 5, 0xB00);
+    Math_ApproachS(&this->actor.shape.rot.x, 0, 5, 0x700);
+    this->actor.world.rot.y = this->actor.shape.rot.y;
+
+    if (this->csState1 == TWINROVA_CONJURATION_STAGE_START &&
+        Animation_OnFrame(&this->skelAnime, this->workf[ANIM_SW_TGT])) {
+        Animation_MorphToLoop(&this->skelAnime, &gTwinrovaKotakeKoumeChargeUpAttackLoopAnim, 0.0f);
+        this->workf[ANIM_SW_TGT] = 10000.0f;
+        this->csState1 = TWINROVA_CONJURATION_STAGE_LOOP;
+        Audio_PlayActorSound2(&this->actor,
+                              this->actor.params == TW_KOUME ? NA_SE_EN_TWINROBA_LAUGH : NA_SE_EN_TWINROBA_LAUGH2);
+    }
+
+    Audio_PlayActorSound2(&this->actor,
+                          (element == TWINROVA_MAGIC_FIRE ? NA_SE_EN_TWINROBA_MS_FIRE : NA_SE_EN_TWINROBA_MS_FREEZE) -
+                              SFX_FLAG);
+
+    if (this->timers[0] != 0 && (this->timers[0] % pulseInterval) == 0) {
+        Vec3f sourcePos = BossTw_GetConjurationSourcePos(this);
+
+        BossTw_SpawnMagicLaunchEffects(play, &sourcePos, element,
+                                       this->timers[0] <= TWINROVA_CONJURATION_FINAL_WINDOW ? 8 : 4);
+        BossTw_SpawnConjurationChannelEffects(this, play, element,
+                                              this->timers[0] <= TWINROVA_CONJURATION_FINAL_WINDOW ? 6 : 3);
+        Audio_PlayActorSound2(&this->actor, NA_SE_EN_TWINROBA_MASIC_SET);
+    }
+
+    if (this->timers[0] == 0) {
+        s32 summonedCount;
+
+        this->work[CAN_SHOOT] = false;
+        summonedCount = BossTw_SpawnSummonGroup(play, &this->groundBlastPos, element,
+                                                 (TwinrovaSummonGroup)this->csState2, false);
+        if (summonedCount != 0) {
+            BossTw_SpawnConjurationEmergenceEffects(play, &this->groundBlastPos, element);
+            Audio_PlayActorSound2(&this->actor, NA_SE_EN_TWINROBA_TRANSFORM);
+            SoundSource_PlaySfxAtFixedWorldPos(play, &this->groundBlastPos, 40,
+                                               element == TWINROVA_MAGIC_FIRE ? NA_SE_EV_FLAME_IGNITION
+                                                                              : NA_SE_EV_ICE_FREEZE);
+            Rumble_Request(0.0f, 110, 8, 5);
+        }
+        // Retire the visual promise at the same instant as the emergence result. Waiting for the child to notice the
+        // state change left one frame of a floor marker, and the old beam portal could then remain in front of her.
+        BossTw_ClearConjurationMarkers(this, play, -1);
+        BossTw_ClearConjurationSourceEffects(this);
+        BossTw_SetupFlyTo(this, play);
+    }
+}
+
 static void BossTw_SetupCrossfireBlastVolley(BossTw* sister, PlayState* play) {
     sister->actionFunc = BossTw_BlastVolley;
     Animation_MorphToLoop(&sister->skelAnime, &gTwinrovaKotakeKoumeAttackLoopAnim, -3.0f);
@@ -3640,12 +4345,13 @@ static void BossTw_StartSpiralVolleyFollowup(PlayState* play) {
 }
 
 static s32 BossTw_TryStartPhaseOneSpecial(BossTw* this, s32 canStartSpiral, s32 canStartCrossfire,
-                                           s32 canStartPressureTriangle, s32 canStartPortal, s32 forceSpecial,
-                                           PlayState* play) {
+                                            s32 canStartPressureTriangle, s32 canStartPortal,
+                                            s32 canStartConjuration, s32 forceSpecial, PlayState* play) {
     u8 eligible = (canStartSpiral ? TWINROVA_PHASE_ONE_SPECIAL_SPIRAL : 0) |
                   (canStartCrossfire ? TWINROVA_PHASE_ONE_SPECIAL_CROSSFIRE : 0) |
                   (canStartPressureTriangle ? TWINROVA_PHASE_ONE_SPECIAL_PRESSURE_TRIANGLE : 0) |
-                  (canStartPortal ? TWINROVA_PHASE_ONE_SPECIAL_PORTAL : 0);
+                  (canStartPortal ? TWINROVA_PHASE_ONE_SPECIAL_PORTAL : 0) |
+                  (canStartConjuration ? TWINROVA_PHASE_ONE_SPECIAL_CONJURATION : 0);
     u8 candidates;
     s16 candidateCount = 0;
     s16 selectedIndex;
@@ -3659,28 +4365,35 @@ static s32 BossTw_TryStartPhaseOneSpecial(BossTw* this, s32 canStartSpiral, s32 
         return false;
     }
 
-    // Pick uniformly from eligible specials that have not appeared in the current repertoire cycle. If every
-    // currently legal move has appeared, clear only those bits; a temporarily gated move remains prioritized when
-    // its arena conditions become legal again.
-    candidates = eligible & ~sPhaseOneSeenSpecials;
-    if (candidates == 0) {
-        sPhaseOneSeenSpecials &= ~eligible;
-        candidates = eligible;
+    // Missed shots no longer seed surprise add groups. Make the first clean special while the arena is empty the
+    // dedicated Conjuration instead, so players reliably meet the new ritual before the normal repertoire rotates.
+    // Seeing or interrupting it spends this priority; later choices return to the even repertoire selector below.
+    if ((eligible & TWINROVA_PHASE_ONE_SPECIAL_CONJURATION) &&
+        !(sPhaseOneSeenSpecials & TWINROVA_PHASE_ONE_SPECIAL_CONJURATION) &&
+        BossTw_CountActiveSummons(play) == 0) {
+        candidates = TWINROVA_PHASE_ONE_SPECIAL_CONJURATION;
+    } else {
+        // Pick uniformly from eligible specials that have not appeared in the current repertoire cycle. If every
+        // currently legal move has appeared, clear only those bits; a temporarily gated move remains prioritized when
+        // its arena conditions become legal again.
+        candidates = eligible & ~sPhaseOneSeenSpecials;
+        if (candidates == 0) {
+            sPhaseOneSeenSpecials &= ~eligible;
+            candidates = eligible;
+        }
     }
-    for (bit = 1; bit <= TWINROVA_PHASE_ONE_SPECIAL_PORTAL; bit <<= 1) {
+    for (bit = 1; bit <= TWINROVA_PHASE_ONE_SPECIAL_CONJURATION; bit <<= 1) {
         if (candidates & bit) {
             candidateCount++;
         }
     }
     selectedIndex = (s16)Rand_ZeroFloat(candidateCount);
-    for (bit = 1; bit <= TWINROVA_PHASE_ONE_SPECIAL_PORTAL; bit <<= 1) {
+    for (bit = 1; bit <= TWINROVA_PHASE_ONE_SPECIAL_CONJURATION; bit <<= 1) {
         if ((candidates & bit) && selectedIndex-- == 0) {
             selected = bit;
             break;
         }
     }
-    sPhaseOneSeenSpecials |= selected;
-
     switch (selected) {
         case TWINROVA_PHASE_ONE_SPECIAL_SPIRAL:
             BossTw_StartSpiralBarrage();
@@ -3694,9 +4407,13 @@ static s32 BossTw_TryStartPhaseOneSpecial(BossTw* this, s32 canStartSpiral, s32 
         case TWINROVA_PHASE_ONE_SPECIAL_PORTAL:
             BossTw_StartPortalSpecial(this, play);
             break;
+        case TWINROVA_PHASE_ONE_SPECIAL_CONJURATION:
+            BossTw_StartElementalConjuration(this, (BossTw*)this->actor.parent, play);
+            break;
         default:
             return false;
     }
+    sPhaseOneSeenSpecials |= selected;
     return true;
 }
 
@@ -3944,29 +4661,61 @@ static s32 BossTw_SpawnCycloneRainPair(BossTw* owner, PlayState* play, s16 volle
     Vec3f secondSpawn;
 
     BossTw_GetRainTargets(play, volleyIndex, owner->beamShootState, &firstTarget, &secondTarget);
-    // The fused storm falls out of the overhead rune itself. Each projectile begins directly above its truthful floor
-    // marker, producing a readable vertical rain rather than looking like another scepter shot from the moving boss.
+    // The fused storm falls out of the overhead rune itself, never from the moving boss's scepters.
     firstSpawn = firstTarget;
     secondSpawn = secondTarget;
-    firstSpawn.y = secondSpawn.y = TWINROVA_CYCLONE_SIGIL_HEIGHT;
+    // Lower-floor targets can lie beyond the arena-sized portal rim. Clamp only their source points into the visible
+    // mouth; the authored floor markers remain unchanged and the ballistic solver naturally fans those drops outward.
+    if (SQ(firstSpawn.x) + SQ(firstSpawn.z) > SQ(TWINROVA_CYCLONE_RAIN_SOURCE_RADIUS)) {
+        f32 sourceScale = TWINROVA_CYCLONE_RAIN_SOURCE_RADIUS /
+                          sqrtf(SQ(firstSpawn.x) + SQ(firstSpawn.z));
 
-    if (!BossTw_TryStageRainBlast(owner, play, &firstSpawn, &firstTarget, element, &firstMagic, &firstWarning) ||
-        !BossTw_TryStageRainBlast(owner, play, &secondSpawn, &secondTarget, element, &secondMagic, &secondWarning)) {
+        firstSpawn.x *= sourceScale;
+        firstSpawn.z *= sourceScale;
+    }
+    if (SQ(secondSpawn.x) + SQ(secondSpawn.z) > SQ(TWINROVA_CYCLONE_RAIN_SOURCE_RADIUS)) {
+        f32 sourceScale = TWINROVA_CYCLONE_RAIN_SOURCE_RADIUS /
+                          sqrtf(SQ(secondSpawn.x) + SQ(secondSpawn.z));
+
+        secondSpawn.x *= sourceScale;
+        secondSpawn.z *= sourceScale;
+    }
+    // Start just beneath the portal plane. The orb is immediately visible leaving its underside instead of appearing
+    // above the rune and reading as an unrelated projectile crossing behind it.
+    firstSpawn.y = secondSpawn.y = TWINROVA_CYCLONE_SIGIL_HEIGHT + TWINROVA_CYCLONE_RAIN_SOURCE_OFFSET;
+
+    element = BossTw_SelectFusedProjectileElement(owner, element);
+    if (!BossTw_TryStageRainBlast(owner, play, &firstSpawn, &firstTarget, element, &firstMagic, &firstWarning)) {
+        BossTw_RollbackStagedRain(firstMagic, firstWarning);
+        BossTw_RollbackStagedRain(secondMagic, secondWarning);
+        BossTw_ShowFailedMagicCast(play, &firstSpawn, element);
+        return false;
+    }
+    if (!BossTw_TryStageRainBlast(owner, play, &secondSpawn, &secondTarget, (TwinrovaMagicElement)!element, &secondMagic,
+                                  &secondWarning)) {
         BossTw_RollbackStagedRain(firstMagic, firstWarning);
         BossTw_RollbackStagedRain(secondMagic, secondWarning);
         BossTw_ShowFailedMagicCast(play, &firstSpawn, element);
         return false;
     }
 
+    // The storm is an elemental mix rather than a shield-package source. Alternate every individual drop so the
+    // portal can sustain oppressive volume without ever printing an unreadable three-of-one-color wall.
+    BossTw_RecordFusedProjectileElement(owner, element);
+    BossTw_RecordFusedProjectileElement(owner, (TwinrovaMagicElement)!element);
+
     // Dense rain needs one rhythm cue, not four simultaneous cues per pair. Every strike remains independently marked;
     // only the redundant particles, warning sound, impact sound, and light flash are reduced to every second wave.
     firstMagic->work[TWINROVA_RAIN_PLAY_CYCLONE_CUE] = (volleyIndex & 1) == 0;
     secondMagic->work[TWINROVA_RAIN_PLAY_CYCLONE_CUE] = false;
     if (firstMagic->work[TWINROVA_RAIN_PLAY_CYCLONE_CUE]) {
+        BossTw_AddRingEffect(play, &firstSpawn, 0.3f, 2.2f, 220, element, 1, ARRAY_COUNT(sEffects));
+        BossTw_AddRingEffect(play, &secondSpawn, 0.3f, 2.2f, 220, (TwinrovaMagicElement)!element, 1,
+                             ARRAY_COUNT(sEffects));
         BossTw_SpawnMagicLaunchEffects(play, &firstSpawn, element, TWINROVA_CYCLONE_RAIN_SPAWN_EFFECTS);
-        BossTw_SpawnMagicLaunchEffects(play, &secondSpawn, element, TWINROVA_CYCLONE_RAIN_SPAWN_EFFECTS);
+        BossTw_SpawnMagicLaunchEffects(play, &secondSpawn, (TwinrovaMagicElement)!element,
+                                        TWINROVA_CYCLONE_RAIN_SPAWN_EFFECTS);
         Audio_PlayActorSound2(&owner->actor, NA_SE_EN_TWINROBA_THROW_MASIC);
-        play->envCtx.unk_D8 = 0.45f;
     }
     return true;
 }
@@ -4232,6 +4981,7 @@ void BossTw_TurnToPlayer(BossTw* this, PlayState* play) {
     s32 canStartCrossfire;
     s32 canStartPressureTriangle;
     s32 canStartPortal;
+    s32 canStartConjuration;
     s32 hasActivePhaseOneMagic;
     s32 bothRegularAttacksEligible;
     s32 forceVolley;
@@ -4272,9 +5022,11 @@ void BossTw_TurnToPlayer(BossTw* this, PlayState* play) {
         canStartCrossfire = BossTw_CanStartCrossfireVolley(this, otherTw, play);
         canStartPressureTriangle = BossTw_CanStartPressureTriangle(this, otherTw, play);
         canStartPortal = BossTw_CanStartPortalReposition(this, otherTw, play);
+        canStartConjuration = BossTw_CanStartElementalConjuration(this, otherTw, play);
         hasActivePhaseOneMagic = BossTw_HasActivePhaseOneMagic(play);
         bothRegularAttacksEligible =
-            projectedSummonPressure <= TWINROVA_BEAM_SUMMON_LIMIT && BossTw_IsNormalPhaseOneMovement(otherTw) &&
+            projectedSummonPressure <= TWINROVA_BEAM_SUMMON_LIMIT && otherTw != NULL &&
+            BossTw_IsNormalPhaseOneMovement(otherTw) &&
             !hasActivePhaseOneMagic &&
             BossTw_IsActorInCameraFrustumWithMargin(play, &this->actor, TWINROVA_ATTACK_FRUSTUM_MARGIN) &&
             BossTw_IsActorInCameraFrustumWithMargin(play, &otherTw->actor, TWINROVA_ATTACK_FRUSTUM_MARGIN);
@@ -4295,13 +5047,16 @@ void BossTw_TurnToPlayer(BossTw* this, PlayState* play) {
 
         if (BossTw_TryStartPhaseOneSpecial(
                 this, canStartSpiral, canStartCrossfire, canStartPressureTriangle, canStartPortal,
-                (canStartSpiral || canStartCrossfire || canStartPressureTriangle || canStartPortal) &&
+                canStartConjuration,
+                (canStartSpiral || canStartCrossfire || canStartPressureTriangle || canStartPortal ||
+                 canStartConjuration) &&
                     sPhaseOneEligibleSpecialMisses >= TWINROVA_PHASE_ONE_SPECIAL_PITY_MISSES,
                 play)) {
             BossTw_RecordPhaseOneSpecialAttack();
             return;
         }
-        if (canStartSpiral || canStartCrossfire || canStartPressureTriangle || canStartPortal) {
+        if (canStartSpiral || canStartCrossfire || canStartPressureTriangle || canStartPortal ||
+            canStartConjuration) {
             // One shared scheduler decision may reject the special category roll, but it contributes one pity miss.
             BossTw_RecordPhaseOneSpecialMiss();
         }
@@ -4310,6 +5065,22 @@ void BossTw_TurnToPlayer(BossTw* this, PlayState* play) {
             // Special moves establish their own authored formation. Routine beams and volleys must first reclaim
             // enough horizontal space that both elemental sources and the redirect target remain visually distinct.
             BossTw_SetupFlyTo(this, play);
+            return;
+        }
+
+        if (otherTw->actionFunc == BossTw_ElementalConjuration) {
+            // The ritual deliberately leaves one sister free to pressure Link, but never with a beam: the redirect
+            // puzzle promises a passive target while the player routes the beam. A visible solo volley keeps the
+            // channel dangerous without turning its interruption opportunity into an unreadable overlap.
+            if (!hasActivePhaseOneMagic &&
+                BossTw_IsActorInCameraFrustumWithMargin(play, &this->actor, TWINROVA_ATTACK_FRUSTUM_MARGIN)) {
+                this->work[CAN_SHOOT] = false;
+                BossTw_SetupBlastVolley(this, play);
+                this->actor.speedXZ = 0.0f;
+                BossTw_RecordPhaseOneRegularAttack(TWINROVA_PHASE_ONE_REGULAR_VOLLEY);
+            } else {
+                BossTw_SetupFlyTo(this, play);
+            }
             return;
         }
 
@@ -4364,6 +5135,7 @@ void BossTw_TurnToPlayer(BossTw* this, PlayState* play) {
 void BossTw_SetupFlyTo(BossTw* this, PlayState* play) {
     BossTw* otherTw = (BossTw*)this->actor.parent;
     s32 otherSisterIsBeaming = otherTw != NULL && otherTw->actionFunc == BossTw_ShootBeam;
+    s32 otherSisterIsConjuring = otherTw != NULL && otherTw->actionFunc == BossTw_ElementalConjuration;
     s32 useEscalatedPacing = BossTw_IsPhaseOneEscalated();
     s32 usePillarDestination = true;
     s16 attempt;
@@ -4387,6 +5159,23 @@ void BossTw_SetupFlyTo(BossTw* this, PlayState* play) {
     this->rotateSpeed = 0.0f;
     this->work[CAN_SHOOT] = true;
     Animation_MorphToLoop(&this->skelAnime, &gTwinrovaKotakeKoumeFlyAnim, -10.0f);
+
+    if (otherSisterIsConjuring) {
+        f32 centerDistanceSq = SQ(this->actor.world.pos.x) + SQ(this->actor.world.pos.z);
+
+        if (centerDistanceSq >= SQ(TWINROVA_CONJURATION_SUPPORT_MIN_RADIUS)) {
+            // Already safely outside the ritual: hold this side rather than choosing an opposite endpoint whose
+            // straight flight path would cut through the caster and seal.
+            BossTw_SetupTurnToPlayer(this, play);
+            this->actor.speedXZ = 0.0f;
+            return;
+        }
+        BossTw_SelectNearestPhaseOnePillar(this);
+        this->timers[0] = useEscalatedPacing ? TWINROVA_PHASE_ONE_ESCALATED_PILLAR_TIME
+                                             : TWINROVA_PHASE_ONE_PILLAR_TIME;
+        return;
+    }
+
     if (Rand_ZeroOne() < 0.5f) {
         for (attempt = 0; attempt < TWINROVA_PHASE_ONE_POSITION_ATTEMPTS; attempt++) {
             Vec3f candidate;
@@ -4723,10 +5512,8 @@ void BossTw_SpawnGroundBlast(BossTw* this, PlayState* play, s16 blastType) {
             sGroundBlastType = 1;
             groundBlast->timers[0] =
                 sTwinrovaPtr != NULL && sTwinrovaPtr->actionFunc == BossTw_Wait ? 100 : 50;
-            if (BossTw_CanGroundHazardSummon(play)) {
-                groundBlast->timers[3] = TWINROVA_SUMMON_EMERGENCE_DELAY;
-                groundBlast->work[CAN_SHOOT] = true;
-            }
+            // The pool is pressure in its own right. Enemy reinforcements are authored only by the dedicated
+            // Conjuration actions, so a missed projectile never creates an unrelated summon tell here.
             sKoumePtr->workf[KM_GD_FLM_A] = sKoumePtr->workf[KM_GD_SMOKE_A] = sKoumePtr->workf[KM_GRND_CRTR_A] = 255.0f;
             sKoumePtr->workf[KM_GD_FLM_SCL] = 1.0f;
             sKoumePtr->workf[KM_GD_CRTR_SCL] = 0.005f;
@@ -4751,11 +5538,6 @@ void BossTw_SpawnGroundBlast(BossTw* this, PlayState* play, s16 blastType) {
             sGroundBlastType = 2;
             groundBlast->timers[0] =
                 sTwinrovaPtr != NULL && sTwinrovaPtr->actionFunc == BossTw_Wait ? 100 : 50;
-            if (BossTw_CanGroundHazardSummon(play)) {
-                groundBlast->timers[3] = TWINROVA_SUMMON_EMERGENCE_DELAY;
-                groundBlast->work[CAN_SHOOT] = true;
-            }
-
             sKotakePtr->workf[UNK_F11] = 50.0f;
             sKotakePtr->workf[UNK_F9] = 250.0f;
             sKotakePtr->workf[UNK_F12] = 0.005f;
@@ -4893,7 +5675,7 @@ s32 BossTw_CheckBeamReflection(BossTw* this, PlayState* play) {
     return 0;
 }
 
-s32 BossTw_BeamReflHitCheck(BossTw* this, Vec3f* pos) {
+static s32 BossTw_BeamReflHitCheck(BossTw* this, Vec3f* pos, f32 lateralTolerance, f32 verticalTolerance) {
     Vec3f offset;
     Vec3f beamDistFromTarget;
 
@@ -4905,7 +5687,8 @@ s32 BossTw_BeamReflHitCheck(BossTw* this, Vec3f* pos) {
     Matrix_RotateY(-this->beamReflectionYaw, MTXMODE_APPLY);
     Matrix_MultVec3f(&offset, &beamDistFromTarget);
 
-    if (fabsf(beamDistFromTarget.x) < 50.0f && fabsf(beamDistFromTarget.y) < 50.0f && beamDistFromTarget.z > 100.0f &&
+    if (fabsf(beamDistFromTarget.x) < lateralTolerance && fabsf(beamDistFromTarget.y) < verticalTolerance &&
+        beamDistFromTarget.z > 100.0f &&
         beamDistFromTarget.z <= this->beamReflectionDist) {
         this->beamReflectionDist = sqrtf(SQ(offset.x) + SQ(offset.y) + SQ(offset.z)) * 1.1f;
         return true;
@@ -5296,11 +6079,13 @@ void BossTw_ShootBeam(BossTw* this, PlayState* play) {
             }
         }
 
-        if (BossTw_BeamReflHitCheck(this, &this->actor.world.pos) && (this->work[CS_TIMER_1] % 4) == 0) {
+        if (BossTw_BeamReflHitCheck(this, &this->actor.world.pos, 50.0f, 50.0f) &&
+            (this->work[CS_TIMER_1] % 4) == 0) {
             BossTw_AddRingEffect(play, &this->unk_530, 0.5f, 3.0f, 255, this->actor.params, 1, 150);
         }
 
-        if (BossTw_BeamReflHitCheck(this, &otherTw->actor.world.pos)) {
+        if (BossTw_BeamReflHitCheck(this, &otherTw->actor.world.pos, TWINROVA_BEAM_REDIRECT_TARGET_RADIUS,
+                                    TWINROVA_BEAM_REDIRECT_TARGET_HEIGHT)) {
             BossTw_TryHitSisterWithMagic(otherTw, play,
                                          this->actor.params == TW_KOUME ? TWINROVA_MAGIC_FIRE : TWINROVA_MAGIC_ICE);
         }
@@ -5694,13 +6479,14 @@ s32 BossTw_ShouldUseNormalUpdateRate(Actor* actor) {
             // Keep the shared scheduler boundary at one update so a deferred sister reaches the other actor's base
             // update before Hyper Bosses can consume its two-tick handoff inside the same gameplay frame.
             (this->actionFunc == BossTw_TurnToPlayer && this->timers[0] <= 2) ||
-            this->actionFunc == BossTw_Spin || this->actionFunc == BossTw_PillarDive ||
-            this->actionFunc == BossTw_CrossfireVolley || this->actionFunc == BossTw_ShootBeam ||
-            this->actionFunc == BossTw_FinishBeamShoot || this->actionFunc == BossTw_BlastVolley ||
-            this->actionFunc == BossTw_SpiralBarrage || this->actionFunc == BossTw_PortalReposition ||
+             this->actionFunc == BossTw_Spin || this->actionFunc == BossTw_PillarDive ||
+             this->actionFunc == BossTw_CrossfireVolley || this->actionFunc == BossTw_ShootBeam ||
+             this->actionFunc == BossTw_FinishBeamShoot || this->actionFunc == BossTw_BlastVolley ||
+             this->actionFunc == BossTw_SpiralBarrage || this->actionFunc == BossTw_PortalReposition ||
+             this->actionFunc == BossTw_ElementalConjuration ||
              this->actionFunc == BossTw_TwinrovaChargeBlast || this->actionFunc == BossTw_TwinrovaShootBlast ||
-             this->actionFunc == BossTw_TwinrovaCyclone || this->actionFunc == BossTw_TwinrovaFalseCharge ||
-             this->actionFunc == BossTw_TwinrovaMinefield ||
+              this->actionFunc == BossTw_TwinrovaCyclone || this->actionFunc == BossTw_TwinrovaFalseCharge ||
+              this->actionFunc == BossTw_TwinrovaMinefield || this->actionFunc == BossTw_TwinrovaElementalConjuration ||
              this->actionFunc == BossTw_TwinrovaMinefieldFollowup ||
              this->actionFunc == BossTw_TwinrovaSpin ||
             this->actionFunc == BossTw_TwinrovaBreakerSequence ||
@@ -7152,6 +7938,17 @@ void BossTw_Update(Actor* thisx, PlayState* play) {
         this->work[FOG_TIMER]--;
     }
 
+    if (this->actionFunc == BossTw_ElementalConjuration && this->work[INVINC_TIMER] == 0 &&
+        (this->collider.base.acFlags & AC_HIT)) {
+        // Sister AC hits are normally cosmetic in phase one. A channel is the deliberate exception: any real player
+        // contact knocks the caster out of the spell before its final-tick emergence can resolve.
+        this->collider.base.acFlags &= ~AC_HIT;
+        BossTw_CancelElementalConjuration(this, play);
+        this->work[INVINC_TIMER] = 12;
+        Audio_PlayActorSound2(&this->actor, NA_SE_EN_TWINROBA_DAMAGE_VOICE);
+        BossTw_SetupFlyTo(this, play);
+    }
+
     if (this->timers[2] == 0 &&
         (this->actionFunc == BossTw_FlyTo || this->actionFunc == BossTw_TurnToPlayer) &&
         !BossTw_HasActivePhaseOneMagic(play) && !BossTw_HasActiveGroundPressure(play) &&
@@ -7293,6 +8090,7 @@ void BossTw_TwinrovaUpdate(Actor* thisx, PlayState* play2) {
     s32 holdCycloneCooldown;
     s32 holdFalseChargeCooldown;
     s32 holdMinefieldCooldown;
+    s32 holdConjurationCooldown;
     PlayState* play = play2;
     BossTw* this = (BossTw*)thisx;
     Player* player = GET_PLAYER(play);
@@ -7326,8 +8124,9 @@ void BossTw_TwinrovaUpdate(Actor* thisx, PlayState* play2) {
                             BossTw_CountActiveMinefieldPools(play, this) != 0;
     holdCycloneCooldown = holdBreakerCooldown || this->actionFunc == BossTw_TwinrovaCyclone;
     holdFalseChargeCooldown = holdBreakerCooldown || this->actionFunc == BossTw_TwinrovaFalseCharge ||
-                              (this->actionFunc == BossTw_TwinrovaChargeBlast &&
-                               this->pendingFusedAttack == TWINROVA_FUSED_ATTACK_FALSE_CHARGE);
+                               (this->actionFunc == BossTw_TwinrovaChargeBlast &&
+                                this->pendingFusedAttack == TWINROVA_FUSED_ATTACK_FALSE_CHARGE);
+    holdConjurationCooldown = holdBreakerCooldown || this->actionFunc == BossTw_TwinrovaElementalConjuration;
     for (i = 0; i < 4; i++) {
         if (this->timers[i] != 0) {
             this->timers[i]--;
@@ -7348,6 +8147,9 @@ void BossTw_TwinrovaUpdate(Actor* thisx, PlayState* play2) {
         }
         if (this->minefieldCooldown != 0 && !holdMinefieldCooldown) {
             this->minefieldCooldown--;
+        }
+        if (this->conjurationCooldown != 0 && !holdConjurationCooldown) {
+            this->conjurationCooldown--;
         }
     }
 
@@ -7415,9 +8217,11 @@ void BossTw_TwinrovaUpdate(Actor* thisx, PlayState* play2) {
         Vec3f velocity = { 0.0f, 0.0f, 0.0f };
         Vec3f accel;
 
-        // Leave visual space for the authored shot tells and Cyclone's rapid orbit.
-        scepterParticleCount =
-            this->actionFunc == BossTw_TwinrovaBreakerSequence ? 1 : 2;
+        // Leave visual space for authored attack feedback. Conjuration supplies its own directional staff-to-aperture
+        // stream; the generic four-dots-per-update bed would saturate the shared effect pool before either eruption.
+        scepterParticleCount = this->actionFunc == BossTw_TwinrovaElementalConjuration
+                                   ? 0
+                                   : this->actionFunc == BossTw_TwinrovaBreakerSequence ? 1 : 2;
 
         if (this->work[UNK_S8] != 0) {
             this->work[UNK_S8] -= 20;
@@ -7520,7 +8324,12 @@ void BossTw_TwinrovaUpdate(Actor* thisx, PlayState* play2) {
         // Hyper Bosses may substep the hidden phase-one controller and fused neutral movement. The shared effect
         // pool, shield UI, and elemental lighting are frame clocks, not boss motion, and advance only once here.
         sTwinrovaSharedUpdateFrame = play->gameplayFrames;
-        if (sMinefieldLightPulseTimer != 0) {
+        if (this->actionFunc == BossTw_TwinrovaCyclone && this->csState1 == 1) {
+            // Cyclone owns a storm pulse rather than the ordinary steady fire/ice cast tint. Keeping this in the shared
+            // once-per-frame lighting path prevents Hyper Boss substeps from accelerating its flashes.
+            BossTw_UpdateCycloneEnvironment(this, play);
+            BossTw_UpdateCycloneActiveFeedback(this, play);
+        } else if (sMinefieldLightPulseTimer != 0) {
             f32 pulseTarget = 1.0f;
 
             // The final mine owns a brief brightness pulse, while any simultaneously committed normal shot keeps its
@@ -7783,6 +8592,12 @@ void func_80942180(BossTw* this, PlayState* play) {
 void func_809426F0(BossTw* this, PlayState* play) {
     s32 pad;
     s16 i;
+
+    // This renderer is the old forward-facing beam charge effect. Most sister actions leave both alphas at zero;
+    // skipping it entirely in that state prevents stale display-list state from producing a detached floating remnant.
+    if (this->spawnPortalAlpha <= 0.0f && this->flameAlpha <= 0.0f) {
+        return;
+    }
 
     OPEN_DISPS(play->state.gfxCtx);
 
@@ -8304,9 +9119,12 @@ static void BossTw_DrawFusedAttackPortalSigil(BossTw* this, PlayState* play) {
 
 static void BossTw_DrawCycloneStormSigil(BossTw* this, PlayState* play) {
     f32 scale;
+    f32 apertureScale;
+    f32 raysScale;
     f32 alphaScale;
     f32 pulse = (Math_SinS(this->work[CS_TIMER_1] * 0x1000) * 0.5f) + 0.5f;
     s16 alpha;
+    s16 innerAlpha;
 
     if (this->csState1 == 0) {
         alphaScale = 1.0f - (this->timers[0] / (f32)TWINROVA_CYCLONE_WINDUP_TIME);
@@ -8320,6 +9138,11 @@ static void BossTw_DrawCycloneStormSigil(BossTw* this, PlayState* play) {
     }
     alphaScale = CLAMP(alphaScale, 0.0f, 1.0f);
     alpha = (s16)(255.0f * alphaScale);
+    innerAlpha = (s16)(alpha * (0.62f + (pulse * 0.18f)));
+    apertureScale = TWINROVA_CYCLONE_SIGIL_APERTURE_SCALE *
+                    (scale / TWINROVA_CYCLONE_SIGIL_SCALE) * (0.94f + (pulse * 0.06f));
+    raysScale = TWINROVA_CYCLONE_SIGIL_RAYS_SCALE *
+                (scale / TWINROVA_CYCLONE_SIGIL_SCALE) * (0.92f + (pulse * 0.08f));
 
     OPEN_DISPS(play->state.gfxCtx);
 
@@ -8327,7 +9150,48 @@ static void BossTw_DrawCycloneStormSigil(BossTw* this, PlayState* play) {
     gSPSegment(POLY_XLU_DISP++, 8,
                Gfx_TwoTexScrollEx(play->state.gfxCtx, 0, 0, -this->work[CS_TIMER_1] * 12, 0x20, 0x40, 1, 0,
                                   this->work[CS_TIMER_1] * 3, 0x40, 0x40, 0, -12, 0, 3));
-    gSPClearGeometryMode(POLY_XLU_DISP++, G_CULL_BACK);
+    gSPClearGeometryMode(POLY_XLU_DISP++, G_CULL_BOTH);
+
+    // A bright horizontal aperture gives the huge rune physical depth and makes its underside the obvious rain source.
+    // It remains centered over the arena, well above Twinrova's orbit, rather than following her like a backdrop.
+    Matrix_Push();
+    Matrix_Translate(0.0f, TWINROVA_CYCLONE_SIGIL_HEIGHT + 2.0f, 0.0f, MTXMODE_NEW);
+    Matrix_Scale(apertureScale, apertureScale, apertureScale, MTXMODE_APPLY);
+    if (this->blastType == TWINROVA_MAGIC_ICE) {
+        gDPSetPrimColor(POLY_XLU_DISP++, 0, 0, 190, 240, 255, (s16)(alpha * 0.62f));
+        gDPSetEnvColor(POLY_XLU_DISP++, 20, 65, 170, (s16)(alpha * 0.48f));
+    } else {
+        gDPSetPrimColor(POLY_XLU_DISP++, 0, 0, 255, 190, 65, (s16)(alpha * 0.62f));
+        gDPSetEnvColor(POLY_XLU_DISP++, 170, 20, 0, (s16)(alpha * 0.48f));
+    }
+    gSPMatrix(POLY_XLU_DISP++, MATRIX_NEWMTX(play->state.gfxCtx), G_MTX_LOAD | G_MTX_MODELVIEW | G_MTX_NOPUSH);
+    gSPDisplayList(POLY_XLU_DISP++, SEGMENTED_TO_VIRTUAL(gTwinrovaLightCircleDL));
+    Matrix_Pop();
+
+    // A shallow horizontal rune can still read edge-on from the combat camera. Hang a short translucent energy throat
+    // from its underside so Link can always see where the rain enters the room without moving the truthful source plane.
+    gSPSegment(POLY_XLU_DISP++, 8,
+               Gfx_TwoTexScrollEx(play->state.gfxCtx, 0, -this->work[CS_TIMER_1] * 3, 0, 0x20, 0x20, 1,
+                                  this->work[CS_TIMER_1] * 5, 0, 0x20, 0x40, -3, 0, 5, 0));
+    gSPClearGeometryMode(POLY_XLU_DISP++, G_CULL_BOTH);
+    Matrix_Push();
+    Matrix_Translate(0.0f, TWINROVA_CYCLONE_SIGIL_HEIGHT - 5.0f, 0.0f, MTXMODE_NEW);
+    Matrix_Scale(raysScale, 1.35f, raysScale, MTXMODE_APPLY);
+    if (this->blastType == TWINROVA_MAGIC_ICE) {
+        gDPSetPrimColor(POLY_XLU_DISP++, 0, 0, 180, 235, 255, (s16)(alpha * 0.48f));
+        gDPSetEnvColor(POLY_XLU_DISP++, 25, 80, 190, (s16)(alpha * 0.38f));
+    } else {
+        gDPSetPrimColor(POLY_XLU_DISP++, 0, 0, 255, 170, 45, (s16)(alpha * 0.48f));
+        gDPSetEnvColor(POLY_XLU_DISP++, 190, 30, 0, (s16)(alpha * 0.38f));
+    }
+    gSPMatrix(POLY_XLU_DISP++, MATRIX_NEWMTX(play->state.gfxCtx), G_MTX_LOAD | G_MTX_MODELVIEW | G_MTX_NOPUSH);
+    gSPDisplayList(POLY_XLU_DISP++, SEGMENTED_TO_VIRTUAL(gTwinrovaLightRaysDL));
+    Matrix_Pop();
+
+    // Outer rim: the authoritative arena-scale portal silhouette.
+    // The aperture display list may author its own geometry state. Reassert two-sided rendering because Link always
+    // reads this portal from below and a stale back-face mode would make the signature rim disappear again.
+    gSPClearGeometryMode(POLY_XLU_DISP++, G_CULL_BOTH);
     Matrix_Push();
     Matrix_Translate(0.0f, TWINROVA_CYCLONE_SIGIL_HEIGHT, 0.0f, MTXMODE_NEW);
     Matrix_RotateY(this->work[CS_TIMER_1] * this->csState2 * 0.025f, MTXMODE_APPLY);
@@ -8341,6 +9205,26 @@ static void BossTw_DrawCycloneStormSigil(BossTw* this, PlayState* play) {
     } else {
         gDPSetPrimColor(POLY_XLU_DISP++, 0, 0, 255, 145, 20, alpha);
         gDPSetEnvColor(POLY_XLU_DISP++, 180, 25, 0, 160);
+        gSPDisplayList(POLY_XLU_DISP++, SEGMENTED_TO_VIRTUAL(gTwinrovaKoumeMagicSigilDL));
+    }
+    Matrix_Pop();
+
+    // Counter-rotation inside the same portal adds a readable energy throat without introducing a second huge sigil.
+    gSPClearGeometryMode(POLY_XLU_DISP++, G_CULL_BOTH);
+    Matrix_Push();
+    Matrix_Translate(0.0f, TWINROVA_CYCLONE_SIGIL_HEIGHT - 3.0f, 0.0f, MTXMODE_NEW);
+    Matrix_RotateY(-this->work[CS_TIMER_1] * this->csState2 * 0.045f, MTXMODE_APPLY);
+    Matrix_RotateX(-M_PI / 2.0f, MTXMODE_APPLY);
+    Matrix_Scale(scale * TWINROVA_CYCLONE_SIGIL_INNER_SCALE, scale * TWINROVA_CYCLONE_SIGIL_INNER_SCALE,
+                 scale * TWINROVA_CYCLONE_SIGIL_INNER_SCALE, MTXMODE_APPLY);
+    gSPMatrix(POLY_XLU_DISP++, MATRIX_NEWMTX(play->state.gfxCtx), G_MTX_LOAD | G_MTX_MODELVIEW | G_MTX_NOPUSH);
+    if (this->blastType == TWINROVA_MAGIC_ICE) {
+        gDPSetPrimColor(POLY_XLU_DISP++, 0, 0, 215, 250, 255, innerAlpha);
+        gDPSetEnvColor(POLY_XLU_DISP++, 45, 105, 220, 150);
+        gSPDisplayList(POLY_XLU_DISP++, SEGMENTED_TO_VIRTUAL(gTwinrovaKotakeMagicSigilDL));
+    } else {
+        gDPSetPrimColor(POLY_XLU_DISP++, 0, 0, 255, 205, 85, innerAlpha);
+        gDPSetEnvColor(POLY_XLU_DISP++, 220, 45, 0, 150);
         gSPDisplayList(POLY_XLU_DISP++, SEGMENTED_TO_VIRTUAL(gTwinrovaKoumeMagicSigilDL));
     }
     Matrix_Pop();
@@ -8376,9 +9260,12 @@ void BossTw_TwinrovaDraw(Actor* thisx, PlayState* play2) {
         if (this->attackPortalActive) {
             BossTw_DrawFusedAttackPortalSigil(this, play);
         }
-        if (this->actionFunc == BossTw_TwinrovaCyclone) {
-            BossTw_DrawCycloneStormSigil(this, play);
-        }
+    }
+
+    // The arena portal is the attack's world-space warning, not part of Twinrova's body presentation. Keep it visible
+    // even if another transition briefly hides her model while the committed Cyclone action is still authoritative.
+    if (this->actionFunc == BossTw_TwinrovaCyclone) {
+        BossTw_DrawCycloneStormSigil(this, play);
     }
 
     BossTw_DrawEffects(play);
@@ -8599,6 +9486,183 @@ void BossTw_RainMarkerUpdate(Actor* thisx, PlayState* play) {
     }
 }
 
+void BossTw_SummonMarkerUpdate(Actor* thisx, PlayState* play) {
+    BossTw* this = (BossTw*)thisx;
+    Actor* parentActor = BossTw_FindActorByAddress(play, this->actor.parent);
+    BossTw* owner;
+    s32 fusedConjuration;
+    s16 channelTime;
+    f32 progress;
+    f32 pulse;
+
+    if (parentActor == NULL || parentActor->update == NULL || parentActor->id != ACTOR_BOSS_TW) {
+        Actor_Kill(&this->actor);
+        return;
+    }
+
+    owner = (BossTw*)parentActor;
+    fusedConjuration = parentActor->params == TW_TWINROVA && owner->actionFunc == BossTw_TwinrovaElementalConjuration;
+    if (!fusedConjuration &&
+        (!BossTw_IsSisterActor(parentActor) || owner->actionFunc != BossTw_ElementalConjuration)) {
+        Actor_Kill(&this->actor);
+        return;
+    }
+
+    // Mirror the authoritative channel timer. This child is deliberately visual-only: it may never reserve summons,
+    // block a follow-up, or outlive an interrupted caster.
+    channelTime = this->timers[1] != 0 ? this->timers[1] : TWINROVA_CONJURATION_CHANNEL_TIME;
+    this->timers[0] = owner->timers[0];
+    this->work[CS_TIMER_1]++;
+    progress = fusedConjuration ? MIN(this->work[CS_TIMER_1], channelTime) / (f32)channelTime
+                                : 1.0f - (this->timers[0] / (f32)channelTime);
+    progress = CLAMP(progress, 0.0f, 1.0f);
+    pulse = (Math_SinS(this->work[CS_TIMER_1] *
+                       (this->timers[0] <= (fusedConjuration ? TWINROVA_FUSED_CONJURATION_FINAL_WINDOW
+                                                              : TWINROVA_CONJURATION_FINAL_WINDOW)
+                            ? 0x2800
+                            : fusedConjuration ? 0x1800
+                                               : 0x1000)) +
+             1.0f) *
+            0.5f;
+    if (fusedConjuration) {
+        this->portalRotation += 0.12f + (progress * 0.26f);
+    } else {
+        // Phase-one's ritual is a fixed floor seal, not a projectile warning that skates or spins underneath a witch.
+        // Urgency comes from its pulse and the caster-bound particle stream rather than lateral motion.
+        this->portalRotation = 0.0f;
+    }
+    this->workf[UNK_F17] = (fusedConjuration ? TWINROVA_FUSED_CONJURATION_RING_SCALE
+                                               : TWINROVA_CONJURATION_RING_SCALE) *
+                            (0.88f + (pulse * (0.08f + (progress * (fusedConjuration ? 0.13f : 0.08f)))));
+    this->workf[UNK_F18] = (fusedConjuration ? 175.0f : 145.0f) + (progress * (fusedConjuration ? 65.0f : 75.0f)) +
+                           (pulse * (fusedConjuration ? 38.0f : 30.0f));
+}
+
+void BossTw_SummonMarkerDraw(Actor* thisx, PlayState* play) {
+    BossTw* this = (BossTw*)thisx;
+    s32 fusedConjuration = this->work[UNK_S8] != 0;
+    s16 channelTime = this->timers[1] != 0 ? this->timers[1] : TWINROVA_CONJURATION_CHANNEL_TIME;
+    f32 progress = fusedConjuration ? MIN(this->work[CS_TIMER_1], channelTime) / (f32)channelTime
+                                    : 1.0f - (this->timers[0] / (f32)channelTime);
+    f32 pulse = (Math_SinS(this->work[CS_TIMER_1] *
+                           (this->timers[0] <= (fusedConjuration ? TWINROVA_FUSED_CONJURATION_FINAL_WINDOW
+                                                                  : TWINROVA_CONJURATION_FINAL_WINDOW)
+                                ? 0x2800
+                                : fusedConjuration ? 0x1800
+                                                   : 0x1000)) +
+                 1.0f) *
+                 0.5f;
+    f32 coreScale;
+    f32 edgeScale;
+    f32 pillarScale;
+    f32 pillarHeight;
+    s16 coreAlpha;
+    s16 edgeAlpha;
+    s16 pillarAlpha;
+
+    progress = CLAMP(progress, 0.0f, 1.0f);
+    coreScale = this->workf[UNK_F17] * 1.08f;
+    edgeScale = (fusedConjuration ? TWINROVA_FUSED_CONJURATION_RING_EDGE_SCALE
+                                  : TWINROVA_CONJURATION_RING_EDGE_SCALE) *
+                (0.92f + (pulse * (0.06f + (progress * (fusedConjuration ? 0.14f : 0.10f)))));
+    pillarScale = 0.12f * (0.94f + (pulse * (0.08f + (progress * 0.12f))));
+    pillarHeight = 0.72f + (progress * 0.85f);
+    coreAlpha = (s16)CLAMP_MAX(this->workf[UNK_F18], 255.0f);
+    edgeAlpha = (s16)CLAMP_MAX((fusedConjuration ? 145.0f : 105.0f) +
+                                  (progress * (fusedConjuration ? 90.0f : 95.0f)) +
+                                  (pulse * (fusedConjuration ? 55.0f : 45.0f)),
+                              255.0f);
+    pillarAlpha = (s16)CLAMP_MAX(coreAlpha * (0.42f + (progress * 0.35f)), 255.0f);
+
+    OPEN_DISPS(play->state.gfxCtx);
+
+    Gfx_SetupDL_25Xlu(play->state.gfxCtx);
+    if (fusedConjuration) {
+        gSPSegment(POLY_XLU_DISP++, 8,
+                   Gfx_TwoTexScrollEx(play->state.gfxCtx, 0, 0, -this->work[CS_TIMER_1] * 5, 0x20, 0x40, 1,
+                                      this->work[CS_TIMER_1] * 3, 0, 0x20, 0x20, 0, -5, 3, 0));
+    } else {
+        // Keep the phase-one rim completely stationary. It is a ritual seal, with urgency communicated by light and
+        // height, not a spinning/scrolling attack decal.
+        gSPSegment(POLY_XLU_DISP++, 8,
+                   Gfx_TwoTexScrollEx(play->state.gfxCtx, 0, 0, 0, 0x20, 0x40, 1, 0, 0, 0x20, 0x20, 0, 0, 0, 0));
+    }
+    gSPClearGeometryMode(POLY_XLU_DISP++, G_CULL_BOTH);
+
+    if (fusedConjuration) {
+        // The fused ritual keeps the richer portal stack. Phase one deliberately omits these fusion/cutscene meshes:
+        // they read as a stray solid asset at the center of its otherwise clean floor seal.
+        Matrix_Push();
+        Matrix_Translate(this->actor.world.pos.x, this->actor.world.pos.y + 3.0f, this->actor.world.pos.z, MTXMODE_NEW);
+        Matrix_Scale(coreScale, coreScale, coreScale, MTXMODE_APPLY);
+        gDPSetPrimColor(POLY_XLU_DISP++, 0, 0, 235, 240, 230, coreAlpha);
+        gDPSetEnvColor(POLY_XLU_DISP++, 70, 80, 105, coreAlpha / 2);
+        gSPMatrix(POLY_XLU_DISP++, MATRIX_NEWMTX(play->state.gfxCtx), G_MTX_LOAD | G_MTX_MODELVIEW | G_MTX_NOPUSH);
+        gSPDisplayList(POLY_XLU_DISP++, SEGMENTED_TO_VIRTUAL(gTwinrovaLightCircleDL));
+        Matrix_Pop();
+
+        gSPClearGeometryMode(POLY_XLU_DISP++, G_CULL_BOTH);
+        Matrix_Push();
+        Matrix_Translate(this->actor.world.pos.x, this->actor.world.pos.y + 9.0f, this->actor.world.pos.z, MTXMODE_NEW);
+        Matrix_Scale(pillarScale, pillarHeight, pillarScale, MTXMODE_APPLY);
+        if (this->blastType == TWINROVA_MAGIC_ICE) {
+            gDPSetPrimColor(POLY_XLU_DISP++, 0, 0, 165, 225, 255, pillarAlpha);
+            gDPSetEnvColor(POLY_XLU_DISP++, 35, 80, 185, pillarAlpha / 2);
+        } else {
+            gDPSetPrimColor(POLY_XLU_DISP++, 0, 0, 255, 150, 25, pillarAlpha);
+            gDPSetEnvColor(POLY_XLU_DISP++, 185, 30, 0, pillarAlpha / 2);
+        }
+        gSPMatrix(POLY_XLU_DISP++, MATRIX_NEWMTX(play->state.gfxCtx), G_MTX_LOAD | G_MTX_MODELVIEW | G_MTX_NOPUSH);
+        gSPDisplayList(POLY_XLU_DISP++, SEGMENTED_TO_VIRTUAL(gTwinrovaLightPillarDL));
+        Matrix_Pop();
+    }
+
+    gSPClearGeometryMode(POLY_XLU_DISP++, G_CULL_BOTH);
+    Matrix_Push();
+    Matrix_Translate(this->actor.world.pos.x, this->actor.world.pos.y + 6.0f, this->actor.world.pos.z, MTXMODE_NEW);
+    if (fusedConjuration) {
+        Matrix_RotateY(this->portalRotation, MTXMODE_APPLY);
+    }
+    Matrix_RotateX(M_PI / 2.0f, MTXMODE_APPLY);
+    Matrix_Scale(edgeScale, edgeScale, edgeScale, MTXMODE_APPLY);
+    gSPMatrix(POLY_XLU_DISP++, MATRIX_NEWMTX(play->state.gfxCtx), G_MTX_LOAD | G_MTX_MODELVIEW | G_MTX_NOPUSH);
+    if (this->blastType == TWINROVA_MAGIC_ICE) {
+        gDPSetPrimColor(POLY_XLU_DISP++, 0, 0, 155, 225, 255, edgeAlpha);
+        gDPSetEnvColor(POLY_XLU_DISP++, 35, 80, 180, edgeAlpha / 2);
+        gSPDisplayList(POLY_XLU_DISP++, SEGMENTED_TO_VIRTUAL(gTwinrovaKotakeMagicSigilDL));
+    } else {
+        gDPSetPrimColor(POLY_XLU_DISP++, 0, 0, 255, 145, 20, edgeAlpha);
+        gDPSetEnvColor(POLY_XLU_DISP++, 180, 25, 0, edgeAlpha / 2);
+        gSPDisplayList(POLY_XLU_DISP++, SEGMENTED_TO_VIRTUAL(gTwinrovaKoumeMagicSigilDL));
+    }
+    Matrix_Pop();
+
+    if (fusedConjuration) {
+        // Only the fused ritual needs a counter-rotating inner aperture. One elemental rune is the entire readable
+        // phase-one promise; duplicating it looked like an unrelated object sitting on the platform.
+        gSPClearGeometryMode(POLY_XLU_DISP++, G_CULL_BOTH);
+        Matrix_Push();
+        Matrix_Translate(this->actor.world.pos.x, this->actor.world.pos.y + 8.0f, this->actor.world.pos.z, MTXMODE_NEW);
+        Matrix_RotateY(-this->portalRotation * 1.35f, MTXMODE_APPLY);
+        Matrix_RotateX(M_PI / 2.0f, MTXMODE_APPLY);
+        Matrix_Scale(edgeScale * 0.58f, edgeScale * 0.58f, edgeScale * 0.58f, MTXMODE_APPLY);
+        gSPMatrix(POLY_XLU_DISP++, MATRIX_NEWMTX(play->state.gfxCtx), G_MTX_LOAD | G_MTX_MODELVIEW | G_MTX_NOPUSH);
+        if (this->blastType == TWINROVA_MAGIC_ICE) {
+            gDPSetPrimColor(POLY_XLU_DISP++, 0, 0, 205, 245, 255, edgeAlpha / 2);
+            gDPSetEnvColor(POLY_XLU_DISP++, 45, 100, 215, edgeAlpha / 3);
+            gSPDisplayList(POLY_XLU_DISP++, SEGMENTED_TO_VIRTUAL(gTwinrovaKotakeMagicSigilDL));
+        } else {
+            gDPSetPrimColor(POLY_XLU_DISP++, 0, 0, 255, 205, 85, edgeAlpha / 2);
+            gDPSetEnvColor(POLY_XLU_DISP++, 220, 45, 0, edgeAlpha / 3);
+            gSPDisplayList(POLY_XLU_DISP++, SEGMENTED_TO_VIRTUAL(gTwinrovaKoumeMagicSigilDL));
+        }
+        Matrix_Pop();
+    }
+    gSPSetGeometryMode(POLY_XLU_DISP++, G_CULL_BACK);
+
+    CLOSE_DISPS(play->state.gfxCtx);
+}
+
 void BossTw_SiegeZoneDraw(Actor* thisx, PlayState* play) {
     BossTw* this = (BossTw*)thisx;
     s32 isWarningSigil = this->actor.params == TW_FIRE_WARNING_SIGIL ||
@@ -8767,7 +9831,7 @@ static s32 BossTw_ShouldSuppressDirectProjectileCollision(BossTw* this, PlayStat
         return false;
     }
 
-    if (this->blastBehavior == TWINROVA_BLAST_MINEFIELD_FOLLOWUP && this->minefieldFollowupSuppressed) {
+    if (this->minefieldFollowupSuppressed) {
         // The cast still releases and resolves visibly while Link is disabled, but this authored retry slot must never
         // become a fourth actionable shield shot after its short generic thaw grace expires.
         return true;
@@ -8846,7 +9910,7 @@ static s32 BossTw_BlastReachedFloor(BossTw* this, f32 floorY) {
     }
 
     if (this->blastBehavior == TWINROVA_BLAST_SIEGE || this->blastBehavior == TWINROVA_BLAST_BREAKER ||
-        this->blastBehavior == TWINROVA_BLAST_LOWER_ROUTE ||
+        this->blastBehavior == TWINROVA_BLAST_LOWER_ROUTE || this->blastBehavior == TWINROVA_BLAST_CHAINED ||
         this->blastBehavior == TWINROVA_BLAST_MINEFIELD_FOLLOWUP) {
         // The legacy 35-unit result is a no-floor sentinel. Lower-routed and Siege shots must pass beneath raised
         // platforms, then resolve exactly on a real floor instead of exploding in empty space.
@@ -8869,7 +9933,7 @@ static s16 BossTw_GetBlastImpactEffectCount(BossTw* this) {
                                          : TWINROVA_RAIN_IMPACT_EFFECTS;
     }
     if (this->blastBehavior == TWINROVA_BLAST_SIEGE || this->blastBehavior == TWINROVA_BLAST_BREAKER ||
-        this->blastBehavior == TWINROVA_BLAST_MINEFIELD_FOLLOWUP) {
+        this->blastBehavior == TWINROVA_BLAST_CHAINED || this->blastBehavior == TWINROVA_BLAST_MINEFIELD_FOLLOWUP) {
         return TWINROVA_SIEGE_IMPACT_EFFECTS;
     }
     if (BossTw_IsPhaseOneVolleyBlast(this)) {
@@ -8880,8 +9944,8 @@ static s16 BossTw_GetBlastImpactEffectCount(BossTw* this) {
 
 static s32 BossTw_BlastCreatesGroundHazard(BossTw* this) {
     return !BossTw_IsPhaseOneVolleyBlast(this) && this->blastBehavior != TWINROVA_BLAST_RAIN &&
-           this->blastBehavior != TWINROVA_BLAST_SIEGE && this->blastBehavior != TWINROVA_BLAST_BREAKER &&
-           this->blastBehavior != TWINROVA_BLAST_MINEFIELD_FOLLOWUP;
+        this->blastBehavior != TWINROVA_BLAST_SIEGE && this->blastBehavior != TWINROVA_BLAST_BREAKER &&
+            this->blastBehavior != TWINROVA_BLAST_CHAINED && this->blastBehavior != TWINROVA_BLAST_MINEFIELD_FOLLOWUP;
 }
 
 static void BossTw_PlayBlastMissImpactSfx(BossTw* this) {
@@ -8923,6 +9987,7 @@ void BossTw_BlastFire(BossTw* this, PlayState* play) {
                          this->blastBehavior == TWINROVA_BLAST_SIEGE ||
                          this->blastBehavior == TWINROVA_BLAST_BREAKER ||
                          this->blastBehavior == TWINROVA_BLAST_LOWER_ROUTE ||
+                         this->blastBehavior == TWINROVA_BLAST_CHAINED ||
                          this->blastBehavior == TWINROVA_BLAST_MINEFIELD_FOLLOWUP)) {
                         BossTw_ResolveBlastMiss(this);
                         break;
@@ -9015,6 +10080,7 @@ void BossTw_BlastFire(BossTw* this, PlayState* play) {
                             play->envCtx.unk_D8 = 0.5f;
                             if (this->blastBehavior == TWINROVA_BLAST_SIEGE ||
                                 this->blastBehavior == TWINROVA_BLAST_BREAKER ||
+                                this->blastBehavior == TWINROVA_BLAST_CHAINED ||
                                 this->blastBehavior == TWINROVA_BLAST_MINEFIELD_FOLLOWUP) {
                                 sEnvType = 0;
                             }
@@ -9141,6 +10207,7 @@ void BossTw_BlastIce(BossTw* this, PlayState* play) {
                          this->blastBehavior == TWINROVA_BLAST_SIEGE ||
                          this->blastBehavior == TWINROVA_BLAST_BREAKER ||
                          this->blastBehavior == TWINROVA_BLAST_LOWER_ROUTE ||
+                         this->blastBehavior == TWINROVA_BLAST_CHAINED ||
                          this->blastBehavior == TWINROVA_BLAST_MINEFIELD_FOLLOWUP)) {
                         BossTw_ResolveBlastMiss(this);
                         break;
@@ -9235,6 +10302,7 @@ void BossTw_BlastIce(BossTw* this, PlayState* play) {
                             play->envCtx.unk_D8 = 0.5f;
                             if (this->blastBehavior == TWINROVA_BLAST_SIEGE ||
                                 this->blastBehavior == TWINROVA_BLAST_BREAKER ||
+                                this->blastBehavior == TWINROVA_BLAST_CHAINED ||
                                 this->blastBehavior == TWINROVA_BLAST_MINEFIELD_FOLLOWUP) {
                                 sEnvType = 0;
                             }
@@ -9426,7 +10494,7 @@ s32 BossTw_BlastShieldCheck(BossTw* this, PlayState* play) {
 
                     if (this->blastBehavior == TWINROVA_BLAST_BREAKER) {
                         // The breaker resets the lesson; it must never become a source of the opposing charge.
-                        // This leaves all three authored follow-up shots available to rebuild from neutral.
+                        // Dodging it preserves the two authored matching charges for the final completion shot.
                         hadShieldCharge = sShieldFireCharge != 0 || sShieldIceCharge != 0;
                         BossTw_DisruptShieldCharge(play, (TwinrovaMagicElement)this->blastType);
                         if (!hadShieldCharge) {
@@ -9457,7 +10525,7 @@ s32 BossTw_BlastShieldCheck(BossTw* this, PlayState* play) {
                     if ((sShieldIceCharge >= 3) || (sShieldFireCharge >= 3)) {
                         if (sTwinrovaPtr != NULL && BossTw_IsFusedDirectBlast(this, sTwinrovaPtr)) {
                             // A committed release consumes the current package even if the player aims it wide.
-                            // Restart with three clean shots of the opposite element after recovery.
+                            // Restart with a clean A-A-breaker-A package of the opposite element after recovery.
                             sFixedBlastType = !this->blastType;
                             sFixedBlatSeq = 0;
                         }
@@ -9514,6 +10582,111 @@ static s32 BossTw_IsNextActiveMinefieldMine(BossTw* mine, PlayState* play) {
     return true;
 }
 
+static void BossTw_ApplyMinefieldWarningPush(BossTw* mine, PlayState* play, s32 isNextMine) {
+    Player* player = GET_PLAYER(play);
+    f32 radius = mine->blastType == TWINROVA_MAGIC_FIRE ? TWINROVA_MINEFIELD_FIRE_POOL_RADIUS
+                                                        : TWINROVA_MINEFIELD_ICE_PATCH_RADIUS;
+    f32 xDiff;
+    f32 zDiff;
+
+    // This is a light positional nudge, not a hit: only the imminent mine repels Link from its core during the final
+    // pulse beats. It denies last-frame camping without adding damage, stun, or an invisible persistent field.
+    if (!isNextMine || BossTw_IsPlayerHardDisabled(play) || mine->timers[0] == 0 ||
+        mine->timers[0] > TWINROVA_MINEFIELD_FUSE_FINAL_TIME ||
+        (mine->timers[0] % TWINROVA_MINEFIELD_WARNING_PUSH_INTERVAL) != 0 ||
+        !(player->actor.bgCheckFlags & BGCHECKFLAG_GROUND)) {
+        return;
+    }
+
+    xDiff = player->actor.world.pos.x - mine->targetPos.x;
+    zDiff = player->actor.world.pos.z - mine->targetPos.z;
+    if ((SQ(xDiff) + SQ(zDiff)) >= SQ(radius * 0.8f)) {
+        return;
+    }
+
+    mine->actor.yawTowardsPlayer = Math_FAtan2F(xDiff, zDiff) * (32768.0f / M_PI);
+    Actor_SetPlayerKnockbackSmallNoDamage(play, &mine->actor, TWINROVA_MINEFIELD_WARNING_PUSH_SPEED,
+                                          mine->actor.yawTowardsPlayer, 0.0f);
+}
+
+static void BossTw_UpdateArmedMinePresentation(BossTw* mine, PlayState* play) {
+    Vec3f pulsePos = mine->targetPos;
+    f32 descentStep;
+    f32 descentRatio;
+    f32 targetHoverHeight;
+    f32 bobAmplitude;
+    f32 ringScale;
+    f32 ringTargetScale;
+    s16 pulseAlpha;
+    s16 pulseInterval;
+    s16 particleCount;
+    s16 order = mine->work[TWINROVA_MINE_DETONATION_ORDER];
+    s32 isNextMine = BossTw_IsNextActiveMinefieldMine(mine, play);
+
+    if (mine->timers[0] <= TWINROVA_MINEFIELD_FUSE_FINAL_TIME) {
+        descentStep = 4.0f;
+        pulseInterval = 4;
+        ringScale = 0.62f;
+        ringTargetScale = 4.0f;
+        pulseAlpha = 255;
+        particleCount = 3;
+    } else if (mine->timers[0] <= TWINROVA_MINEFIELD_FUSE_URGENT_TIME) {
+        descentStep = 2.5f;
+        pulseInterval = 7;
+        ringScale = 0.5f;
+        ringTargetScale = 3.4f;
+        pulseAlpha = 225;
+        particleCount = 2;
+    } else if (mine->timers[0] <= TWINROVA_MINEFIELD_FUSE_WARNING_TIME) {
+        descentStep = 1.6f;
+        pulseInterval = 12;
+        ringScale = 0.38f;
+        ringTargetScale = 2.8f;
+        pulseAlpha = 185;
+        particleCount = 1;
+    } else {
+        descentStep = 0.55f;
+        pulseInterval = 20;
+        ringScale = 0.28f;
+        ringTargetScale = 2.3f;
+        pulseAlpha = 150;
+        particleCount = 0;
+    }
+
+    // Derive the presentation target from the live fuse rather than integrating a fixed fall speed. A normal fuse
+    // therefore keeps descending until its last update, while the post-package fuse clamp can catch up smoothly using
+    // the larger urgency-band steps instead of teleporting the orb downward.
+    descentRatio = CLAMP(mine->timers[0] / (f32)TWINROVA_MINEFIELD_SETTLE_TIME, 0.0f, 1.0f);
+    targetHoverHeight = TWINROVA_MINEFIELD_ARM_END_HEIGHT +
+                        ((TWINROVA_MINEFIELD_ARM_START_HEIGHT - TWINROVA_MINEFIELD_ARM_END_HEIGHT) * descentRatio);
+    Math_ApproachF(&mine->workf[TWINROVA_MINE_HOVER_HEIGHT], targetHoverHeight, 1.0f, descentStep);
+    bobAmplitude = CLAMP_MAX((mine->workf[TWINROVA_MINE_HOVER_HEIGHT] - TWINROVA_MINEFIELD_ARM_END_HEIGHT) * 0.06f,
+                             6.0f);
+    mine->actor.world.pos.x = mine->targetPos.x;
+    mine->actor.world.pos.y = mine->targetPos.y + mine->workf[TWINROVA_MINE_HOVER_HEIGHT] +
+                              Math_SinS((mine->work[CS_TIMER_1] * 0x800) + (order * 0x2000)) * bobAmplitude;
+    mine->actor.world.pos.z = mine->targetPos.z;
+
+    BossTw_ApplyMinefieldWarningPush(mine, play, isNextMine);
+
+    if (mine->timers[0] == 0 || ((mine->timers[0] + order) % pulseInterval) != 0) {
+        return;
+    }
+
+    // Every mine owns a ground-centered pulse, but phase the cadence by detonation order so the opening net and its
+    // delayed reinforcements never flash as one ambiguous hazard. Only the next mine adds particles and sound,
+    // preserving the authored sequence and bounding shared-effect use during the fastest cadence.
+    pulsePos.y += 3.0f;
+    BossTw_AddRingEffect(play, &pulsePos, ringScale, ringTargetScale, pulseAlpha, mine->blastType, 1,
+                         ARRAY_COUNT(sEffects));
+    if (isNextMine) {
+        if (particleCount != 0) {
+            BossTw_SpawnMagicLaunchEffects(play, &pulsePos, mine->blastType, particleCount);
+        }
+        Audio_PlayActorSound2(&mine->actor, NA_SE_EN_TWINROBA_MASIC_SET);
+    }
+}
+
 static void BossTw_PlayFinalMinefieldPulse(BossTw* mine) {
     mine->work[TWINROVA_MINE_FINAL_PULSE_PLAYED] = true;
     sMinefieldLightPulseElement = mine->blastType;
@@ -9558,6 +10731,7 @@ static void BossTw_ApplyMinefieldDetonationHit(BossTw* this, PlayState* play) {
 static void BossTw_UpdateMinefieldBlast(BossTw* this, PlayState* play) {
     Actor* ownerActor = BossTw_FindActorByAddress(play, this->actor.parent);
     BossTw* pool;
+    f32 flightProgress;
     s16 i;
 
     if (ownerActor == NULL || ownerActor->update == NULL || ownerActor->id != ACTOR_BOSS_TW ||
@@ -9571,10 +10745,11 @@ static void BossTw_UpdateMinefieldBlast(BossTw* this, PlayState* play) {
             Actor_SetScale(&this->actor, 0.03f);
             this->csState1 = TWINROVA_MINE_STATE_FLOAT;
             this->timers[0] = TWINROVA_MINEFIELD_FLIGHT_TIME;
-            this->actor.velocity.x = (this->targetPos.x - this->actor.world.pos.x) / TWINROVA_MINEFIELD_FLIGHT_TIME;
-            this->actor.velocity.y =
-                ((this->targetPos.y + 30.0f) - this->actor.world.pos.y) / TWINROVA_MINEFIELD_FLIGHT_TIME;
-            this->actor.velocity.z = (this->targetPos.z - this->actor.world.pos.z) / TWINROVA_MINEFIELD_FLIGHT_TIME;
+            this->workf[TWINROVA_MINE_HOVER_HEIGHT] = TWINROVA_MINEFIELD_ARM_START_HEIGHT;
+            // Minefield destinations are authored before launch. Interpolate directly from this stored origin instead
+            // of relying on an accumulated velocity, so the visible orb always arrives over its exact marker/pool.
+            this->actor.home.pos = this->actor.world.pos;
+            this->actor.velocity.x = this->actor.velocity.y = this->actor.velocity.z = 0.0f;
             for (i = 0; i < ARRAY_COUNT(this->blastTailPos); i++) {
                 this->blastTailPos[i] = this->actor.world.pos;
             }
@@ -9582,7 +10757,16 @@ static void BossTw_UpdateMinefieldBlast(BossTw* this, PlayState* play) {
             break;
 
         case TWINROVA_MINE_STATE_FLOAT:
-            Actor_UpdatePos(&this->actor);
+            flightProgress = 1.0f - (this->timers[0] / (f32)TWINROVA_MINEFIELD_FLIGHT_TIME);
+            flightProgress = CLAMP(flightProgress, 0.0f, 1.0f);
+            this->actor.world.pos.x = this->actor.home.pos.x +
+                                      ((this->targetPos.x - this->actor.home.pos.x) * flightProgress);
+            this->actor.world.pos.y = this->actor.home.pos.y +
+                                      (((this->targetPos.y + TWINROVA_MINEFIELD_ARM_START_HEIGHT) -
+                                        this->actor.home.pos.y) *
+                                       flightProgress);
+            this->actor.world.pos.z = this->actor.home.pos.z +
+                                      ((this->targetPos.z - this->actor.home.pos.z) * flightProgress);
             if (BossTw_IsNextActiveMinefieldMine(this, play)) {
                 // One positional loop follows the next unresolved mine. Refresh it continuously as required by the
                 // audio engine without four simultaneous enemy-bank loops masking the boss's release and impact cues.
@@ -9592,29 +10776,28 @@ static void BossTw_UpdateMinefieldBlast(BossTw* this, PlayState* play) {
             }
             if (this->timers[0] == 0) {
                 this->actor.world.pos = this->targetPos;
-                this->actor.world.pos.y += 30.0f;
+                this->actor.world.pos.y += this->workf[TWINROVA_MINE_HOVER_HEIGHT];
                 this->actor.velocity.x = this->actor.velocity.y = this->actor.velocity.z = 0.0f;
                 this->csState1 = TWINROVA_MINE_STATE_ARM;
-                // Launch cadence already separates arrivals; extend each armed fuse slightly by its authored order so
-                // detonation is clearly read as a sequence even when several mines settle close together.
-                this->timers[0] = TWINROVA_MINEFIELD_SETTLE_TIME +
-                                  this->work[TWINROVA_MINE_DETONATION_ORDER] * TWINROVA_MINEFIELD_DETONATE_STAGGER;
+                // The opening net gives Link about 2.5 seconds to take its advertised escape lane. The final-cycle
+                // second wave arrives after that lane is already in use, so it arms much faster without compromising
+                // the first wave's read.
+                if (this->work[TWINROVA_MINE_DETONATION_ORDER] >= TWINROVA_MINEFIELD_INITIAL_MINE_COUNT) {
+                    this->timers[0] = TWINROVA_MINEFIELD_SECOND_WAVE_FUSE_TIME +
+                                      (this->work[TWINROVA_MINE_DETONATION_ORDER] -
+                                       TWINROVA_MINEFIELD_INITIAL_MINE_COUNT) *
+                                          TWINROVA_MINEFIELD_SECOND_WAVE_STAGGER;
+                } else {
+                    this->timers[0] = TWINROVA_MINEFIELD_SETTLE_TIME +
+                                      this->work[TWINROVA_MINE_DETONATION_ORDER] *
+                                          TWINROVA_MINEFIELD_DETONATE_STAGGER;
+                }
                 Audio_PlayActorSound2(&this->actor, NA_SE_EN_TWINROBA_MASIC_SET);
             }
             break;
 
         case TWINROVA_MINE_STATE_ARM:
-            {
-                s16 pulseInterval = this->timers[0] <= 20 ? 4 : (this->timers[0] <= 45 ? 6 :
-                                                                 (this->timers[0] <= 90 ? 8 : 16));
-
-                if (BossTw_IsNextActiveMinefieldMine(this, play) && (this->timers[0] % pulseInterval) == 0) {
-                    // Only the next detonation owns the countdown bus. Its cadence accelerates without four mines
-                    // retriggering the same cue over one another.
-                    Audio_PlayActorSound2(&this->actor, NA_SE_EN_TWINROBA_MASIC_SET);
-                }
-            }
-            this->actor.world.pos.y = this->targetPos.y + 30.0f + Math_SinS(this->work[CS_TIMER_1] * 0x800) * 8.0f;
+            BossTw_UpdateArmedMinePresentation(this, play);
             if (this->timers[0] == 0) {
                 this->csState1 = TWINROVA_MINE_STATE_DETONATE;
                 this->timers[0] = TWINROVA_MINEFIELD_DETONATE_TIME;
@@ -9626,6 +10809,7 @@ static void BossTw_UpdateMinefieldBlast(BossTw* this, PlayState* play) {
                                                          ? NA_SE_EN_TWINROBA_FIRE_EXP
                                                          : NA_SE_EV_ICE_FREEZE);
                 BossTw_ApplyMinefieldDetonationHit(this, play);
+                BossTw_SpawnMinefieldSecondWave(this, play);
                 // The falloff is handled by the rumble system, so only mines close to Link feel substantial.
                 Rumble_Request(this->actor.xyzDistToPlayerSq, 130, 8, 5);
                 if (BossTw_IsFinalMinefieldDetonation(this, play)) {
@@ -9777,10 +10961,18 @@ void BossTw_BlastUpdate(Actor* thisx, PlayState* play) {
         (this->actor.params == TW_FIRE_BLAST_GROUND || this->actor.params == TW_ICE_BLAST_GROUND)) {
         TwinrovaMagicElement element = this->actor.params == TW_FIRE_BLAST_GROUND ? TWINROVA_MAGIC_FIRE
                                                                                   : TWINROVA_MAGIC_ICE;
+        s32 summonedCount;
 
         this->work[CAN_SHOOT] = false;
         this->beamShootState = 0;
-        BossTw_SpawnSummonGroup(play, &this->actor.world.pos, element, (TwinrovaSummonGroup)this->csState2);
+        summonedCount = BossTw_SpawnSummonGroup(play, &this->actor.world.pos, element,
+                                                 (TwinrovaSummonGroup)this->csState2, true);
+        if (summonedCount != 0) {
+            // The warning ring is deliberately neutral. The arrival sound is the first unambiguous elemental read,
+            // landing exactly as the summoned group becomes active rather than competing with the warning cue.
+            Audio_PlayActorSound2(&this->actor,
+                                  element == TWINROVA_MAGIC_FIRE ? NA_SE_EV_FLAME_IGNITION : NA_SE_EV_ICE_FREEZE);
+        }
     }
 
     for (i = 0; i < 5; i++) {
@@ -10665,22 +11857,64 @@ static s32 BossTw_IsFusedFinalCycle(BossTw* this) {
     return this->actor.colChkInfo.health > 0 && this->actor.colChkInfo.health <= TWINROVA_FINAL_CYCLE_HEALTH;
 }
 
+static s32 BossTw_IsFusedBerserk(BossTw* this) {
+    return this->actor.colChkInfo.health > 0 && this->actor.colChkInfo.health <= TWINROVA_BERSERK_HEALTH;
+}
+
 static s16 BossTw_GetBreakerSequenceCooldown(BossTw* this) {
+    if (BossTw_IsFusedBerserk(this)) {
+        return TWINROVA_BERSERK_BREAKER_SEQUENCE_COOLDOWN;
+    }
     return BossTw_IsFusedFinalCycle(this) ? TWINROVA_FINAL_BREAKER_SEQUENCE_COOLDOWN
                                          : TWINROVA_BREAKER_SEQUENCE_COOLDOWN;
 }
 
 static s16 BossTw_GetCycloneCooldown(BossTw* this) {
+    if (BossTw_IsFusedBerserk(this)) {
+        return TWINROVA_BERSERK_CYCLONE_COOLDOWN;
+    }
     return BossTw_IsFusedFinalCycle(this) ? TWINROVA_FINAL_CYCLONE_COOLDOWN : TWINROVA_CYCLONE_COOLDOWN;
 }
 
 static s16 BossTw_GetMinefieldCooldown(BossTw* this) {
+    if (BossTw_IsFusedBerserk(this)) {
+        return TWINROVA_BERSERK_MINEFIELD_COOLDOWN;
+    }
     return BossTw_IsFusedFinalCycle(this) ? TWINROVA_FINAL_MINEFIELD_COOLDOWN : TWINROVA_MINEFIELD_COOLDOWN;
 }
 
+static f32 BossTw_GetFusedAttackAnimationSpeed(BossTw* this) {
+    return BossTw_IsFusedBerserk(this) ? TWINROVA_BERSERK_FUSED_ATTACK_ANIM_SPEED : TWINROVA_FUSED_ATTACK_ANIM_SPEED;
+}
+
+static f32 BossTw_GetFusedChargeAnimationSpeed(BossTw* this) {
+    return BossTw_IsFusedBerserk(this) ? TWINROVA_BERSERK_FUSED_CHARGE_ANIM_SPEED : TWINROVA_FUSED_CHARGE_ANIM_SPEED;
+}
+
+static f32 BossTw_GetFalseChargeAnimationSpeed(BossTw* this) {
+    return BossTw_IsFusedBerserk(this) ? TWINROVA_BERSERK_FALSE_CHARGE_ANIM_SPEED : TWINROVA_FALSE_CHARGE_ANIM_SPEED;
+}
+
+static f32 BossTw_GetCycloneHoverSpeed(BossTw* this) {
+    return BossTw_IsFusedBerserk(this) ? TWINROVA_BERSERK_CYCLONE_HOVER_SPEED : TWINROVA_CYCLONE_HOVER_SPEED;
+}
+
+static s16 BossTw_GetCycloneAngularSpeed(BossTw* this) {
+    return BossTw_IsFusedBerserk(this) ? 0x260 : TWINROVA_CYCLONE_ANGULAR_SPEED;
+}
+
 static void BossTw_LockMinefieldLayout(BossTw* this, Player* player) {
+    f32 centerDistSq = SQ(player->actor.world.pos.x) + SQ(player->actor.world.pos.z);
+
     this->attackPortalPos.x = 0.0f;
     this->attackPortalPos.z = 0.0f;
+    // The initial three mines deliberately leave the direction Link currently occupies as an open lane. In the final
+    // cycle, the delayed second wave closes that same lane after the first detonation, so the player must use it early
+    // instead of treating the Minefield as a stationary countdown.
+    this->work[YAW_TGT] = centerDistSq > SQ(70.0f)
+                              ? (s16)(Math_FAtan2F(player->actor.world.pos.x, player->actor.world.pos.z) *
+                                      (32768.0f / M_PI))
+                              : player->actor.shape.rot.y;
 
     if (player->actor.floorHeight < TWINROVA_UPPER_FLOOR_MIN_Y) {
         // The lower layout uses the open diagonal lanes between the center and side platforms.
@@ -10698,8 +11932,20 @@ static void BossTw_LockMinefieldLayout(BossTw* this, Player* player) {
 
 static void BossTw_GetMinefieldLandingPoint(BossTw* this, s16 index, Vec3f* point) {
     s32 lowerLayout = this->attackPortalPos.y < TWINROVA_UPPER_FLOOR_MIN_Y;
-    s16 slot = index % 4;
-    s16 angle = slot * 0x4000 + (lowerLayout ? 0x2000 : 0);
+    s32 secondWave = index >= TWINROVA_MINEFIELD_INITIAL_MINE_COUNT;
+    s16 slot = index;
+    s16 angle = this->work[YAW_TGT];
+
+    if (secondWave) {
+        // These two arrive after the first detonation and seal the formerly clear lane from its edges inward.
+        angle += slot == TWINROVA_MINEFIELD_INITIAL_MINE_COUNT ? -0x2000 : 0x2000;
+    } else if (slot == 0) {
+        angle += 0x6000;
+    } else if (slot == 1) {
+        angle -= 0x8000;
+    } else {
+        angle -= 0x6000;
+    }
 
     // The layout is locked when Minefield begins. Every destination is a known playable surface and remains fixed
     // even if Link changes floors while the orbs are in flight.
@@ -10716,48 +11962,120 @@ static void BossTw_GetMinefieldLandingPoint(BossTw* this, s16 index, Vec3f* poin
             point->x = this->attackPortalPos.x;
             point->y = TWINROVA_SIEGE_SIDE_FLOOR_Y;
             point->z = slot == 0 ? 65.0f : -65.0f;
-        } else {
+        } else if (slot == 2) {
             point->x = this->attackPortalPos.x > 0.0f ? 230.0f : -230.0f;
             point->y = 240.0f;
-            point->z = slot == 2 ? 120.0f : -120.0f;
+            point->z = 120.0f;
+        } else if (slot == 3) {
+            point->x = this->attackPortalPos.x > 0.0f ? 230.0f : -230.0f;
+            point->y = 240.0f;
+            point->z = -120.0f;
+        } else {
+            point->x = this->attackPortalPos.x > 0.0f ? 120.0f : -120.0f;
+            point->y = 240.0f;
+            point->z = 0.0f;
         }
     } else {
         if (slot < 2) {
             point->x = slot == 0 ? 65.0f : -65.0f;
             point->y = TWINROVA_SIEGE_SIDE_FLOOR_Y;
             point->z = this->attackPortalPos.z;
-        } else {
-            point->x = slot == 2 ? 120.0f : -120.0f;
+        } else if (slot == 2) {
+            point->x = 120.0f;
             point->y = 240.0f;
             point->z = this->attackPortalPos.z > 0.0f ? 230.0f : -230.0f;
+        } else if (slot == 3) {
+            point->x = -120.0f;
+            point->y = 240.0f;
+            point->z = this->attackPortalPos.z > 0.0f ? 230.0f : -230.0f;
+        } else {
+            point->x = 0.0f;
+            point->y = 240.0f;
+            point->z = this->attackPortalPos.z > 0.0f ? 120.0f : -120.0f;
         }
     }
 }
 
+static void BossTw_SpawnMinefieldSecondWave(BossTw* mine, PlayState* play) {
+    BossTw* owner = (BossTw*)mine->actor.parent;
+    BossTw* secondMine;
+    Vec3f point;
+    Vec3f* spawnPos;
+    TwinrovaMagicElement element;
+    s16 magicParams;
+    s16 i;
+    s16 spawnedCount = 0;
+
+    if (owner == NULL || owner->actor.update == NULL || owner->actor.id != ACTOR_BOSS_TW ||
+        owner->actor.params != TW_TWINROVA || !BossTw_IsFusedFinalCycle(owner) || owner->minefieldSecondWaveFired ||
+        mine->work[TWINROVA_MINE_DETONATION_ORDER] != 0) {
+        return;
+    }
+
+    owner->minefieldSecondWaveFired = true;
+    for (i = 0; i < TWINROVA_MINEFIELD_SECOND_WAVE_COUNT; i++) {
+        s16 order = TWINROVA_MINEFIELD_INITIAL_MINE_COUNT + i;
+
+        if (BossTw_CountActiveMinefieldMines(play, owner) >= TWINROVA_MINEFIELD_MAX_ACTIVE_MINES) {
+            break;
+        }
+
+        // Prefer alternating late arrivals, then apply the shared streak guard so a prior fused cast can never turn
+        // this positional pressure into a third same-element projectile.
+        element = BossTw_SelectFusedProjectileElement(owner, (TwinrovaMagicElement)((mine->blastType + i) & 1));
+        magicParams = element == TWINROVA_MAGIC_FIRE ? TW_FIRE_BLAST : TW_ICE_BLAST;
+        spawnPos = element == TWINROVA_MAGIC_FIRE ? &owner->rightScepterPos : &owner->leftScepterPos;
+        BossTw_GetMinefieldLandingPoint(owner, order, &point);
+        secondMine = BossTw_SpawnMagicBlast(owner, play, spawnPos, magicParams, TWINROVA_BLAST_MINEFIELD);
+        if (secondMine == NULL) {
+            BossTw_ShowFailedMagicCast(play, spawnPos, element);
+            continue;
+        }
+
+        secondMine->targetPos = point;
+        secondMine->work[TWINROVA_MINE_DETONATION_ORDER] = order;
+        secondMine->work[TWINROVA_MINE_FINAL_PULSE_PLAYED] = false;
+        BossTw_SpawnMagicLaunchEffects(play, spawnPos, element, 8);
+        spawnedCount++;
+    }
+
+    if (spawnedCount != 0) {
+        BossTw_AddRingEffect(play, &mine->targetPos, 0.55f, 4.0f, 255, mine->blastType, 1, ARRAY_COUNT(sEffects));
+        Audio_PlayActorSound2(&owner->actor, NA_SE_EN_TWINROBA_THROW_MASIC);
+    }
+}
+
 static s32 BossTw_CanStartMinefield(BossTw* this, PlayState* play) {
+    s32 summonCount = BossTw_CountActiveSummons(play);
+
     return this->actor.colChkInfo.health < TWINROVA_FUSED_MAX_HEALTH && this->minefieldCooldown == 0 &&
            sShieldFireCharge == 0 && sShieldIceCharge == 0 && !BossTw_HasActiveArenaControlPattern(this, play) &&
            !BossTw_HasActiveFusedDirectBlast(play, this) &&
            !BossTw_HasActiveMinefieldMines(play, this) &&
-           BossTw_CountActiveSummons(play) <= TWINROVA_FUSED_SUMMON_SOFT_LIMIT && !GET_PLAYER(play)->bodyIsBurning;
+           summonCount <= TWINROVA_FUSED_SUMMON_SOFT_LIMIT &&
+           // Conjuration already provides the intended high-pressure add payoff. Let its groups either be thinned
+           // or expire naturally before Minefield claims the same arena, rather than deterministically layering both.
+           (this->conjurationCooldown == 0 || summonCount <= 3) && !GET_PLAYER(play)->bodyIsBurning;
 }
 
 static void BossTw_TwinrovaSetupMinefield(BossTw* this, PlayState* play) {
     this->actionFunc = BossTw_TwinrovaMinefield;
     this->csState1 = 0;
-    // The first Minefield teaches the cadence with three destinations; the final cycle earns the fourth beat.
-    this->csState2 = BossTw_IsFusedFinalCycle(this) ? Rand_S16Offset(3, 2) : 3;
+    // The opening net always leaves one obvious lane. Final-cycle pressure earns a separate delayed pair that closes
+    // that lane after the first detonation instead of making the initial telegraph an unreadable four-mine wall.
+    this->csState2 = TWINROVA_MINEFIELD_INITIAL_MINE_COUNT;
     BossTw_LockMinefieldLayout(this, GET_PLAYER(play));
-    this->work[TW_PLLR_IDX] = Rand_S16Offset(0, ARRAY_COUNT(sTwinrovaPillarPos));
+    this->work[TW_PLLR_IDX] = 0;
     this->minefieldSequenceState = TWINROVA_MINEFIELD_SEQUENCE_PENDING;
     this->work[CAN_SHOOT] = false;
+    this->minefieldSecondWaveFired = false;
     this->timers[0] = TWINROVA_MINEFIELD_WINDUP_TIME;
     this->minefieldCooldown = BossTw_GetMinefieldCooldown(this);
     this->actor.speedXZ = 0.0f;
     this->actor.velocity.x = this->actor.velocity.y = this->actor.velocity.z = 0.0f;
     this->attackPortalActive = false;
     Animation_MorphToPlayOnceSetSpeed(&this->skelAnime, &gTwinrovaWindUpAnim, TWINROVA_FUSED_ATTACK_ANIM_MORPH_TIME,
-                                      TWINROVA_FUSED_CHARGE_ANIM_SPEED);
+                                      BossTw_GetFusedChargeAnimationSpeed(this));
 
     BossTw_AddRingEffect(play, &this->leftScepterPos, 0.55f, 3.5f, 220, TWINROVA_MAGIC_ICE, 1,
                          ARRAY_COUNT(sEffects));
@@ -10810,14 +12128,15 @@ void BossTw_TwinrovaMinefield(BossTw* this, PlayState* play) {
         return;
     }
 
-    element = (TwinrovaMagicElement)((sTwinrovaBlastType + this->csState1) & 1);
+    element = BossTw_SelectFusedProjectileElement(this,
+                                                  (TwinrovaMagicElement)((sTwinrovaBlastType + this->csState1) & 1));
     magicParams = element == TWINROVA_MAGIC_FIRE ? TW_FIRE_BLAST : TW_ICE_BLAST;
     spawnPos = element == TWINROVA_MAGIC_FIRE ? &this->rightScepterPos : &this->leftScepterPos;
     if (this->work[CAN_SHOOT] == TWINROVA_MINEFIELD_CAST_READY) {
         animation = element == TWINROVA_MAGIC_FIRE ? &gTwinrovaFireAttackAnim : &gTwinrovaIceAttackAnim;
         this->work[CAN_SHOOT] = TWINROVA_MINEFIELD_CAST_ACTIVE;
         Animation_MorphToPlayOnceSetSpeed(&this->skelAnime, animation, TWINROVA_FUSED_ATTACK_ANIM_MORPH_TIME,
-                                          TWINROVA_FUSED_ATTACK_ANIM_SPEED);
+                                          BossTw_GetFusedAttackAnimationSpeed(this));
         this->workf[ANIM_SW_TGT] = Animation_GetLastFrame(animation);
         BossTw_SpawnMagicLaunchEffects(play, spawnPos, element, 4);
         Audio_PlayActorSound2(&this->actor, NA_SE_EN_TWINROBA_MASIC_SET);
@@ -10850,6 +12169,305 @@ void BossTw_TwinrovaMinefield(BossTw* this, PlayState* play) {
     this->csState1++;
 }
 
+static s16 BossTw_GetFusedConjurationCooldown(BossTw* this) {
+    if (BossTw_IsFusedBerserk(this)) {
+        return TWINROVA_BERSERK_FUSED_CONJURATION_COOLDOWN;
+    }
+    return BossTw_IsFusedFinalCycle(this) ? TWINROVA_FINAL_FUSED_CONJURATION_COOLDOWN
+                                          : TWINROVA_FUSED_CONJURATION_COOLDOWN;
+}
+
+static s16 BossTw_GetFusedConjurationChannelTime(BossTw* this) {
+    if (BossTw_IsFusedBerserk(this)) {
+        return TWINROVA_BERSERK_FUSED_CONJURATION_CHANNEL_TIME;
+    }
+    return BossTw_IsFusedFinalCycle(this) ? TWINROVA_FINAL_FUSED_CONJURATION_CHANNEL_TIME
+                                          : TWINROVA_FUSED_CONJURATION_CHANNEL_TIME;
+}
+
+static s32 BossTw_IsFusedConjurationOriginOnExpectedFloor(Vec3f* origin) {
+    Vec3f floorProbe = *origin;
+    f32 floorY;
+
+    // The arena's authored floor helper reports -100 for open lower floor and a positive deck height beneath the
+    // raised center/side platforms. Probe from upper-deck height so a lower marker can never be accepted inside solid
+    // geometry, while upper markers still verify their expected platform.
+    floorProbe.y = 220.0f;
+    floorY = BossTw_GetFloorY(&floorProbe);
+    if (origin->y < TWINROVA_UPPER_FLOOR_MIN_Y) {
+        return floorY < 0.0f;
+    }
+    return floorY >= 0.0f && floorY != 35.0f && fabsf(floorY - origin->y) <= 10.0f;
+}
+
+static s32 BossTw_AreFusedConjurationOriginsReadable(PlayState* play, Vec3f* firePos, Vec3f* icePos) {
+    return BossTw_IsFusedConjurationOriginOnExpectedFloor(firePos) &&
+           BossTw_IsFusedConjurationOriginOnExpectedFloor(icePos) &&
+           BossTw_IsWorldPointInCameraFrustumWithMargin(play, firePos, TWINROVA_ATTACK_FRUSTUM_MARGIN) &&
+           BossTw_IsWorldPointInCameraFrustumWithMargin(play, icePos, TWINROVA_ATTACK_FRUSTUM_MARGIN);
+}
+
+static s32 BossTw_GetFusedConjurationOrigins(PlayState* play, Player* player, Vec3f* firePos, Vec3f* icePos) {
+    f32 centerDistSq = SQ(player->actor.world.pos.x) + SQ(player->actor.world.pos.z);
+    s16 playerAngle = centerDistSq > SQ(70.0f)
+                          ? (s16)(Math_FAtan2F(player->actor.world.pos.x, player->actor.world.pos.z) *
+                                  (32768.0f / M_PI))
+                          : player->actor.shape.rot.y;
+    s16 cameraYaw;
+    s16 fallbackYaw;
+    s16 fallbackOffset;
+    s16 i;
+    f32 fallbackRadius;
+    f32 fallbackY;
+
+    if (player->actor.floorHeight < TWINROVA_UPPER_FLOOR_MIN_Y) {
+        // The lower deck uses two open diagonal lanes rather than dropping a marked portal beneath the raised center.
+        firePos->x = Math_SinS(playerAngle + 0x2800) * 620.0f;
+        firePos->y = TWINROVA_SIEGE_LOWER_FLOOR_Y;
+        firePos->z = Math_CosS(playerAngle + 0x2800) * 620.0f;
+        icePos->x = Math_SinS(playerAngle - 0x2800) * 620.0f;
+        icePos->y = TWINROVA_SIEGE_LOWER_FLOOR_Y;
+        icePos->z = Math_CosS(playerAngle - 0x2800) * 620.0f;
+    } else if (fabsf(player->actor.world.pos.x) < 350.0f && fabsf(player->actor.world.pos.z) < 350.0f) {
+        // Opposite sides of the central deck keep the two three-enemy formations visibly separate without trapping
+        // Link beneath an unmarked source.
+        firePos->x = Math_SinS(playerAngle + 0x4000) * 180.0f;
+        firePos->y = 240.0f;
+        firePos->z = Math_CosS(playerAngle + 0x4000) * 180.0f;
+        icePos->x = Math_SinS(playerAngle - 0x4000) * 180.0f;
+        icePos->y = 240.0f;
+        icePos->z = Math_CosS(playerAngle - 0x4000) * 180.0f;
+    } else if (fabsf(player->actor.world.pos.x) >= fabsf(player->actor.world.pos.z)) {
+        f32 side = player->actor.world.pos.x >= 0.0f ? 1.0f : -1.0f;
+
+        firePos->x = side * 600.0f;
+        firePos->y = TWINROVA_SIEGE_SIDE_FLOOR_Y;
+        firePos->z = 0.0f;
+        icePos->x = side * 220.0f;
+        icePos->y = 240.0f;
+        icePos->z = 0.0f;
+    } else {
+        f32 side = player->actor.world.pos.z >= 0.0f ? 1.0f : -1.0f;
+
+        firePos->x = 0.0f;
+        firePos->y = TWINROVA_SIEGE_SIDE_FLOOR_Y;
+        firePos->z = side * 600.0f;
+        icePos->x = 0.0f;
+        icePos->y = 240.0f;
+        icePos->z = side * 220.0f;
+    }
+
+    if (BossTw_AreFusedConjurationOriginsReadable(play, firePos, icePos)) {
+        return true;
+    }
+
+    // A six-enemy spell is only fair when both apertures are visible. Preserve the authored deck layouts whenever
+    // possible, then fall back to a camera-facing pair on the same valid floor instead of silently losing the move.
+    cameraYaw = Camera_GetCamDirYaw(GET_ACTIVE_CAM(play));
+    fallbackRadius = player->actor.floorHeight < TWINROVA_UPPER_FLOOR_MIN_Y ? 620.0f : 180.0f;
+    fallbackY = player->actor.floorHeight < TWINROVA_UPPER_FLOOR_MIN_Y ? TWINROVA_SIEGE_LOWER_FLOOR_Y : 240.0f;
+    // The compact upper deck needs a wider angular split; +/-0x1000 placed both corrected portal footprints almost
+    // entirely on top of each other. Lower-floor origins already gain ample separation from their much larger radius.
+    fallbackOffset = player->actor.floorHeight < TWINROVA_UPPER_FLOOR_MIN_Y ? 0x1000 : 0x2400;
+    for (i = 0; i < 2; i++) {
+        fallbackYaw = cameraYaw + (i != 0 ? 0x8000 : 0);
+        firePos->x = Math_SinS(fallbackYaw + fallbackOffset) * fallbackRadius;
+        firePos->y = fallbackY;
+        firePos->z = Math_CosS(fallbackYaw + fallbackOffset) * fallbackRadius;
+        icePos->x = Math_SinS(fallbackYaw - fallbackOffset) * fallbackRadius;
+        icePos->y = fallbackY;
+        icePos->z = Math_CosS(fallbackYaw - fallbackOffset) * fallbackRadius;
+        if (BossTw_AreFusedConjurationOriginsReadable(play, firePos, icePos)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+static s32 BossTw_CanStartFusedConjuration(BossTw* this, PlayState* play) {
+    Vec3f firePos;
+    Vec3f icePos;
+
+    if (!BossTw_GetFusedConjurationOrigins(play, GET_PLAYER(play), &firePos, &icePos)) {
+        return false;
+    }
+
+    return this->actor.colChkInfo.health < TWINROVA_FUSED_MAX_HEALTH && this->conjurationCooldown == 0 &&
+           sShieldFireCharge == 0 && sShieldIceCharge == 0 && !BossTw_IsPlayerHardDisabled(play) &&
+           !GET_PLAYER(play)->bodyIsBurning && !BossTw_HasActiveArenaControlPattern(this, play) &&
+           !BossTw_HasActiveFusedDirectBlast(play, this) && !BossTw_HasActiveMinefieldMines(play, this) &&
+           !BossTw_HasCommittedFusedShieldRelease(play, this) && BossTw_CountActiveSummons(play) <= 3;
+}
+
+static s32 BossTw_TwinrovaSetupElementalConjuration(BossTw* this, PlayState* play) {
+    BossTw* fireMarker;
+    BossTw* iceMarker;
+    Player* player = GET_PLAYER(play);
+    s16 channelTime = BossTw_GetFusedConjurationChannelTime(this);
+    s16 waveGap = BossTw_IsFusedBerserk(this) ? TWINROVA_FUSED_CONJURATION_WAVE_GAP - 2
+                                               : TWINROVA_FUSED_CONJURATION_WAVE_GAP;
+
+    if (!BossTw_GetFusedConjurationOrigins(play, player, &this->groundBlastPos, &this->groundBlastPos2)) {
+        return false;
+    }
+    fireMarker = (BossTw*)Actor_SpawnAsChild(&play->actorCtx, &this->actor, play, ACTOR_BOSS_TW,
+                                              this->groundBlastPos.x, this->groundBlastPos.y, this->groundBlastPos.z,
+                                              0, 0, 0, TW_FIRE_SUMMON_SIGIL);
+    iceMarker = (BossTw*)Actor_SpawnAsChild(&play->actorCtx, &this->actor, play, ACTOR_BOSS_TW,
+                                             this->groundBlastPos2.x, this->groundBlastPos2.y, this->groundBlastPos2.z,
+                                             0, 0, 0, TW_ICE_SUMMON_SIGIL);
+    if (fireMarker == NULL || iceMarker == NULL) {
+        if (fireMarker != NULL) {
+            Actor_Kill(&fireMarker->actor);
+        }
+        if (iceMarker != NULL) {
+            Actor_Kill(&iceMarker->actor);
+        }
+        BossTw_ShowFailedMagicCast(play, &this->groundBlastPos, TWINROVA_MAGIC_FIRE);
+        BossTw_ShowFailedMagicCast(play, &this->groundBlastPos2, TWINROVA_MAGIC_ICE);
+        // Actor-pool pressure should not make the first-use selector retry a failed dual allocation every cycle.
+        // Preserve the unseen guarantee, but spend the normal cooldown before trying the complete ritual again.
+        this->conjurationCooldown = BossTw_GetFusedConjurationCooldown(this);
+        return false;
+    }
+
+    // Only three-enemy formations are selected. Two elemental apertures then always deliver the stronger six-enemy
+    // phase-two payoff without exceeding the nine-slot encounter registry when the <=3 entry gate is honored.
+    this->csState1 = 0;
+    this->csState2 = Rand_ZeroOne() < 0.5f ? TWINROVA_SUMMON_KEESE_GROUP : TWINROVA_SUMMON_MIXED_GROUP;
+    this->work[CAN_SHOOT] =
+        Rand_ZeroOne() < 0.5f ? TWINROVA_SUMMON_KEESE_GROUP : TWINROVA_SUMMON_MIXED_GROUP;
+    this->timers[0] = channelTime;
+    this->timers[1] = 0;
+    this->conjurationCooldown = BossTw_GetFusedConjurationCooldown(this);
+    this->actionFunc = BossTw_TwinrovaElementalConjuration;
+    this->actor.speedXZ = 0.0f;
+    this->actor.velocity.x = this->actor.velocity.y = this->actor.velocity.z = 0.0f;
+    this->targetPos = this->actor.world.pos;
+    this->attackPortalActive = false;
+    this->scepterAlpha = 255.0f;
+    this->flameAlpha = 0.0f;
+    // Initialize every presentation clock before either child can draw. The ice aperture deliberately completes its
+    // visual buildup after the fire wave, matching the short authored gap between their resolutions.
+    fireMarker->timers[0] = fireMarker->timers[1] = channelTime;
+    iceMarker->timers[0] = channelTime;
+    iceMarker->timers[1] = channelTime + waveGap;
+    fireMarker->work[CS_TIMER_1] = iceMarker->work[CS_TIMER_1] = 0;
+    fireMarker->work[UNK_S8] = iceMarker->work[UNK_S8] = true;
+    Animation_MorphToPlayOnceSetSpeed(&this->skelAnime, &gTwinrovaWindUpAnim,
+                                      TWINROVA_FUSED_CHARGE_ANIM_MORPH_TIME,
+                                      BossTw_GetFusedChargeAnimationSpeed(this));
+    this->workf[ANIM_SW_TGT] = Animation_GetLastFrame(&gTwinrovaWindUpAnim);
+
+    BossTw_AddRingEffect(play, &this->leftScepterPos, 0.75f, 4.4f, 255, TWINROVA_MAGIC_ICE, 1,
+                         ARRAY_COUNT(sEffects));
+    BossTw_AddRingEffect(play, &this->rightScepterPos, 0.75f, 4.4f, 255, TWINROVA_MAGIC_FIRE, 1,
+                         ARRAY_COUNT(sEffects));
+    BossTw_SpawnMagicLaunchEffects(play, &this->leftScepterPos, TWINROVA_MAGIC_ICE, 18);
+    BossTw_SpawnMagicLaunchEffects(play, &this->rightScepterPos, TWINROVA_MAGIC_FIRE, 18);
+    Audio_PlayActorSound2(&this->actor, NA_SE_EN_TWINROBA_MASIC_SET);
+    Sfx_PlaySfxCentered(NA_SE_EN_TWINROBA_POWERUP);
+    Rumble_Request(0.0f, 75, 6, 3);
+    return true;
+}
+
+static s32 BossTw_ResolveFusedConjurationWave(PlayState* play, Vec3f* origin, TwinrovaMagicElement element,
+                                               TwinrovaSummonGroup group) {
+    s32 summonedCount = BossTw_SpawnSummonGroup(play, origin, element, group, false);
+
+    if (summonedCount != 0) {
+        // Resolve the whole formation through one coherent elemental eruption. Individual actor pops exposed the
+        // placement offsets and looked weaker than the polished phase-one ritual despite this being the fused spell.
+        BossTw_SpawnConjurationEmergenceEffects(play, origin, element);
+        BossTw_AddRingEffect(play, origin, 0.95f, 5.5f, 255, element, 1, ARRAY_COUNT(sEffects));
+        SoundSource_PlaySfxAtFixedWorldPos(play, origin, 45,
+                                           element == TWINROVA_MAGIC_FIRE ? NA_SE_EV_FLAME_IGNITION
+                                                                          : NA_SE_EV_ICE_FREEZE);
+        Rumble_Request(0.0f, 115, 7, 4);
+    }
+    return summonedCount;
+}
+
+void BossTw_TwinrovaElementalConjuration(BossTw* this, PlayState* play) {
+    s16 pulseInterval = this->timers[0] <= TWINROVA_FUSED_CONJURATION_FINAL_WINDOW
+                            ? TWINROVA_FUSED_CONJURATION_FINAL_PULSE_TIME
+                            : TWINROVA_FUSED_CONJURATION_OPENING_PULSE_TIME;
+
+    if (this->csState1 < 0 || this->twinrovaStun != 0) {
+        BossTw_TwinrovaSetupDoneBlastShoot(this, play);
+        return;
+    }
+
+    SkelAnime_Update(&this->skelAnime);
+    Math_ApproachF(&this->actor.speedXZ, 0.0f, 1.0f, 2.0f);
+    Math_ApproachF(&this->actor.world.pos.y,
+                   this->targetPos.y + Math_SinS(this->work[CS_TIMER_1] * 0x600) * 10.0f, 0.2f, 3.0f);
+    Math_ApproachS(&this->actor.shape.rot.y, this->actor.yawTowardsPlayer, 5, 0xC00);
+    Math_ApproachS(&this->actor.shape.rot.x, 0, 5, 0x700);
+
+    if (Animation_OnFrame(&this->skelAnime, this->workf[ANIM_SW_TGT])) {
+        // The channel can outlast the fast wind-up, but it should never freeze on the attack's final pose.
+        this->workf[ANIM_SW_TGT] = 10000.0f;
+        Animation_MorphToLoopSetSpeed(&this->skelAnime, &gTwinrovaHoverAnim, -2.0f,
+                                      BossTw_GetFusedChargeAnimationSpeed(this));
+        Audio_PlayActorSound2(&this->actor, NA_SE_EN_TWINROBA_LAUGH);
+        Audio_PlayActorSound2(&this->actor, NA_SE_EN_TWINROBA_LAUGH2);
+    }
+
+    if (this->timers[0] != 0) {
+        if ((this->timers[0] % pulseInterval) == 0) {
+            BossTw_SpawnMagicLaunchEffects(play, &this->leftScepterPos, TWINROVA_MAGIC_ICE,
+                                            this->csState1 == 0 ? 6 : 8);
+            BossTw_AddRingEffect(play, &this->leftScepterPos, 0.28f, 1.7f, 180, TWINROVA_MAGIC_ICE, 1,
+                                 ARRAY_COUNT(sEffects));
+            BossTw_SpawnConjurationFlowEffects(play, &this->leftScepterPos, &this->groundBlastPos2,
+                                                TWINROVA_MAGIC_ICE, this->csState1 == 0 ? 3 : 6);
+            if (this->csState1 == 0) {
+                BossTw_SpawnMagicLaunchEffects(play, &this->rightScepterPos, TWINROVA_MAGIC_FIRE, 6);
+                BossTw_AddRingEffect(play, &this->rightScepterPos, 0.28f, 1.7f, 180, TWINROVA_MAGIC_FIRE, 1,
+                                     ARRAY_COUNT(sEffects));
+                BossTw_SpawnConjurationFlowEffects(play, &this->rightScepterPos, &this->groundBlastPos,
+                                                    TWINROVA_MAGIC_FIRE, 3);
+            }
+            Audio_PlayActorSound2(&this->actor, NA_SE_EN_TWINROBA_MASIC_SET);
+            if (this->timers[0] <= TWINROVA_FUSED_CONJURATION_FINAL_WINDOW) {
+                Rumble_Request(0.0f, 42, 3, 2);
+            }
+        }
+        // Alternate the elemental loop while both apertures build. Once fire resolves, the remaining ice-only phrase
+        // makes the staggered second wave explicit without becoming a wall of overlapping sound effects.
+        Audio_PlayActorSound2(
+            &this->actor,
+            this->csState1 != 0 || ((this->work[CS_TIMER_1] / pulseInterval) & 1) != 0
+                ? NA_SE_EN_TWINROBA_MS_FREEZE - SFX_FLAG
+                : NA_SE_EN_TWINROBA_MS_FIRE - SFX_FLAG);
+        return;
+    }
+
+    if (this->csState1 == 0) {
+        if (BossTw_ResolveFusedConjurationWave(play, &this->groundBlastPos, TWINROVA_MAGIC_FIRE,
+                                                (TwinrovaSummonGroup)this->csState2) != 0) {
+            this->conjurationSeen = true;
+            Audio_PlayActorSound2(&this->actor, NA_SE_EN_TWINROBA_TRANSFORM);
+        }
+        BossTw_ClearConjurationMarkers(this, play, TWINROVA_MAGIC_FIRE);
+        this->csState1 = 1;
+        this->timers[0] = BossTw_IsFusedBerserk(this) ? TWINROVA_FUSED_CONJURATION_WAVE_GAP - 2
+                                                      : TWINROVA_FUSED_CONJURATION_WAVE_GAP;
+        return;
+    }
+
+    if (BossTw_ResolveFusedConjurationWave(play, &this->groundBlastPos2, TWINROVA_MAGIC_ICE,
+                                            (TwinrovaSummonGroup)this->work[CAN_SHOOT]) != 0) {
+        this->conjurationSeen = true;
+        Audio_PlayActorSound2(&this->actor, NA_SE_EN_TWINROBA_TRANSFORM);
+    }
+    BossTw_ClearConjurationMarkers(this, play, TWINROVA_MAGIC_ICE);
+    this->work[CAN_SHOOT] = false;
+    BossTw_TwinrovaSetupDoneBlastShoot(this, play);
+}
+
 static s32 BossTw_CanStartCyclone(BossTw* this, PlayState* play) {
     return this->actor.colChkInfo.health < TWINROVA_FUSED_MAX_HEALTH && this->cycloneCooldown == 0 &&
            sShieldFireCharge == 0 && sShieldIceCharge == 0 && !BossTw_HasActiveArenaControlPattern(this, play) &&
@@ -10865,7 +12483,8 @@ static void BossTw_GetCycloneRoutePosition(BossTw* this, Vec3f* routePos) {
 
 static void BossTw_TwinrovaSetupCyclone(BossTw* this, PlayState* play) {
     f32 orbitRadius = sqrtf(SQ(this->actor.world.pos.x) + SQ(this->actor.world.pos.z));
-    TwinrovaMagicElement element = (TwinrovaMagicElement)sFixedBlastType;
+    TwinrovaMagicElement element =
+        BossTw_SelectFusedProjectileElement(this, (TwinrovaMagicElement)sFixedBlastType);
     Vec3f* tellPos = element == TWINROVA_MAGIC_FIRE ? &this->rightScepterPos : &this->leftScepterPos;
 
     this->actionFunc = BossTw_TwinrovaCyclone;
@@ -10890,7 +12509,7 @@ static void BossTw_TwinrovaSetupCyclone(BossTw* this, PlayState* play) {
     sEnvType = element + 1;
     BossTw_GetCycloneRoutePosition(this, &this->targetPos);
     Animation_MorphToLoopSetSpeed(&this->skelAnime, &gTwinrovaHoverAnim, TWINROVA_FUSED_HOVER_ANIM_MORPH_TIME,
-                                  TWINROVA_CYCLONE_HOVER_SPEED);
+                                  BossTw_GetCycloneHoverSpeed(this));
 
     BossTw_AddRingEffect(play, tellPos, 0.9f, 4.5f, 255, element, 1, ARRAY_COUNT(sEffects));
     BossTw_SpawnMagicLaunchEffects(play, tellPos, element, 24);
@@ -10903,18 +12522,20 @@ static void BossTw_TwinrovaSetupCyclone(BossTw* this, PlayState* play) {
 void BossTw_TwinrovaCyclone(BossTw* this, PlayState* play) {
     Vec3f routePos;
     s16 tangentYaw = this->work[YAW_TGT] + (this->csState2 > 0 ? 0x4000 : -0x4000);
-    s16 rainInterval = BossTw_IsFusedFinalCycle(this) ? TWINROVA_FINAL_CYCLONE_RAIN_INTERVAL
-                                                      : TWINROVA_CYCLONE_RAIN_INTERVAL;
-    s16 rainProjectileCap = BossTw_IsFusedFinalCycle(this) ? TWINROVA_FINAL_CYCLONE_RAIN_MAX_PROJECTILES
-                                                           : TWINROVA_CYCLONE_RAIN_MAX_PROJECTILES;
+    s16 rainInterval = BossTw_IsFusedBerserk(this) ? TWINROVA_BERSERK_CYCLONE_RAIN_INTERVAL
+                                                    : BossTw_IsFusedFinalCycle(this) ? TWINROVA_FINAL_CYCLONE_RAIN_INTERVAL
+                                                                                      : TWINROVA_CYCLONE_RAIN_INTERVAL;
 
     if (this->twinrovaStun != 0) {
+        BossTw_StopCycloneAmbience(this, play);
         return;
     }
 
     SkelAnime_Update(&this->skelAnime);
     BossTw_GetCycloneRoutePosition(this, &routePos);
-    sEnvType = this->blastType + 1;
+    if (this->csState1 != 2) {
+        sEnvType = this->blastType + 1;
+    }
 
     switch (this->csState1) {
         case 0:
@@ -10949,12 +12570,13 @@ void BossTw_TwinrovaCyclone(BossTw* this, PlayState* play) {
             this->actor.shape.rot.y = tangentYaw;
             this->actor.world.rot.x = this->actor.shape.rot.x = TWINROVA_CYCLONE_TILT;
             Audio_PlayActorSound2(&this->actor, NA_SE_EN_TWINROBA_FB_FLY - SFX_FLAG);
-            this->work[YAW_TGT] += this->csState2 * TWINROVA_CYCLONE_ANGULAR_SPEED;
+            this->work[YAW_TGT] += this->csState2 * BossTw_GetCycloneAngularSpeed(this);
             if (this->timers[1] == 0 && this->timers[0] > TWINROVA_CYCLONE_RAIN_STOP_TIME &&
                 !BossTw_HasCommittedFusedShieldRelease(play, this)) {
-                if (BossTw_CountCycloneRainProjectiles(play, this) <= rainProjectileCap - 2) {
-                    // Pair staging is atomic: allocation pressure rolls both the projectile and its marker back. The
-                    // explicit live cap also includes impact fades, keeping the denser storm bounded in the actor pool.
+                if (BossTw_CountCycloneRainActors(play, this) <= TWINROVA_CYCLONE_RAIN_MAX_ACTORS - 4) {
+                    // Pair staging is atomic: every wave allocates two blasts and two markers. The cap includes both
+                    // renderable halves (and short blast fades), keeping Berserk's rapid cadence inside the graphics
+                    // matrix/command budget as well as the actor pool.
                     BossTw_SpawnCycloneRainPair(this, play, this->work[CAN_SHOOT]);
                 }
                 this->work[CAN_SHOOT]++;
@@ -10963,6 +12585,7 @@ void BossTw_TwinrovaCyclone(BossTw* this, PlayState* play) {
             if (this->timers[0] == 0) {
                 this->csState1 = 2;
                 this->timers[0] = TWINROVA_CYCLONE_RECOVERY_TIME;
+                BossTw_StopCycloneAmbience(this, play);
                 // Cyclone has remained on the hover animation throughout the orbit. Restarting the same clip here
                 // visibly hitches the exit, so recovery simply coasts the existing motion down.
                 BossTw_AddRingEffect(play, &this->actor.world.pos, 0.7f, 3.6f, 255, this->blastType, 1,
@@ -10979,12 +12602,12 @@ void BossTw_TwinrovaCyclone(BossTw* this, PlayState* play) {
             this->actor.world.pos = routePos;
             this->actor.world.rot.y = this->actor.shape.rot.y = tangentYaw;
             this->work[YAW_TGT] +=
-                (s16)(this->csState2 * TWINROVA_CYCLONE_ANGULAR_SPEED * recoveryStrength);
+                (s16)(this->csState2 * BossTw_GetCycloneAngularSpeed(this) * recoveryStrength);
             Audio_PlayActorSound2(&this->actor, NA_SE_EN_TWINROBA_FB_FLY - SFX_FLAG);
             Math_ApproachS(&this->actor.world.rot.x, 0, 5, 0x500);
             Math_ApproachS(&this->actor.shape.rot.x, 0, 5, 0x500);
             if (this->timers[0] == 0) {
-                sEnvType = 0;
+                BossTw_StopCycloneAmbience(this, play);
                 if (BossTw_HasCommittedFusedShieldRelease(play, this)) {
                     // Respect a release committed by another legal source; Cyclone rain itself cannot create one.
                     BossTw_TwinrovaSetupDoneBlastShoot(this, play);
@@ -11001,7 +12624,9 @@ void BossTw_TwinrovaSetupArriveAtTarget(BossTw* this, PlayState* play) {
     this->actionFunc = BossTw_TwinrovaArriveAtTarget;
     Animation_MorphToLoop(&this->skelAnime, &gTwinrovaHoverAnim, -3.0f);
     this->work[CS_TIMER_1] = Rand_ZeroFloat(100.0f);
-    this->timers[1] = BossTw_IsFusedFinalCycle(this) ? TWINROVA_FINAL_ARRIVAL_WAIT : TWINROVA_ARRIVAL_WAIT;
+    this->timers[1] = BossTw_IsFusedBerserk(this)
+                          ? TWINROVA_BERSERK_ARRIVAL_WAIT
+                          : BossTw_IsFusedFinalCycle(this) ? TWINROVA_FINAL_ARRIVAL_WAIT : TWINROVA_ARRIVAL_WAIT;
     this->rotateSpeed = 0.0f;
 }
 
@@ -11075,7 +12700,7 @@ static void BossTw_EmitFusedAttackOriginTell(BossTw* this, PlayState* play, Twin
 }
 
 static void BossTw_LockFusedAttackPortal(BossTw* this, PlayState* play, TwinrovaMagicElement element,
-                                          s32 usesLowerRoute, s32 playCue) {
+                                           s32 usesLowerRoute, s32 playCue) {
     Player* player = GET_PLAYER(play);
     s32 playerOnLowerDeck = player->actor.floorHeight < TWINROVA_UPPER_FLOOR_MIN_Y;
     s32 usesCommittedWedgeOrigin = this->actionFunc == BossTw_TwinrovaBreakerSequence &&
@@ -11103,7 +12728,36 @@ static void BossTw_LockFusedAttackPortal(BossTw* this, PlayState* play, Twinrova
     BossTw_EmitFusedAttackOriginTell(this, play, element, playCue);
 }
 
+static void BossTw_RestartFusedShotPackage(BossTw* this, TwinrovaMagicElement element) {
+    // A concurrent mine can legitimately become the second matching projectile while a normal cast is winding up.
+    // Once this cast has to change color to avoid a third match, begin the next shield package from that actual release
+    // rather than letting stale package state manufacture another same-color shot.
+    sFixedBlastType = element;
+    sFixedBlatSeq = 0;
+    this->fusedShotPackageSequence = 0;
+}
+
+static TwinrovaMagicElement BossTw_ConfirmFusedShotElement(BossTw* this, PlayState* play) {
+    TwinrovaMagicElement selected = (TwinrovaMagicElement)this->fusedShotElement;
+    TwinrovaMagicElement element = BossTw_SelectFusedProjectileElement(this, selected);
+
+    if (element != selected) {
+        // The final flash is intentional feedback for an overlap-driven color switch. Treat it as a breaker so a
+        // shield block cannot silently turn the forced anti-streak shot into the wrong charge.
+        this->fusedShotElement = element;
+        this->fusedShotIsBreaker = true;
+        sTwinrovaBlastType = element;
+        BossTw_RestartFusedShotPackage(this, element);
+        BossTw_EmitFusedAttackOriginTell(this, play, element, true);
+    }
+
+    return element;
+}
+
 static s16 BossTw_GetFalseChargeCooldown(BossTw* this) {
+    if (BossTw_IsFusedBerserk(this)) {
+        return TWINROVA_BERSERK_FALSE_CHARGE_COOLDOWN;
+    }
     return BossTw_IsFusedFinalCycle(this) ? TWINROVA_FINAL_FALSE_CHARGE_COOLDOWN : TWINROVA_FALSE_CHARGE_COOLDOWN;
 }
 
@@ -11126,20 +12780,33 @@ static TwinrovaFusedAttack BossTw_SelectFusedAttack(BossTw* this, PlayState* pla
     s32 canBreaker = BossTw_CanStartBreakerSequence(this, play);
     s32 canMinefield = BossTw_CanStartMinefield(this, play);
     s32 canCyclone = this->breakerSequenceSeen && BossTw_CanStartCyclone(this, play);
+    s32 canConjuration = BossTw_CanStartFusedConjuration(this, play);
     s16 weights[TWINROVA_FUSED_ATTACK_MAX];
     s16 totalWeight = 0;
     s16 roll;
     s16 i;
 
-    weights[TWINROVA_FUSED_ATTACK_NORMAL] =
-        BossTw_IsFusedFinalCycle(this) ? TWINROVA_FINAL_FUSED_NORMAL_WEIGHT : TWINROVA_FUSED_NORMAL_WEIGHT;
-    weights[TWINROVA_FUSED_ATTACK_FALSE_CHARGE] = canFalseCharge ? TWINROVA_FUSED_FALSE_CHARGE_WEIGHT : 0;
-    weights[TWINROVA_FUSED_ATTACK_BREAKER] = canBreaker ? TWINROVA_FUSED_BREAKER_WEIGHT : 0;
-    weights[TWINROVA_FUSED_ATTACK_MINEFIELD] = canMinefield ? TWINROVA_FUSED_MINEFIELD_WEIGHT : 0;
-    weights[TWINROVA_FUSED_ATTACK_CYCLONE] =
-        canCyclone ? (BossTw_IsFusedFinalCycle(this) ? TWINROVA_FINAL_FUSED_CYCLONE_WEIGHT
-                                                     : TWINROVA_FUSED_CYCLONE_WEIGHT)
-                   : 0;
+    if (BossTw_IsFusedBerserk(this)) {
+        weights[TWINROVA_FUSED_ATTACK_NORMAL] = TWINROVA_BERSERK_FUSED_NORMAL_WEIGHT;
+        weights[TWINROVA_FUSED_ATTACK_FALSE_CHARGE] =
+            canFalseCharge ? TWINROVA_BERSERK_FUSED_FALSE_CHARGE_WEIGHT : 0;
+        weights[TWINROVA_FUSED_ATTACK_BREAKER] = canBreaker ? TWINROVA_BERSERK_FUSED_BREAKER_WEIGHT : 0;
+        weights[TWINROVA_FUSED_ATTACK_MINEFIELD] = canMinefield ? TWINROVA_BERSERK_FUSED_MINEFIELD_WEIGHT : 0;
+        weights[TWINROVA_FUSED_ATTACK_CYCLONE] = canCyclone ? TWINROVA_BERSERK_FUSED_CYCLONE_WEIGHT : 0;
+        weights[TWINROVA_FUSED_ATTACK_CONJURATION] =
+            canConjuration ? TWINROVA_BERSERK_FUSED_CONJURATION_WEIGHT : 0;
+    } else {
+        weights[TWINROVA_FUSED_ATTACK_NORMAL] =
+            BossTw_IsFusedFinalCycle(this) ? TWINROVA_FINAL_FUSED_NORMAL_WEIGHT : TWINROVA_FUSED_NORMAL_WEIGHT;
+        weights[TWINROVA_FUSED_ATTACK_FALSE_CHARGE] = canFalseCharge ? TWINROVA_FUSED_FALSE_CHARGE_WEIGHT : 0;
+        weights[TWINROVA_FUSED_ATTACK_BREAKER] = canBreaker ? TWINROVA_FUSED_BREAKER_WEIGHT : 0;
+        weights[TWINROVA_FUSED_ATTACK_MINEFIELD] = canMinefield ? TWINROVA_FUSED_MINEFIELD_WEIGHT : 0;
+        weights[TWINROVA_FUSED_ATTACK_CYCLONE] =
+            canCyclone ? (BossTw_IsFusedFinalCycle(this) ? TWINROVA_FINAL_FUSED_CYCLONE_WEIGHT
+                                                         : TWINROVA_FUSED_CYCLONE_WEIGHT)
+                        : 0;
+        weights[TWINROVA_FUSED_ATTACK_CONJURATION] = canConjuration ? TWINROVA_FUSED_CONJURATION_WEIGHT : 0;
+    }
 
     // Teach and then exercise every major phase-two rule before the mature weighted rotation takes over. Context
     // gates remain authoritative, so a temporarily illegal move waits for the next clean scheduler opportunity.
@@ -11148,6 +12815,9 @@ static TwinrovaFusedAttack BossTw_SelectFusedAttack(BossTw* this, PlayState* pla
     }
     if (this->breakerSequenceSeen && !this->cycloneSeen && canCyclone) {
         return TWINROVA_FUSED_ATTACK_CYCLONE;
+    }
+    if (this->breakerSequenceSeen && this->cycloneSeen && !this->conjurationSeen && canConjuration) {
+        return TWINROVA_FUSED_ATTACK_CONJURATION;
     }
     if (this->breakerSequenceSeen && this->cycloneSeen && !this->minefieldSeen && canMinefield) {
         return TWINROVA_FUSED_ATTACK_MINEFIELD;
@@ -11174,9 +12844,13 @@ static void BossTw_TwinrovaSetupFalseCharge(BossTw* this, PlayState* play) {
     TwinrovaMagicElement actualElement = (TwinrovaMagicElement)!sTwinrovaBlastType;
 
     // The original wind-up is deliberately false. Count the opposite release as the first real shot in its new
-    // three-shot package, so the feint tests tracking rather than corrupting the Mirror Shield's charge lesson.
+    // A-A-breaker-A package, so the feint tests tracking rather than corrupting the Mirror Shield's charge lesson.
     sTwinrovaBlastType = sFixedBlastType = actualElement;
     sFixedBlatSeq = 1;
+    this->fusedShotElement = actualElement;
+    this->fusedShotIsBreaker = false;
+    this->fusedShotPackageSequence = 1;
+    this->fusedShotActive = true;
     this->pendingFusedAttack = TWINROVA_FUSED_ATTACK_NORMAL;
     this->actionFunc = BossTw_TwinrovaFalseCharge;
     this->timers[0] = TWINROVA_FALSE_CHARGE_REPOSITION_TIME;
@@ -11187,7 +12861,7 @@ static void BossTw_TwinrovaSetupFalseCharge(BossTw* this, PlayState* play) {
     this->actor.velocity.x = this->actor.velocity.y = this->actor.velocity.z = 0.0f;
     this->attackPortalActive = false;
     Animation_MorphToLoopSetSpeed(&this->skelAnime, &gTwinrovaHoverAnim, TWINROVA_FUSED_HOVER_ANIM_MORPH_TIME,
-                                  TWINROVA_FALSE_CHARGE_ANIM_SPEED);
+                                  BossTw_GetFalseChargeAnimationSpeed(this));
     // The abandoned origin gets a sharp color-switch flash, not the long-lived strong ring used by trustworthy
     // commitments. The normal release setup will mark the real post-reposition scepter/portal through its shot frame.
     BossTw_EmitFusedElementTell(this, play, actualElement, false);
@@ -11198,11 +12872,13 @@ static void BossTw_TwinrovaSetupFalseCharge(BossTw* this, PlayState* play) {
 
 void BossTw_TwinrovaFalseCharge(BossTw* this, PlayState* play) {
     TwinrovaMagicElement actualElement = (TwinrovaMagicElement)sTwinrovaBlastType;
+    f32 moveStep = BossTw_IsFusedBerserk(this) ? TWINROVA_BERSERK_FALSE_CHARGE_MOVE_STEP
+                                                : TWINROVA_FALSE_CHARGE_MOVE_STEP;
 
     SkelAnime_Update(&this->skelAnime);
-    Math_ApproachF(&this->actor.world.pos.x, this->targetPos.x, 0.35f, TWINROVA_FALSE_CHARGE_MOVE_STEP);
-    Math_ApproachF(&this->actor.world.pos.y, this->targetPos.y, 0.35f, TWINROVA_FALSE_CHARGE_MOVE_STEP * 0.75f);
-    Math_ApproachF(&this->actor.world.pos.z, this->targetPos.z, 0.35f, TWINROVA_FALSE_CHARGE_MOVE_STEP);
+    Math_ApproachF(&this->actor.world.pos.x, this->targetPos.x, 0.35f, moveStep);
+    Math_ApproachF(&this->actor.world.pos.y, this->targetPos.y, 0.35f, moveStep * 0.75f);
+    Math_ApproachF(&this->actor.world.pos.z, this->targetPos.z, 0.35f, moveStep);
     Math_ApproachS(&this->actor.world.rot.y, this->actor.yawTowardsPlayer, 5, 0x1800);
     Math_ApproachS(&this->actor.shape.rot.y, this->actor.yawTowardsPlayer, 5, 0x1800);
 
@@ -11219,7 +12895,10 @@ void BossTw_TwinrovaFalseCharge(BossTw* this, PlayState* play) {
 
 void BossTw_TwinrovaSetupChargeBlast(BossTw* this, PlayState* play) {
     TwinrovaFusedAttack attack = BossTw_SelectFusedAttack(this, play);
+    TwinrovaMagicElement falseActual;
 
+    this->fusedChainShot = false;
+    this->fusedShotActive = false;
     this->pendingFusedAttack = attack;
     if (attack == TWINROVA_FUSED_ATTACK_CYCLONE) {
         this->pendingFusedAttack = TWINROVA_FUSED_ATTACK_NORMAL;
@@ -11231,30 +12910,74 @@ void BossTw_TwinrovaSetupChargeBlast(BossTw* this, PlayState* play) {
         BossTw_TwinrovaSetupMinefield(this, play);
         return;
     }
+    if (attack == TWINROVA_FUSED_ATTACK_CONJURATION) {
+        this->pendingFusedAttack = TWINROVA_FUSED_ATTACK_NORMAL;
+        if (BossTw_TwinrovaSetupElementalConjuration(this, play)) {
+            return;
+        }
+        // The two persistent apertures are the move's contract. If actor allocation cannot produce both, immediately
+        // fall back to a normal shield-puzzle shot rather than entering a half-telegraphed summon sequence.
+        attack = TWINROVA_FUSED_ATTACK_NORMAL;
+    }
 
     this->actionFunc = BossTw_TwinrovaChargeBlast;
     this->csState1 = 0;
-    BossTw_SelectTwinrovaBlastType();
+    BossTw_SelectTwinrovaBlastType(this);
     if (attack == TWINROVA_FUSED_ATTACK_FALSE_CHARGE) {
+        // Choose the fake tell only after reserving a safe paired opener for the real release. This keeps the feint
+        // visually opposite while preventing the actual first two shots from completing a three-of-one-color streak.
+        falseActual = BossTw_SelectFusedPairLeadElement(this, (TwinrovaMagicElement)!sTwinrovaBlastType);
+        sTwinrovaBlastType = !falseActual;
         this->falseChargeSeen = true;
         this->falseChargeCooldown = BossTw_GetFalseChargeCooldown(this);
     }
     Animation_MorphToPlayOnceSetSpeed(&this->skelAnime, &gTwinrovaWindUpAnim, TWINROVA_FUSED_CHARGE_ANIM_MORPH_TIME,
                                       attack == TWINROVA_FUSED_ATTACK_FALSE_CHARGE
-                                          ? TWINROVA_FALSE_CHARGE_ANIM_SPEED
-                                          : TWINROVA_FUSED_CHARGE_ANIM_SPEED);
+                                          ? BossTw_GetFalseChargeAnimationSpeed(this)
+                                          : BossTw_GetFusedChargeAnimationSpeed(this));
     this->workf[ANIM_SW_TGT] = Animation_GetLastFrame(&gTwinrovaWindUpAnim);
-    BossTw_EmitFusedElementTell(this, play, (TwinrovaMagicElement)sTwinrovaBlastType, false);
+    BossTw_EmitFusedElementTell(this, play,
+                                attack == TWINROVA_FUSED_ATTACK_FALSE_CHARGE
+                                    ? (TwinrovaMagicElement)sTwinrovaBlastType
+                                    : (TwinrovaMagicElement)this->fusedShotElement,
+                                attack != TWINROVA_FUSED_ATTACK_FALSE_CHARGE &&
+                                    BossTw_IsCurrentFusedPackageBreakerShot(this));
 }
 
-static void BossTw_SelectTwinrovaBlastType(void) {
-    // Authored three-shot packages guarantee that mastery, rather than low-health RNG, earns a release.
-    if (++sFixedBlatSeq >= 4) {
-        sFixedBlatSeq = 1;
-        sFixedBlastType = !sFixedBlastType;
+static void BossTw_SelectTwinrovaBlastType(BossTw* this) {
+    TwinrovaMagicElement preferred;
+    TwinrovaMagicElement element;
+    s32 isBreaker;
+
+    // A-A-breaker-A preserves the three matching blocks needed for a release, while the deliberate opposing third
+    // shot prevents any phase-two package from sending three identical projectiles in succession.
+    if (sFixedBlatSeq >= 4) {
+        sFixedBlatSeq = 0;
+    }
+    if (sFixedBlatSeq == 0) {
+        sFixedBlastType = BossTw_SelectFusedPairLeadElement(this, (TwinrovaMagicElement)sFixedBlastType);
+    }
+    isBreaker = sFixedBlatSeq == 2;
+    preferred = isBreaker ? (TwinrovaMagicElement)!sFixedBlastType : (TwinrovaMagicElement)sFixedBlastType;
+    element = BossTw_SelectFusedProjectileElement(this, preferred);
+    if (element != preferred) {
+        // This is a visible forced breaker, not a silent selector correction. Reset the package now so the following
+        // cast cannot inherit an interior slot whose promised color no longer matches the actual shot.
+        isBreaker = true;
+        BossTw_RestartFusedShotPackage(this, element);
+    } else {
+        sFixedBlatSeq++;
+        this->fusedShotPackageSequence = sFixedBlatSeq;
     }
 
-    sTwinrovaBlastType = sFixedBlastType;
+    this->fusedShotElement = element;
+    this->fusedShotIsBreaker = isBreaker;
+    this->fusedShotActive = true;
+    sTwinrovaBlastType = element;
+}
+
+static s32 BossTw_IsCurrentFusedPackageBreakerShot(BossTw* this) {
+    return this->fusedShotActive && this->fusedShotIsBreaker;
 }
 
 static void BossTw_SetTwinrovaAttackAnimation(BossTw* this, TwinrovaMagicElement element) {
@@ -11263,27 +12986,44 @@ static void BossTw_SetTwinrovaAttackAnimation(BossTw* this, TwinrovaMagicElement
     // Preserve the end of a reposition/hover pose while letting the actual cast run faster. The old zero-frame switch
     // was especially visible when False Charge jumped straight from its fake-out into the real release.
     Animation_MorphToPlayOnceSetSpeed(&this->skelAnime, animation, TWINROVA_FUSED_ATTACK_ANIM_MORPH_TIME,
-                                      TWINROVA_FUSED_ATTACK_ANIM_SPEED);
+                                      BossTw_GetFusedAttackAnimationSpeed(this));
     this->workf[ANIM_SW_TGT] = Animation_GetLastFrame(animation);
 }
 
+static s32 BossTw_IsMinefieldFollowupBreakerShot(BossTw* this) {
+    return this->csState1 == TWINROVA_BREAKER_SHOT_INDEX;
+}
+
+static TwinrovaMagicElement BossTw_GetMinefieldFollowupPreferredElement(BossTw* this) {
+    return BossTw_IsMinefieldFollowupBreakerShot(this) ? (TwinrovaMagicElement)!this->csState2
+                                                        : (TwinrovaMagicElement)this->csState2;
+}
+
 static void BossTw_BeginMinefieldFollowupShot(BossTw* this, PlayState* play) {
-    TwinrovaMagicElement element = (TwinrovaMagicElement)this->csState2;
+    TwinrovaMagicElement preferred = BossTw_GetMinefieldFollowupPreferredElement(this);
+    TwinrovaMagicElement element = BossTw_SelectFusedProjectileElement(this, preferred);
 
     this->work[CAN_SHOOT] = false;
     this->minefieldFollowupSuppressed = false;
     this->beamShootState = TWINROVA_BREAKER_STATE_SHOOT;
-    BossTw_EmitFusedElementTell(this, play, element, false);
+    this->blastType = element;
+    // A Minefield launch can be the second matching projectile already. Make a selector-enforced color switch a real
+    // breaker beat with the strong tell and safe shield behavior, never an unexplained opposite normal shot.
+    this->fusedShotIsBreaker = BossTw_IsMinefieldFollowupBreakerShot(this) || element != preferred;
+    sTwinrovaBlastType = element;
+    BossTw_EmitFusedElementTell(this, play, element, this->fusedShotIsBreaker);
     BossTw_LockFusedAttackPortal(this, play, element, false, false);
     BossTw_SetTwinrovaAttackAnimation(this, element);
 }
 
 static void BossTw_TwinrovaSetupMinefieldFollowup(BossTw* this, PlayState* play) {
-    // Three matching ordinary shots preserve the vanilla shield lesson and create an offensive opportunity while the
-    // independent Minefield timer keeps applying arena pressure. The resulting blast cannot erase mines or their pools.
-    TwinrovaMagicElement element = (TwinrovaMagicElement)!sTwinrovaBlastType;
+    // A-A-breaker-A keeps the original three matching shield blocks, but gives the player a readable dodge beat
+    // instead of ever printing three same-element projectiles in a row over the independent Minefield pressure.
+    TwinrovaMagicElement element =
+        BossTw_SelectFusedPairLeadElement(this, (TwinrovaMagicElement)!sTwinrovaBlastType);
 
     this->minefieldSequenceState = TWINROVA_MINEFIELD_SEQUENCE_ACTIVE;
+    this->fusedShotActive = false;
     this->actionFunc = BossTw_TwinrovaMinefieldFollowup;
     this->csState1 = 0;
     this->csState2 = element;
@@ -11298,9 +13038,10 @@ static void BossTw_TwinrovaSetupMinefieldFollowup(BossTw* this, PlayState* play)
 static void BossTw_TwinrovaMinefieldFollowup(BossTw* this, PlayState* play) {
     BossTw* magic;
     Player* player = GET_PLAYER(play);
-    TwinrovaMagicElement element = (TwinrovaMagicElement)this->csState2;
+    TwinrovaMagicElement element = (TwinrovaMagicElement)this->blastType;
     Vec3f* spawnPos;
-    s16 magicParams = element == TWINROVA_MAGIC_FIRE ? TW_FIRE_BLAST : TW_ICE_BLAST;
+    s16 magicParams;
+    s32 forcedElementSwitch;
 
     SkelAnime_Update(&this->skelAnime);
     Math_ApproachS(&this->actor.shape.rot.y, this->actor.yawTowardsPlayer, 5, 0x1000);
@@ -11336,12 +13077,27 @@ static void BossTw_TwinrovaMinefieldFollowup(BossTw* this, PlayState* play) {
     }
 
     if (Animation_OnFrame(&this->skelAnime, 12.0f)) {
+        TwinrovaMagicElement selected = element;
+
+        // Mine detonations can overlap this compact follow-up. Reconfirm at the actual release so that a late wave
+        // cannot turn the next visible projectile into a third of the same element.
+        element = BossTw_SelectFusedProjectileElement(this, selected);
+        forcedElementSwitch = element != selected;
+        if (forcedElementSwitch) {
+            this->blastType = element;
+            this->fusedShotIsBreaker = true;
+            sTwinrovaBlastType = element;
+            BossTw_EmitFusedAttackOriginTell(this, play, element, true);
+        }
+        magicParams = element == TWINROVA_MAGIC_FIRE ? TW_FIRE_BLAST : TW_ICE_BLAST;
         spawnPos = element == TWINROVA_MAGIC_FIRE ? &this->rightScepterPos : &this->leftScepterPos;
         if (this->attackPortalActive) {
             spawnPos = &this->attackPortalPos;
         }
 
-        magic = BossTw_SpawnMagicBlast(this, play, spawnPos, magicParams, TWINROVA_BLAST_MINEFIELD_FOLLOWUP);
+        magic = BossTw_SpawnMagicBlast(this, play, spawnPos, magicParams,
+                                       this->fusedShotIsBreaker ? TWINROVA_BLAST_BREAKER
+                                                                 : TWINROVA_BLAST_MINEFIELD_FOLLOWUP);
         if (magic != NULL) {
             this->work[CAN_SHOOT] = true;
             this->minefieldFollowupSuppressed = BossTw_IsPlayerHardDisabled(play);
@@ -11359,15 +13115,23 @@ static void BossTw_TwinrovaMinefieldFollowup(BossTw* this, PlayState* play) {
 
         if (this->csState1 >= TWINROVA_MINEFIELD_FOLLOWUP_SHOTS) {
             // If Link has not already completed the package, resume the ordinary scheduler at its normal element
-            // boundary. A very close third intercept may already have committed the shield release and authored the
+            // boundary. A very close final intercept may already have committed the shield release and authored the
             // opposite next package in BossTw_BlastShieldCheck; never overwrite that earned state here.
             if (sShieldFireCharge < 3 && sShieldIceCharge < 3 &&
                 !BossTw_HasCommittedFusedShieldRelease(play, this)) {
-                sFixedBlatSeq = 3;
+                sFixedBlastType = !this->csState2;
+                sFixedBlatSeq = 0;
             }
             BossTw_AccelerateMinefieldFuses(play, this);
             this->minefieldSequenceState = TWINROVA_MINEFIELD_SEQUENCE_OVERLAP;
             this->work[CAN_SHOOT] = false;
+            if (!BossTw_HasCommittedFusedShieldRelease(play, this)) {
+                // The shield package is complete and every mine has an established identity. Immediately begin a
+                // normal, fully telegraphed charge instead of drifting back to a distant pillar, so the final mine
+                // countdown remains active combat pressure rather than an empty wait.
+                BossTw_TwinrovaSetupChargeBlast(this, play);
+                return;
+            }
             BossTw_TwinrovaSetupDoneBlastShoot(this, play);
             return;
         }
@@ -11382,10 +13146,16 @@ static void BossTw_TwinrovaMinefieldFollowup(BossTw* this, PlayState* play) {
 }
 
 static TwinrovaMagicElement BossTw_GetBreakerShotElement(BossTw* this) {
-    if (this->csState1 == TWINROVA_BREAKER_SHOT_INDEX) {
+    if (this->csState1 == TWINROVA_BREAKER_SHOT_INDEX ||
+        this->csState1 == TWINROVA_BREAKER_SECOND_SHOT_INDEX) {
         return (TwinrovaMagicElement)!this->csState2;
     }
     return (TwinrovaMagicElement)this->csState2;
+}
+
+static s32 BossTw_IsBreakerElementSwitchShot(BossTw* this) {
+    return this->csState1 == TWINROVA_BREAKER_SHOT_INDEX ||
+           this->csState1 == TWINROVA_BREAKER_SECOND_SHOT_INDEX;
 }
 
 static void BossTw_ArmBreakerCooldown(BossTw* this) {
@@ -11400,8 +13170,8 @@ static void BossTw_BeginBreakerShot(BossTw* this, PlayState* play) {
 
     sTwinrovaBlastType = element;
     this->work[CAN_SHOOT] = false;
-    BossTw_EmitFusedElementTell(this, play, element, this->csState1 == TWINROVA_BREAKER_SHOT_INDEX);
-    if (this->csState1 == TWINROVA_BREAKER_SHOT_INDEX) {
+    BossTw_EmitFusedElementTell(this, play, element, BossTw_IsBreakerElementSwitchShot(this));
+    if (BossTw_IsBreakerElementSwitchShot(this)) {
         this->beamShootState = TWINROVA_BREAKER_STATE_TELL;
         this->timers[0] = TWINROVA_BREAKER_TELL_TIME;
         Animation_MorphToPlayOnce(&this->skelAnime, &gTwinrovaWindUpAnim, -3.0f);
@@ -11416,13 +13186,17 @@ static void BossTw_BeginBreakerShot(BossTw* this, PlayState* play) {
 }
 
 static void BossTw_TwinrovaSetupBreakerSequence(BossTw* this, PlayState* play) {
-    TwinrovaMagicElement siegeElement = (TwinrovaMagicElement)!sTwinrovaBlastType;
+    TwinrovaMagicElement baseElement =
+        BossTw_SelectFusedPairLeadElement(this, (TwinrovaMagicElement)sTwinrovaBlastType);
+    TwinrovaMagicElement siegeElement = (TwinrovaMagicElement)!baseElement;
 
     this->actionFunc = BossTw_TwinrovaBreakerSequence;
     this->pendingFusedAttack = TWINROVA_FUSED_ATTACK_NORMAL;
+    this->fusedShotActive = false;
     this->actor.speedXZ = 0.0f;
     this->csState1 = 0;
-    this->csState2 = sTwinrovaBlastType;
+    this->csState2 = baseElement;
+    sTwinrovaBlastType = sFixedBlastType = baseElement;
     this->beamShootState = TWINROVA_BREAKER_STATE_SIEGE_TELEGRAPH;
     this->timers[0] = TWINROVA_SIEGE_TELEGRAPH_TIME;
     Animation_MorphToLoop(&this->skelAnime, &gTwinrovaHoverAnim, -5.0f);
@@ -11438,7 +13212,20 @@ static void BossTw_TwinrovaSetupBreakerSequence(BossTw* this, PlayState* play) {
 }
 
 void BossTw_TwinrovaChargeBlast(BossTw* this, PlayState* play) {
-    Vec3f* tellPos = sTwinrovaBlastType == TWINROVA_MAGIC_FIRE ? &this->rightScepterPos : &this->leftScepterPos;
+    TwinrovaMagicElement element = this->pendingFusedAttack == TWINROVA_FUSED_ATTACK_FALSE_CHARGE
+                                       ? (TwinrovaMagicElement)sTwinrovaBlastType
+                                       : this->fusedShotActive ? (TwinrovaMagicElement)this->fusedShotElement
+                                                               : (TwinrovaMagicElement)sTwinrovaBlastType;
+    Vec3f* tellPos = element == TWINROVA_MAGIC_FIRE ? &this->rightScepterPos : &this->leftScepterPos;
+
+    // A chained cast is the only new overlap. If the earlier projectile completes the Mirror Shield while this tell is
+    // playing, immediately yield to the earned release instead of adding an untelegraphed extra shot to the punish.
+    if (this->fusedChainShot && BossTw_HasCommittedFusedShieldRelease(play, this)) {
+        this->fusedShotActive = false;
+        this->fusedChainShot = false;
+        BossTw_TwinrovaSetupDoneBlastShoot(this, play);
+        return;
+    }
 
     SkelAnime_Update(&this->skelAnime);
 
@@ -11448,7 +13235,7 @@ void BossTw_TwinrovaChargeBlast(BossTw* this, PlayState* play) {
     Math_ApproachS(&this->actor.shape.rot.y, this->actor.yawTowardsPlayer, 5, 0x1000);
 
     if ((this->work[CS_TIMER_1] & 7) == 0) {
-        BossTw_SpawnMagicLaunchEffects(play, tellPos, sTwinrovaBlastType, 2);
+        BossTw_SpawnMagicLaunchEffects(play, tellPos, element, 2);
     }
 
     if (Animation_OnFrame(&this->skelAnime, this->workf[ANIM_SW_TGT])) {
@@ -11467,13 +13254,14 @@ void BossTw_TwinrovaChargeBlast(BossTw* this, PlayState* play) {
 }
 
 void BossTw_TwinrovaSetupShootBlast(BossTw* this, PlayState* play) {
-    TwinrovaMagicElement element = (TwinrovaMagicElement)sTwinrovaBlastType;
+    TwinrovaMagicElement element = this->fusedShotActive ? (TwinrovaMagicElement)this->fusedShotElement
+                                                           : (TwinrovaMagicElement)sTwinrovaBlastType;
 
     this->actionFunc = BossTw_TwinrovaShootBlast;
     this->work[CAN_SHOOT] = false;
     BossTw_SetTwinrovaAttackAnimation(this, element);
     // The original wind-up outlives its setup ring; renew the selected element at commitment.
-    BossTw_EmitFusedElementTell(this, play, element, false);
+    BossTw_EmitFusedElementTell(this, play, element, BossTw_IsCurrentFusedPackageBreakerShot(this));
     BossTw_LockFusedAttackPortal(this, play, element, false, false);
 }
 
@@ -11481,10 +13269,18 @@ void BossTw_TwinrovaShootBlast(BossTw* this, PlayState* play) {
     BossTw* twMagic;
     Player* player = GET_PLAYER(play);
     Vec3f* magicSpawnPos;
-    TwinrovaMagicElement element = (TwinrovaMagicElement)sTwinrovaBlastType;
+    TwinrovaMagicElement element = this->fusedShotActive ? (TwinrovaMagicElement)this->fusedShotElement
+                                                           : (TwinrovaMagicElement)sTwinrovaBlastType;
     TwinrovaBlastBehavior behavior;
     s32 useLowerPortal;
     s32 magicParams;
+
+    if (this->fusedChainShot && !this->work[CAN_SHOOT] && BossTw_HasCommittedFusedShieldRelease(play, this)) {
+        this->fusedShotActive = false;
+        this->fusedChainShot = false;
+        BossTw_TwinrovaSetupDoneBlastShoot(this, play);
+        return;
+    }
 
     if (!this->work[CAN_SHOOT] && BossTw_ShouldRelockFusedAttackOrigin(this, player)) {
         // A deck change invalidates either the scepter or portal origin. Re-author it and restart the complete attack
@@ -11505,8 +13301,13 @@ void BossTw_TwinrovaShootBlast(BossTw* this, PlayState* play) {
         // Origin re-authoring is legal only before this commitment point. Mark the slot spent even if actor
         // allocation fails, so a later deck change cannot retry or duplicate the deterministic package shot.
         this->work[CAN_SHOOT] = true;
-        behavior = TWINROVA_BLAST_STRAIGHT;
-        if (sTwinrovaBlastType != 0) {
+        if (this->fusedShotActive) {
+            element = BossTw_ConfirmFusedShotElement(this, play);
+        }
+        behavior = BossTw_IsCurrentFusedPackageBreakerShot(this)
+                       ? TWINROVA_BLAST_BREAKER
+                       : this->fusedChainShot ? TWINROVA_BLAST_CHAINED : TWINROVA_BLAST_STRAIGHT;
+        if (element != TWINROVA_MAGIC_ICE) {
             magicParams = TW_FIRE_BLAST;
             magicSpawnPos = &this->rightScepterPos;
         } else {
@@ -11517,9 +13318,11 @@ void BossTw_TwinrovaShootBlast(BossTw* this, PlayState* play) {
         useLowerPortal = this->attackPortalActive;
         if (useLowerPortal) {
             magicSpawnPos = &this->attackPortalPos;
-            behavior = TWINROVA_BLAST_LOWER_ROUTE;
+            behavior = BossTw_IsCurrentFusedPackageBreakerShot(this) ? TWINROVA_BLAST_BREAKER
+                                                                  : TWINROVA_BLAST_LOWER_ROUTE;
         }
-        if (this->minefieldSequenceState == TWINROVA_MINEFIELD_SEQUENCE_OVERLAP) {
+        if (this->minefieldSequenceState == TWINROVA_MINEFIELD_SEQUENCE_OVERLAP &&
+            behavior != TWINROVA_BLAST_BREAKER) {
             // Ordinary shots keep Twinrova aggressive during the mine tail, but they resolve cleanly on a dodge. Do
             // not stack a full ground pool and another summon warning onto the already-authoritative mine pattern.
             behavior = TWINROVA_BLAST_MINEFIELD_FOLLOWUP;
@@ -11527,6 +13330,12 @@ void BossTw_TwinrovaShootBlast(BossTw* this, PlayState* play) {
 
         twMagic = BossTw_SpawnMagicBlast(this, play, magicSpawnPos, magicParams, behavior);
         if (twMagic != NULL) {
+            if (this->fusedShotPackageSequence >= 4 && sFixedBlatSeq == this->fusedShotPackageSequence) {
+                // Commit the package boundary only when its final release actually exists. Actor-pool failure below
+                // leaves the slot available for a later retry instead of silently dropping the shield completion.
+                sFixedBlastType = !sFixedBlastType;
+                sFixedBlatSeq = 0;
+            }
             if (useLowerPortal) {
                 BossTw_AddRingEffect(play, magicSpawnPos, 0.5f, 3.2f, 255, twMagic->blastType, 1,
                                      ARRAY_COUNT(sEffects));
@@ -11539,15 +13348,17 @@ void BossTw_TwinrovaShootBlast(BossTw* this, PlayState* play) {
         } else {
             // Actor-pool pressure can cancel the projectile, but never the player's read of what happened.
             BossTw_ShowFailedMagicCast(play, magicSpawnPos, element);
-            // Preserve the guaranteed three-successful-shot elemental package under actor-pool pressure.
-            if (sFixedBlatSeq != 0) {
+            // Preserve the guaranteed A-A-breaker-A elemental package under actor-pool pressure.
+            if (this->fusedShotPackageSequence != 0 && sFixedBlatSeq == this->fusedShotPackageSequence) {
                 sFixedBlatSeq--;
             }
             sEnvType = 0;
         }
+        this->fusedShotActive = false;
     }
 
     if (Animation_OnFrame(&this->skelAnime, this->workf[ANIM_SW_TGT])) {
+        this->fusedChainShot = false;
         BossTw_TwinrovaSetupDoneBlastShoot(this, play);
     }
 
@@ -11664,8 +13475,8 @@ void BossTw_TwinrovaBreakerSequence(BossTw* this, PlayState* play) {
                 if (this->attackPortalActive) {
                     magicSpawnPos = &this->attackPortalPos;
                 }
-                behavior = this->csState1 == TWINROVA_BREAKER_SHOT_INDEX ? TWINROVA_BLAST_BREAKER
-                                                                         : TWINROVA_BLAST_SIEGE;
+                behavior = BossTw_IsBreakerElementSwitchShot(this) ? TWINROVA_BLAST_BREAKER
+                                                                      : TWINROVA_BLAST_SIEGE;
                 twMagic = BossTw_SpawnMagicBlast(this, play, magicSpawnPos, magicParams, behavior);
                 if (twMagic != NULL) {
                     this->work[CAN_SHOOT] = true;
@@ -11689,7 +13500,7 @@ void BossTw_TwinrovaBreakerSequence(BossTw* this, PlayState* play) {
                         this->breakerSequenceSeen = false;
                     } else if (this->csState1 != 0) {
                         // Preserve a coherent matching-element rebuild whether allocation failed before or after
-                        // the breaker. The next normal package supplies three clean shots of the base element.
+                        // a breaker beat. The next normal package starts fresh and remains streak-safe.
                         sFixedBlastType = this->csState2;
                         sFixedBlatSeq = 0;
                     }
@@ -11714,10 +13525,15 @@ void BossTw_TwinrovaBreakerSequence(BossTw* this, PlayState* play) {
             if (this->work[CAN_SHOOT]) {
                 this->work[CAN_SHOOT] = false;
                 if (this->csState1 >= TWINROVA_BREAKER_SEQUENCE_SHOTS) {
+                    if (!BossTw_HasCommittedFusedShieldRelease(play, this)) {
+                        sFixedBlastType = !this->csState2;
+                        sFixedBlatSeq = 0;
+                    }
                     BossTw_TwinrovaSetupDoneBlastShoot(this, play);
                     break;
                 }
-                this->timers[0] = this->csState1 == TWINROVA_BREAKER_SHOT_INDEX + 1
+                this->timers[0] = (this->csState1 == TWINROVA_BREAKER_SHOT_INDEX + 1 ||
+                                   this->csState1 == TWINROVA_BREAKER_SECOND_SHOT_INDEX + 1)
                                       ? TWINROVA_BREAKER_RECOVERY_GAP
                                       : TWINROVA_BREAKER_SHOT_GAP;
                 break;
@@ -11729,15 +13545,58 @@ void BossTw_TwinrovaBreakerSequence(BossTw* this, PlayState* play) {
     }
 }
 
+static f32 BossTw_GetFusedChainChance(BossTw* this) {
+    if (BossTw_IsFusedBerserk(this)) {
+        return TWINROVA_BERSERK_FUSED_CHAIN_CHANCE;
+    }
+    return BossTw_IsFusedFinalCycle(this) ? TWINROVA_FINAL_FUSED_CHAIN_CHANCE : TWINROVA_FUSED_CHAIN_CHANCE;
+}
+
+static s32 BossTw_CanLaunchFusedChain(BossTw* this, PlayState* play) {
+    return this->fusedChainCount < TWINROVA_FUSED_MAX_CHAIN_COUNT &&
+           !BossTw_HasCommittedFusedShieldRelease(play, this) && !BossTw_HasActiveBreakerProjectile(play, this) &&
+           !BossTw_HasActiveArenaControlPattern(this, play) &&
+           BossTw_CountActiveFusedNonMineBlasts(play, this) <= 1;
+}
+
+static void BossTw_TwinrovaSetupChainedChargeBlast(BossTw* this, PlayState* play) {
+    this->pendingFusedAttack = TWINROVA_FUSED_ATTACK_NORMAL;
+    this->actionFunc = BossTw_TwinrovaChargeBlast;
+    this->csState1 = 0;
+    this->work[CAN_SHOOT] = false;
+    this->fusedChainCount++;
+    this->fusedChainShot = true;
+    this->fusedChainQueued = false;
+    this->fusedShotActive = false;
+    this->actor.speedXZ = 0.0f;
+    this->actor.velocity.x = this->actor.velocity.y = this->actor.velocity.z = 0.0f;
+    BossTw_SelectTwinrovaBlastType(this);
+    Animation_MorphToPlayOnceSetSpeed(&this->skelAnime, &gTwinrovaWindUpAnim, TWINROVA_FUSED_CHARGE_ANIM_MORPH_TIME,
+                                      BossTw_GetFusedChargeAnimationSpeed(this));
+    this->workf[ANIM_SW_TGT] = Animation_GetLastFrame(&gTwinrovaWindUpAnim);
+    // Reuse the full normal commitment tell, but stay at the current hover point. This creates pressure over the
+    // previous projectile without visually teleporting to another pillar or trying to run two boss state machines.
+    BossTw_EmitFusedElementTell(this, play, (TwinrovaMagicElement)this->fusedShotElement,
+                                BossTw_IsCurrentFusedPackageBreakerShot(this));
+}
+
 void BossTw_TwinrovaSetupDoneBlastShoot(BossTw* this, PlayState* play) {
     s32 useSpecialRecovery = this->actionFunc == BossTw_TwinrovaBreakerSequence ||
-                             BossTw_HasCommittedFusedShieldRelease(play, this);
-    s16 normalRecovery =
-        BossTw_IsFusedFinalCycle(this) ? TWINROVA_FINAL_NORMAL_SHOT_RECOVERY : TWINROVA_NORMAL_SHOT_RECOVERY;
-    s16 specialRecovery =
-        BossTw_IsFusedFinalCycle(this) ? TWINROVA_FINAL_SPECIAL_SHOT_RECOVERY : TWINROVA_SPECIAL_SHOT_RECOVERY;
+                              BossTw_HasCommittedFusedShieldRelease(play, this);
+    s32 canQueueChain = this->actionFunc == BossTw_TwinrovaShootBlast &&
+                        this->minefieldSequenceState == TWINROVA_MINEFIELD_SEQUENCE_NONE &&
+                        this->fusedChainCount < TWINROVA_FUSED_MAX_CHAIN_COUNT;
+    s16 normalRecovery = BossTw_IsFusedBerserk(this)
+                             ? TWINROVA_BERSERK_NORMAL_SHOT_RECOVERY
+                             : BossTw_IsFusedFinalCycle(this) ? TWINROVA_FINAL_NORMAL_SHOT_RECOVERY
+                                                               : TWINROVA_NORMAL_SHOT_RECOVERY;
+    s16 specialRecovery = BossTw_IsFusedBerserk(this)
+                              ? TWINROVA_BERSERK_SPECIAL_SHOT_RECOVERY
+                              : BossTw_IsFusedFinalCycle(this) ? TWINROVA_FINAL_SPECIAL_SHOT_RECOVERY
+                                                                : TWINROVA_SPECIAL_SHOT_RECOVERY;
 
     BossTw_ArmBreakerCooldown(this);
+    this->fusedChainQueued = canQueueChain && Rand_ZeroOne() < BossTw_GetFusedChainChance(this);
     this->attackPortalActive = false;
     this->actionFunc = BossTw_TwinrovaDoneBlastShoot;
     Animation_MorphToLoop(&this->skelAnime, &gTwinrovaHoverAnim, -10.0f);
@@ -11774,6 +13633,16 @@ void BossTw_TwinrovaDoneBlastShoot(BossTw* this, PlayState* play) {
         }
     }
 
+    if (this->timers[1] == 0 && this->fusedChainQueued) {
+        if (BossTw_CanLaunchFusedChain(this, play)) {
+            BossTw_TwinrovaSetupChainedChargeBlast(this, play);
+            return;
+        }
+        // A late pool, breaker, or shield release changed the arena after the earlier normal shot committed. The
+        // follow-up is intentionally discarded rather than becoming delayed hidden pressure once that rule ends.
+        this->fusedChainQueued = false;
+    }
+
     if (this->timers[1] == 0 && !BossTw_HasCommittedFusedShieldRelease(play, this) &&
         !BossTw_HasActiveFusedDirectBlast(play, this) && !BossTw_HasActiveArenaControlPattern(this, play)) {
         BossTw_TwinrovaSetupFly(this, play);
@@ -11801,23 +13670,14 @@ static void BossTw_EmitStunBudgetWarning(BossTw* this, PlayState* play) {
     Audio_PlayActorSound2(&this->actor, NA_SE_EN_TWINROBA_MASIC_SET);
 }
 
-static void BossTw_ShowFusedFinalCycleEscalation(BossTw* this, PlayState* play) {
+static void BossTw_ClampFusedAttackCooldowns(BossTw* this) {
     s16 breakerCooldown = BossTw_GetBreakerSequenceCooldown(this);
     s16 cycloneCooldown = BossTw_GetCycloneCooldown(this);
     s16 falseChargeCooldown = BossTw_GetFalseChargeCooldown(this);
     s16 minefieldCooldown = BossTw_GetMinefieldCooldown(this);
+    s16 conjurationCooldown = BossTw_GetFusedConjurationCooldown(this);
 
-    BossTw_AddRingEffect(play, &this->leftScepterPos, 0.8f, 4.0f, 255, TWINROVA_MAGIC_ICE, 1,
-                         ARRAY_COUNT(sEffects));
-    BossTw_AddRingEffect(play, &this->rightScepterPos, 0.8f, 4.0f, 255, TWINROVA_MAGIC_FIRE, 1,
-                         ARRAY_COUNT(sEffects));
-    BossTw_SpawnMagicLaunchEffects(play, &this->leftScepterPos, TWINROVA_MAGIC_ICE, 16);
-    BossTw_SpawnMagicLaunchEffects(play, &this->rightScepterPos, TWINROVA_MAGIC_FIRE, 16);
-    Sfx_PlaySfxCentered(NA_SE_EN_TWINROBA_POWERUP);
-    play->envCtx.unk_D8 = 1.0f;
-    Rumble_Request(0.0f, 160, 10, 4);
-
-    // An interrupted Breaker may have armed the first-cycle cooldown before this damage crossed the threshold.
+    // An interrupted special can have armed its earlier-cycle cooldown before an escalation threshold is crossed.
     if (this->timers[4] > breakerCooldown) {
         this->timers[4] = breakerCooldown;
     }
@@ -11830,6 +13690,37 @@ static void BossTw_ShowFusedFinalCycleEscalation(BossTw* this, PlayState* play) 
     if (this->minefieldCooldown > minefieldCooldown) {
         this->minefieldCooldown = minefieldCooldown;
     }
+    if (this->conjurationCooldown > conjurationCooldown) {
+        this->conjurationCooldown = conjurationCooldown;
+    }
+}
+
+static void BossTw_ShowFusedFinalCycleEscalation(BossTw* this, PlayState* play) {
+    BossTw_AddRingEffect(play, &this->leftScepterPos, 0.8f, 4.0f, 255, TWINROVA_MAGIC_ICE, 1,
+                         ARRAY_COUNT(sEffects));
+    BossTw_AddRingEffect(play, &this->rightScepterPos, 0.8f, 4.0f, 255, TWINROVA_MAGIC_FIRE, 1,
+                         ARRAY_COUNT(sEffects));
+    BossTw_SpawnMagicLaunchEffects(play, &this->leftScepterPos, TWINROVA_MAGIC_ICE, 16);
+    BossTw_SpawnMagicLaunchEffects(play, &this->rightScepterPos, TWINROVA_MAGIC_FIRE, 16);
+    Sfx_PlaySfxCentered(NA_SE_EN_TWINROBA_POWERUP);
+    play->envCtx.unk_D8 = 1.0f;
+    Rumble_Request(0.0f, 160, 10, 4);
+
+    BossTw_ClampFusedAttackCooldowns(this);
+}
+
+static void BossTw_ShowFusedBerserkEscalation(BossTw* this, PlayState* play) {
+    // Berserk is a distinct last-third phase, not a hidden global speed multiplier. The stronger twin-scepter burst
+    // lets the player read the state change before the shorter movement and recovery windows take effect.
+    BossTw_AddRingEffect(play, &this->leftScepterPos, 1.0f, 5.5f, 255, TWINROVA_MAGIC_ICE, 1,
+                         ARRAY_COUNT(sEffects));
+    BossTw_AddRingEffect(play, &this->rightScepterPos, 1.0f, 5.5f, 255, TWINROVA_MAGIC_FIRE, 1,
+                         ARRAY_COUNT(sEffects));
+    BossTw_SpawnMagicLaunchEffects(play, &this->leftScepterPos, TWINROVA_MAGIC_ICE, 20);
+    BossTw_SpawnMagicLaunchEffects(play, &this->rightScepterPos, TWINROVA_MAGIC_FIRE, 20);
+    Sfx_PlaySfxCentered(NA_SE_EN_TWINROBA_POWERUP);
+    Rumble_Request(0.0f, 200, 14, 5);
+    BossTw_ClampFusedAttackCooldowns(this);
 }
 
 static s32 BossTw_IsNearStunLanding(BossTw* this) {
@@ -11854,7 +13745,9 @@ void BossTw_TwinrovaDamage(BossTw* this, PlayState* play, u8 damage) {
         s32 twinrovaWillLandOnUpperDeck = BossTw_IsOverRaisedPlatform(&this->actor.world.pos);
 
         BossTw_ArmBreakerCooldown(this);
-        BossTw_ClearSummonedEnemies(play);
+        // Preserve the player's earned melee window, but visibly collapse every reinforcement instead of silently
+        // deleting a just-resolved Conjuration wave on the charged-hit frame.
+        BossTw_DismissSummonedEnemies(play);
         BossTw_ClearGroundHazards(play, true);
         BossTw_ClearPlayerFreeze(play);
         BossTw_ClearPlayerBurn(play);
@@ -11879,6 +13772,7 @@ void BossTw_TwinrovaDamage(BossTw* this, PlayState* play, u8 damage) {
         u8 accumulatedDamageBefore = this->csState2;
         u8 healthBeforeDamage;
         s32 enteredFinalCycle;
+        s32 enteredBerserk;
         s32 nearingDamageBudget;
         s32 preserveLandingTransition = this->csState1 == 0;
 
@@ -11904,7 +13798,10 @@ void BossTw_TwinrovaDamage(BossTw* this, PlayState* play, u8 damage) {
 
         enteredFinalCycle = healthBeforeDamage > TWINROVA_FINAL_CYCLE_HEALTH &&
                             BossTw_IsFusedFinalCycle(this);
-        if (enteredFinalCycle) {
+        enteredBerserk = healthBeforeDamage > TWINROVA_BERSERK_HEALTH && BossTw_IsFusedBerserk(this);
+        if (enteredBerserk) {
+            BossTw_ShowFusedBerserkEscalation(this, play);
+        } else if (enteredFinalCycle) {
             BossTw_ShowFusedFinalCycleEscalation(this, play);
         } else if (nearingDamageBudget) {
             // The cap is an authored punish-window rule. Preview it before the final hit closes the window instead
@@ -12034,8 +13931,10 @@ void BossTw_TwinrovaSetupGetUp(BossTw* this, PlayState* play) {
     Animation_MorphToPlayOnce(&this->skelAnime, &gTwinrovaStunEndAnim, 0.0f);
     this->workf[ANIM_SW_TGT] = Animation_GetLastFrame(&gTwinrovaStunEndAnim);
     this->actionFunc = BossTw_TwinrovaGetUp;
-    this->timers[0] =
-        BossTw_IsFusedFinalCycle(this) ? TWINROVA_FINAL_GET_UP_RECOVERY : TWINROVA_GET_UP_RECOVERY;
+    this->timers[0] = BossTw_IsFusedBerserk(this)
+                          ? TWINROVA_BERSERK_GET_UP_RECOVERY
+                          : BossTw_IsFusedFinalCycle(this) ? TWINROVA_FINAL_GET_UP_RECOVERY
+                                                            : TWINROVA_GET_UP_RECOVERY;
 }
 
 void BossTw_TwinrovaGetUp(BossTw* this, PlayState* play) {
@@ -12058,6 +13957,13 @@ void BossTw_TwinrovaSetupFly(BossTw* this, PlayState* play) {
     f32 yDiff;
     f32 xzDist;
     Player* player = GET_PLAYER(play);
+
+    this->fusedChainCount = 0;
+    this->fusedChainShot = false;
+    this->fusedChainQueued = false;
+    this->fusedShotIsBreaker = false;
+    this->fusedShotPackageSequence = 0;
+    this->fusedShotActive = false;
 
     do {
         this->work[TW_PLLR_IDX] += (s16)(((s16)Rand_ZeroFloat(2.99f)) + 1);
@@ -12088,6 +13994,10 @@ void BossTw_TwinrovaFly(BossTw* this, PlayState* play) {
     s32 pad;
     f32 yaw;
     f32 xzDist;
+    f32 rotateTarget = BossTw_IsFusedBerserk(this) ? 3200.0f : 2600.0f;
+    f32 rotateStep = BossTw_IsFusedBerserk(this) ? 210.0f : 150.0f;
+    f32 flightSpeed = BossTw_IsFusedBerserk(this) ? 54.0f : 44.0f;
+    f32 flightAccel = BossTw_IsFusedBerserk(this) ? 5.5f : 4.0f;
 
     Audio_PlayActorSound2(&this->actor, NA_SE_EN_TWINROBA_FLY - SFX_FLAG);
     SkelAnime_Update(&this->skelAnime);
@@ -12102,8 +14012,8 @@ void BossTw_TwinrovaFly(BossTw* this, PlayState* play) {
                    this->rotateSpeed);
     Math_ApproachS(&this->actor.world.rot.y, yaw, 0xA, this->rotateSpeed);
     Math_ApproachS(&this->actor.shape.rot.y, yaw, 0xA, this->rotateSpeed);
-    Math_ApproachF(&this->rotateSpeed, 2600.0f, 1.0f, 150.0f);
-    Math_ApproachF(&this->actor.speedXZ, 44.0f, 1.0f, 4.0f);
+    Math_ApproachF(&this->rotateSpeed, rotateTarget, 1.0f, rotateStep);
+    Math_ApproachF(&this->actor.speedXZ, flightSpeed, 1.0f, flightAccel);
     Actor_UpdateVelocityXYZ(&this->actor);
     Math_ApproachF(&this->actor.world.pos.x, this->targetPos.x, 0.1f, fabsf(this->actor.velocity.x) * 1.5f);
     Math_ApproachF(&this->actor.world.pos.y, this->targetPos.y, 0.1f, fabsf(this->actor.velocity.y) * 1.5f);
