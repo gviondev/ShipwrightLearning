@@ -1490,6 +1490,13 @@ void Play_Draw(PlayState* play) {
             }
         }
 
+        // SOH [Enhancement] Wind Waker-style sky: first the gradient dome (opaque, replaces OoT's textured
+        // sky look), then the twinkling starfield over it. Both draw before the sun/moon and the world, so
+        // the moon and terrain draw on top and occlude them.
+        GameInteractor_ExecuteOnPlayDrawSkyGradient(play);
+        GameInteractor_ExecuteOnPlayDrawSky(play);
+        GameInteractor_ExecuteOnPlayDrawSkyClouds(play);
+
         if ((HREG(80) != 10) || (HREG(90) & 2)) {
             if (!play->envCtx.sunMoonDisabled) {
                 Environment_DrawSunAndMoon(play);
