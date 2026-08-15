@@ -79,7 +79,7 @@ deduped by `sToonEnabled`.
 
 ### libultraship (renderer transport)
 
-- GBI: `include/libultraship/libultra/gbi.h` — `G_SETTOON 0x41`, `G_SETTOONKEY 0x4a`, the
+- GBI: `include/libultraship/libultra/gbi.h` — `G_SETTOON 0x41`, `G_SETTOONKEY 0x4c`, the
   `gSPToon`/`gSPToonKey` macros. `include/fast/lus_gbi.h` — `OTR_G_SETTOON`/`OTR_G_SETTOONKEY`.
 - `src/fast/interpreter.cpp` + `include/fast/interpreter.h` — the handlers, `SelectToonLight`,
   normal forwarding in `GfxSpVertex`, `TOON` variant selection + VBO packing in `GfxSpTri1`,

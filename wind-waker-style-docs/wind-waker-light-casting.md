@@ -119,7 +119,7 @@ light.
 
 ### libultraship (renderer transport)
 
-- GBI: `include/libultraship/libultra/gbi.h` — `G_SETSTENCIL 0x46` + `gSPStencil(pkt, mode)`.
+- GBI: `include/libultraship/libultra/gbi.h` — `G_SETSTENCIL 0x4d` + `gSPStencil(pkt, mode)`.
   `include/fast/lus_gbi.h` — `OTR_G_SETSTENCIL`.
 - `src/fast/interpreter.cpp` — `gfx_set_stencil_handler_custom` (flush, then `SetStencilMode`).
 - `include/fast/backends/gfx_rendering_api.h` — `enum class StencilMode`, the base

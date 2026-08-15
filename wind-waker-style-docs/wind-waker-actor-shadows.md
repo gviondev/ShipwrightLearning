@@ -142,7 +142,7 @@ factored into `Actor_DrawListEntry` so the pre-pass and the main loop share one 
 3. **Flush sentinel.** The `gSPToonShadowFlush` command in the actor loop triggers
    `RenderShadowVolumes` — the batched stencil passes + composite above.
 4. **Per frame,** `OnToonFrameUpdate` pushes the look tuning via
-   `SetToonShadowParams(opacity, minElevation, slabDepth, slabRise, showVolume)`.
+   `SetToonShadowParams(opacity, minElevation, slabDepth, slabRise, edgeSoftness, showVolume)`.
 
 ## Where the code lives
 
