@@ -49,6 +49,7 @@ static constexpr float kDefaultRotationSpeed = 1.0f;  // × the Wind Waker two-a
 // Z) tumble the low-poly silhouette so it never looks like it's just spinning in place.
 static constexpr float kWWRotYRate = 0.598f; // 0xD0 units/frame @ 30 Hz = 34.28°/s
 static constexpr float kWWRotXRate = 0.736f; // 0x100 units/frame @ 30 Hz = 42.19°/s
+static constexpr f32 kTwoPi = 6.28318530717958647692f;
 static constexpr float kDefaultIntensity = 0.2f;        // brightness of the cast pool
 static constexpr float kDefaultNaviSphereSize = 0.75f;  // Navi's pool size (× radius), separate from torches
 static constexpr float kDefaultNaviIntensity = 0.2f;     // Navi's pool brightness
@@ -339,7 +340,7 @@ static WorldLightState* WorldLightGetState(LightInfo* info) {
     auto [it, isNew] = sLightState.try_emplace(info);
     WorldLightState& s = it->second;
     if (isNew) {
-        f32 phase = (f32)(((uintptr_t)info >> 4) & 0x3FF) / 1024.0f * (2.0f * M_PI);
+        f32 phase = (f32)(((uintptr_t)info >> 4) & 0x3FF) / 1024.0f * kTwoPi;
         s.angleY = phase;
         s.angleX = phase * 0.7f;
         s.sizeCur = s.sizeTarget = 1.0f;
@@ -548,11 +549,11 @@ static void DrawWorldLights(void* playPtr) {
                 // Wind Waker two-axis tumble, scaled by the Rotation Speed slider (same for every light).
                 s->angleY += kWWRotYRate * rotSpeed * dt;
                 s->angleX += kWWRotXRate * rotSpeed * dt;
-                if (s->angleY > (2.0f * M_PI)) {
-                    s->angleY -= (2.0f * M_PI);
+                if (s->angleY > kTwoPi) {
+                    s->angleY -= kTwoPi;
                 }
-                if (s->angleX > (2.0f * M_PI)) {
-                    s->angleX -= (2.0f * M_PI);
+                if (s->angleX > kTwoPi) {
+                    s->angleX -= kTwoPi;
                 }
 
                 // Wind Waker SIZE flicker (the dominant pulse): re-roll a target every 0.10-0.30 s and ease

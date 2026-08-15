@@ -45,6 +45,7 @@ static constexpr float kDefaultBrightness = 1.0f; // overall multiplier on the p
 // horizon, fading out by +6.6° elevation. Fixed, like WW's mesh — the drama at sunset comes from the
 // haze COLOUR turning vivid, not from the band growing, so this is deliberately not a slider.
 static constexpr float kKasumiTopDeg = 6.6f;
+static constexpr float kPi = 3.14159265358979323846f;
 
 // Dome tessellation: latitude rows placed non-uniformly so the thin haze band and the horizon line get
 // enough vertices to resolve (vertex colours interpolate linearly across each band).
@@ -75,13 +76,13 @@ static void SetDomePos(Vtx* v, float x, float y, float z) {
 static void BuildDome() {
     int idx = 0;
     for (int row = 0; row + 1 < kDomeRows; row++) {
-        float phi0 = kDomeElevations[row] * (M_PI / 180.0f);
-        float phi1 = kDomeElevations[row + 1] * (M_PI / 180.0f);
+        float phi0 = kDomeElevations[row] * (kPi / 180.0f);
+        float phi1 = kDomeElevations[row + 1] * (kPi / 180.0f);
         float y0 = kDomeRadius * sinf(phi0), rc0 = kDomeRadius * cosf(phi0);
         float y1 = kDomeRadius * sinf(phi1), rc1 = kDomeRadius * cosf(phi1);
         for (int seg = 0; seg < kDomeSegs; seg++) {
-            float lam0 = 2.0f * M_PI * ((float)seg / kDomeSegs);
-            float lam1 = 2.0f * M_PI * ((float)(seg + 1) / kDomeSegs);
+            float lam0 = 2.0f * kPi * ((float)seg / kDomeSegs);
+            float lam1 = 2.0f * kPi * ((float)(seg + 1) / kDomeSegs);
             float c0 = cosf(lam0), s0 = sinf(lam0), c1 = cosf(lam1), s1 = sinf(lam1);
             // Quad corners: (row, seg) grid on the sphere.
             float ax = rc0 * c0, az = rc0 * s0; // v00
@@ -133,7 +134,7 @@ static void ColorDome(const u8 sky[3], const u8 kasumi[3], const u8 usoUmi[3]) {
         } else if (sinElev < -1.0f) {
             sinElev = -1.0f;
         }
-        float elevDeg = asinf(sinElev) * (180.0f / M_PI);
+        float elevDeg = asinf(sinElev) * (180.0f / kPi);
         u8 col[3];
         ZoneColor(elevDeg, sky, kasumi, usoUmi, col);
         v->v.cn[0] = col[0];

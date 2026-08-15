@@ -234,7 +234,7 @@ static bool sToonEnabled = true;
 // The Fast3D rendering backend, if the active window is the Fast3D window. Null on other windows
 // (e.g. headless), in which case there is nothing to relight and pushing is simply skipped.
 static Fast::GfxRenderingAPI* GetRenderingApi() {
-    auto wnd = std::dynamic_pointer_cast<Fast::Fast3dWindow>(Ship::Context::GetInstance()->GetWindow());
+    auto wnd = std::dynamic_pointer_cast<Fast::Fast3dWindow>(Ship::Context::GetRawInstance()->GetWindow());
     if (wnd == nullptr) {
         return nullptr;
     }
@@ -248,7 +248,7 @@ static Fast::GfxRenderingAPI* GetRenderingApi() {
 // The Fast3D interpreter itself (for actor-shadow config, which lives in the interpreter rather than the
 // backend). Null on non-Fast3D/headless windows, where there is nothing to draw.
 static std::shared_ptr<Fast::Interpreter> GetInterpreter() {
-    auto wnd = std::dynamic_pointer_cast<Fast::Fast3dWindow>(Ship::Context::GetInstance()->GetWindow());
+    auto wnd = std::dynamic_pointer_cast<Fast::Fast3dWindow>(Ship::Context::GetRawInstance()->GetWindow());
     if (wnd == nullptr) {
         return nullptr;
     }
@@ -586,7 +586,7 @@ static void DrawDebugRay(PlayState* play, Vec3f* base, f32 dir[3], u8 r, u8 g, u
         Matrix_RotateAxis(Math_FAtan2F(horiz, dir[1]), &axis, MTXMODE_APPLY);
     } else if (dir[1] < 0.0f) {
         axis.x = 1.0f, axis.y = 0.0f, axis.z = 0.0f; // pointing straight down
-        Matrix_RotateAxis(M_PI, &axis, MTXMODE_APPLY);
+        Matrix_RotateAxis(static_cast<f32>(M_PI), &axis, MTXMODE_APPLY);
     }
     Matrix_Scale(thickness, length, thickness, MTXMODE_APPLY);
 
@@ -654,7 +654,8 @@ static void DrawDebugOverlay(PlayState* play, Actor* actor, f32 pointRange, f32 
             // Cyan range ring at each point light (once, on the player pass), for ALL point lights
             // regardless of distance, so the Point Light Range slider's reach is visible.
             if (isPlayer && (radius > 0.0f)) {
-                Vec3f lpos = { info->params.point.x, info->params.point.y, info->params.point.z };
+                Vec3f lpos = { static_cast<f32>(info->params.point.x), static_cast<f32>(info->params.point.y),
+                               static_cast<f32>(info->params.point.z) };
                 DrawDebugRing(play, &lpos, radius, 0, 255, 255, 110);
             }
 
