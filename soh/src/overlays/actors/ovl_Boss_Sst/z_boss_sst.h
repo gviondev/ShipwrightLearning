@@ -33,6 +33,7 @@ typedef struct BossSst {
     /* 0x0194 */ s8 actionVar; // head: flag for visible without lens; hand: 1 for right, -1 for left
     /* 0x0195 */ s8 ready;
     /* 0x0196 */ u8 effectMode;
+    /* 0x0197 */ u8 stateTimer; // Bounded recovery/alignment watchdog; occupies existing padding
     /* 0x0198 */ s16 timer;
     /* 0x019A */ s16 handAngSpeed;
     /* 0x019C */ s16 handMaxSpeed;
@@ -59,5 +60,15 @@ typedef enum {
     /*  0 */ BONGO_LEFT_HAND,
     /*  1 */ BONGO_RIGHT_HAND
 } BossSstType;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+s32 BossSst_ShouldUseNormalUpdateRate(Actor* actor);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

@@ -43,6 +43,7 @@ void BgSstFloor_Init(BgSstFloor* thisx, PlayState* play) {
     DynaPolyActor_Init(&this->dyna, DPM_PLAYER);
     CollisionHeader_GetVirtual(&gBongoDrumCol, &colHeader);
     this->dyna.bgId = DynaPoly_SetBgActor(play, &play->colCtx.dyna, &this->dyna.actor, colHeader);
+    this->visualPulse = false;
 }
 
 void BgSstFloor_Destroy(BgSstFloor* thisx, PlayState* play) {
@@ -69,20 +70,29 @@ void BgSstFloor_Update(BgSstFloor* thisx, PlayState* play) {
     }
 
     if (DynaPolyActor_IsPlayerOnTop(&this->dyna) && (player->fallDistance > 1000.0f)) {
-        this->dyna.actor.params = 1;
+        this->dyna.actor.params = BONGOFLOOR_HIT;
         Audio_PlayActorSound2(&this->dyna.actor, NA_SE_EN_SHADEST_TAIKO_HIGH);
     }
 
-    if (this->dyna.actor.params == BONGOFLOOR_HIT) {
-        Actor* item00 = play->actorCtx.actorLists[ACTORCAT_MISC].head;
+    if ((this->dyna.actor.params == BONGOFLOOR_HIT) || (this->dyna.actor.params == BONGOFLOOR_HIT_LIGHT) ||
+        (this->dyna.actor.params == BONGOFLOOR_HIT_TAP) ||
+        (this->dyna.actor.params == BONGOFLOOR_HIT_PULSE) ||
+        (this->dyna.actor.params == BONGOFLOOR_HIT_SKYBOUND)) {
+        s32 isFullHit = this->dyna.actor.params == BONGOFLOOR_HIT;
+        s32 isLightHit = this->dyna.actor.params == BONGOFLOOR_HIT_LIGHT;
+        s32 isVisualPulse = this->dyna.actor.params == BONGOFLOOR_HIT_PULSE;
+        s32 isSkyboundHit = this->dyna.actor.params == BONGOFLOOR_HIT_SKYBOUND;
+        f32 bounceVelocity = isFullHit ? 9.0f : (isLightHit ? 4.5f : 2.5f);
         f32 distFromRim;
-        f32 xzDist;
 
-        this->drumAmp = 80;
+        this->drumAmp = (isFullHit || isSkyboundHit) ? 80 : ((isLightHit || isVisualPulse) ? 40 : 20);
+        // Skybound owns Link's vertical trajectory, so it gets a full-strength visual impact without a second bounce.
+        this->visualPulse = isVisualPulse || isSkyboundHit;
         this->dyna.actor.params = BONGOFLOOR_REST;
-        this->drumPhase = 28;
+        // Start on a visible displacement instead of spending the impact frame at sin(14 PI) == 0.
+        this->drumPhase = 27;
 
-        if (DynaPolyActor_IsPlayerOnTop(&this->dyna) &&
+        if (!isVisualPulse && !isSkyboundHit && DynaPolyActor_IsPlayerOnTop(&this->dyna) &&
             !(player->stateFlags1 & (PLAYER_STATE1_HANGING_OFF_LEDGE | PLAYER_STATE1_CLIMBING_LEDGE))) {
             distFromRim = 600.0f - this->dyna.actor.xzDistToPlayer;
             if (distFromRim > 0.0f) {
@@ -90,23 +100,28 @@ void BgSstFloor_Update(BgSstFloor* thisx, PlayState* play) {
                     distFromRim = 350.0f;
                 }
                 player->actor.bgCheckFlags &= ~1;
-                player->actor.velocity.y = 9.0f * distFromRim * (1.0f / 350.0f);
+                player->actor.velocity.y = bounceVelocity * distFromRim * (1.0f / 350.0f);
             }
         }
 
-        while (item00 != NULL) {
-            if ((item00->id == ACTOR_EN_ITEM00) && (item00->world.pos.y == 0.0f)) {
-                xzDist = Actor_WorldDistXZToActor(&this->dyna.actor, item00);
-                distFromRim = 600.0f - xzDist;
-                if (xzDist < 600.0f) {
-                    if (distFromRim > 350.0f) {
-                        distFromRim = 350.0f;
+        if (isFullHit) {
+            Actor* item00 = play->actorCtx.actorLists[ACTORCAT_MISC].head;
+
+            while (item00 != NULL) {
+                if ((item00->id == ACTOR_EN_ITEM00) && (item00->world.pos.y == 0.0f)) {
+                    f32 xzDist = Actor_WorldDistXZToActor(&this->dyna.actor, item00);
+
+                    distFromRim = 600.0f - xzDist;
+                    if (xzDist < 600.0f) {
+                        if (distFromRim > 350.0f) {
+                            distFromRim = 350.0f;
+                        }
+                        item00->bgCheckFlags &= ~3;
+                        item00->velocity.y = bounceVelocity * distFromRim * (1.0f / 350.0f);
                     }
-                    item00->bgCheckFlags &= ~3;
-                    item00->velocity.y = 9.0f * distFromRim * (1.0f / 350.0f);
                 }
+                item00 = item00->next;
             }
-            item00 = item00->next;
         }
     }
     this->drumHeight = sinf(this->drumPhase * (M_PI / 2)) * (-this->drumAmp);
@@ -114,7 +129,8 @@ void BgSstFloor_Update(BgSstFloor* thisx, PlayState* play) {
 
     colHeader->vtxList[1].y = colHeader->vtxList[0].y = colHeader->vtxList[2].y = colHeader->vtxList[3].y =
         colHeader->vtxList[4].y = colHeader->vtxList[7].y = colHeader->vtxList[9].y = colHeader->vtxList[11].y =
-            colHeader->vtxList[13].y = this->dyna.actor.home.pos.y + this->drumHeight;
+            colHeader->vtxList[13].y =
+                this->dyna.actor.home.pos.y + (this->visualPulse ? 0 : this->drumHeight);
 
     if (this->drumPhase != 0) {
         this->drumPhase--;
